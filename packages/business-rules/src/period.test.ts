@@ -24,7 +24,7 @@ describe("startOfDay", () => {
     // Verify round-trip: formatting the result back in that zone gives 00:00:00 on the same local day.
     const formatted = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York",
-      hour12: false,
+      hourCycle: "h23",
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
@@ -39,7 +39,7 @@ describe("startOfDay", () => {
     const start = startOfDay(beforeDst, "America/New_York");
     const formatted = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York",
-      hour12: false,
+      hourCycle: "h23",
       hour: "2-digit",
       minute: "2-digit",
     }).format(start);
