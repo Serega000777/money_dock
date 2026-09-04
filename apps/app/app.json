@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Money Dock",
+    "slug": "money-dock",
+    "scheme": "moneydock",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "plugins": ["expo-router", "expo-status-bar", "expo-splash-screen", "expo-font"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.moneydock.mobile"
+    },
+    "android": {
+      "package": "app.moneydock.mobile"
+    }
+  }
+}

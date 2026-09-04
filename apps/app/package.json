@@ -1,0 +1,44 @@
+{
+  "name": "@money-dock/app",
+  "version": "0.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "dotenv -e ../../.env -- expo start",
+    "web": "dotenv -e ../../.env -- expo start --web",
+    "build": "dotenv -e ../../.env -- expo export --platform web",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~57.0.15",
+    "@money-dock/api-client": "workspace:*",
+    "@money-dock/design-tokens": "workspace:*",
+    "@money-dock/shared-types": "workspace:*",
+    "@money-dock/validation": "workspace:*",
+    "@tanstack/react-query": "^5.102.8",
+    "expo": "^57.0.20",
+    "expo-constants": "^57.0.17",
+    "expo-font": "~57.0.3",
+    "expo-linking": "^57.0.9",
+    "expo-router": "^57.0.19",
+    "expo-splash-screen": "^57.0.8",
+    "expo-status-bar": "^57.0.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-native": "^0.86.3",
+    "react-native-safe-area-context": "^5.7.0",
+    "react-native-screens": "^4.26.2",
+    "react-native-web": "^0.21.2",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@money-dock/config": "workspace:*",
+    "@types/react": "^19.2.18",
+    "babel-preset-expo": "^57.0.10",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "^9.17.0",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "@money-dock/config",
+  "version": "0.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "files": [
+    "tsconfig.*.json",
+    "eslint.config.mjs",
+    "prettier.config.mjs"
+  ],
+  "dependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "globals": "^17.12.0",
+    "typescript-eslint": "^8.19.0"
+  }
+}

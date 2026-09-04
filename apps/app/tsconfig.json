@@ -1,0 +1,9 @@
+{
+  "extends": "@money-dock/config/tsconfig.react-native.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["app", "src", "expo-env.d.ts", "*.config.js", "*.config.ts"]
+}
