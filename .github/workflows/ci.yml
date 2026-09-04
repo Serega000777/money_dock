@@ -29,7 +29,6 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/money_dock
       TELEGRAM_BOT_TOKEN: ci-placeholder
       JWT_ACCESS_SECRET: ci-placeholder-access-secret-32-characters-min
-      JWT_REFRESH_SECRET: ci-placeholder-refresh-secret-32-characters-min
     steps:
       - uses: actions/checkout@v4
 
@@ -48,4 +47,6 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm build
+      - run: pnpm db:migrate
+      - run: pnpm db:seed
       - run: pnpm test

@@ -5,6 +5,7 @@ import type { Env } from "../config/env";
 
 import { createDatabase } from "./client";
 import { DATABASE } from "./database.token";
+import { DbLifecycle } from "./db-lifecycle.provider";
 
 @Global()
 @Module({
@@ -15,6 +16,7 @@ import { DATABASE } from "./database.token";
       useFactory: (config: ConfigService<Env, true>) =>
         createDatabase(config.get("DATABASE_URL", { infer: true })),
     },
+    DbLifecycle,
   ],
   exports: [DATABASE],
 })

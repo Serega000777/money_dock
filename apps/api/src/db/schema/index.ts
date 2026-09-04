@@ -1,4 +1,5 @@
-// Domain tables are added module-by-module starting with AuthModule (see docs/decisions
-// and the roadmap in docs/architecture/overview.md). Kept empty in Stage 0 so drizzle-kit
-// and the Postgres connection can be verified before any schema exists.
-export {};
+export * from "./accounts";
+export * from "./categories";
+export * from "./sessions";
+export * from "./user-identities";
+export * from "./users";

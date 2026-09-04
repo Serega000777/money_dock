@@ -44,6 +44,8 @@ money-dock/
 `BankingModule`, `SubscriptionModule`, `NotificationsModule`, `AdminModule`,
 `ExportModule`) владеет своими таблицами и экспортирует только сервисы — не
 репозитории и не сущности. Модули добавляются по этапам roadmap (ниже), не все сразу.
+Исключение: `AuthModule` помечен `@Global()` и экспортирует `JwtAuthGuard` — это чисто
+инфраструктурный guard, нужный почти всем контроллерам, а не доменная логика.
 
 ## Клиент
 
@@ -65,7 +67,7 @@ Analytics Engine, safe-to-spend, категоризация по правила�
 | Этап       | Содержание                                               |
 | ---------- | -------------------------------------------------------- |
 | 0 (готово) | repo, CI, Docker, Postgres, конвенции, ADR, health-check |
-| 1          | Telegram auth, users/sessions, accounts/categories       |
+| 1 (готово) | Telegram auth, users/sessions, accounts/categories       |
 | 2          | transactions, ручной ввод, правила баланса               |
 | 3          | analytics engine, safe-to-spend, главный экран           |
 | 4          | import framework, dedup, Review Inbox, user rules        |

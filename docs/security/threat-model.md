@@ -1,4 +1,4 @@
-# Threat model (черновик Stage 0, полный STRIDE-разбор — Stage 7)
+# Threat model (черновик, полный STRIDE-разбор — Stage 7)
 
 Полный разбор запланирован перед production (Stage 7, см.
 `docs/architecture/overview.md`). Ниже — жёсткие ограничения, зафиксированные с самого
@@ -10,7 +10,7 @@
   `.env.example` без значений).
 - Банковские пароли, PIN, CVV — не хранятся никогда; screen scraping не рассматривается
   как production-стратегия (см. ТЗ, раздел «Банковская автоматизация»).
-- Refresh-токены хранятся только хэшированными.
+- Refresh-токены хранятся только хэшированными (Stage 1: sha256 от случайных 256 бит).
 - Bank tokens (когда появятся) — encrypted at rest.
 - Все входные данные валидируются на границе API через `packages/validation` (Zod).
 - Авторизация проверяется на уровне repository/service по владельцу (`user_id`) — не
@@ -21,15 +21,15 @@
   согласия на хранение.
 - Никаких secrets в логах; логи и ошибки не содержат PII сверх необходимого.
 
-## Отслеживаемые классы атак (тесты добавляются вместе с модулем, который открывает риск)
+## Отслеживаемые классы атак
 
-| Класс             | Где актуально                 | Когда закрывается тестами |
-| ----------------- | ----------------------------- | ------------------------- |
-| Replay            | Telegram `initData`           | Stage 1 (AuthModule)      |
-| IDOR              | любой эндпоинт с `:id` в пути | по мере появления модулей |
-| Upload abuse      | импорт выписок                | Stage 4 (ImportModule)    |
-| Token leakage     | auth/session                  | Stage 1                   |
-| Rate limit bypass | auth/voice/import/export      | по мере появления модулей |
+| Класс             | Где актуально                    | Статус                                                                                                     |
+| ----------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Replay            | Telegram `initData`              | ✅ Stage 1 — HMAC-подпись + окно свежести `auth_date`; тесты в `telegram-init-data.spec.ts`                |
+| Token reuse       | refresh-токен                    | ✅ Stage 1 — ротация с отзывом старой сессии; тест в `auth-and-ownership.e2e.spec.ts`                      |
+| IDOR              | `accounts/:id`, `categories/:id` | ✅ Stage 1 (эти модули) — scoping по `user_id` в сервисе + e2e-тест; остальные модули по мере появления    |
+| Upload abuse      | импорт выписок                   | Stage 4 (ImportModule)                                                                                     |
+| Rate limit bypass | auth                             | ✅ Stage 1 — `@nestjs/throttler`, 20 запросов/60с на `/auth/*`; voice/import/export — при появлении модуля |
 
 ## Stage 7 (полный STRIDE + блокеры релиза)
 

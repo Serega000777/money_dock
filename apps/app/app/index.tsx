@@ -3,15 +3,25 @@ import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { apiClient } from "../src/api/client";
+import { useAuthStore } from "../src/auth/authStore";
 import { useTelegram } from "../src/telegram/TelegramProvider";
 import { useTheme } from "../src/theme/useTheme";
 
 export default function Home() {
   const theme = useTheme();
   const { user, isInsideTelegram } = useTelegram();
+  const accessToken = useAuthStore((state) => state.accessToken);
+
   const { data: health } = useQuery({
     queryKey: ["health"],
     queryFn: () => apiClient.health(),
+    retry: false,
+  });
+
+  const { data: accounts } = useQuery({
+    queryKey: ["accounts"],
+    queryFn: () => apiClient.accounts.list(),
+    enabled: Boolean(accessToken),
     retry: false,
   });
 
@@ -27,13 +37,15 @@ export default function Home() {
         </Text>
         <Text style={[styles.amount, { color: theme.textPrimary }]}>—</Text>
         <Text style={[styles.cardHint, { color: theme.textSecondary }]}>
-          Появится после подключения счетов
+          {accessToken
+            ? `Счетов подключено: ${accounts?.length ?? 0}`
+            : "Появится после подключения счетов"}
         </Text>
       </View>
 
       <Text style={[styles.status, { color: theme.textSecondary }]}>
-        {isInsideTelegram ? "Открыто в Telegram" : "Демо-режим (вне Telegram)"} · API:{" "}
-        {health?.status ?? "…"}
+        {isInsideTelegram ? "Открыто в Telegram" : "Демо-режим (вне Telegram)"}
+        {accessToken ? " · вход выполнен" : ""} · API: {health?.status ?? "…"}
       </Text>
     </SafeAreaView>
   );

@@ -16,7 +16,8 @@
     "docker:up": "docker compose -f infrastructure/docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f infrastructure/docker/docker-compose.yml down",
     "db:generate": "pnpm --filter @money-dock/api db:generate",
-    "db:migrate": "pnpm --filter @money-dock/api db:migrate"
+    "db:migrate": "pnpm --filter @money-dock/api db:migrate",
+    "db:seed": "pnpm --filter @money-dock/api db:seed"
   },
   "devDependencies": {
     "turbo": "^2.3.3",

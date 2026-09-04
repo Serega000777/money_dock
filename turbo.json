@@ -1,5 +1,14 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalPassThroughEnv": [
+    "DATABASE_URL",
+    "TELEGRAM_BOT_TOKEN",
+    "JWT_ACCESS_SECRET",
+    "CORS_ORIGIN",
+    "PORT",
+    "NODE_ENV",
+    "EXPO_PUBLIC_API_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -23,6 +32,9 @@
       "cache": false
     },
     "db:migrate": {
+      "cache": false
+    },
+    "db:seed": {
       "cache": false
     }
   }

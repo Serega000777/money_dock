@@ -21,9 +21,11 @@ App; тот же клиентский код (Expo) позже становит�
 
 ```bash
 pnpm install
-cp .env.example .env        # заполните TELEGRAM_BOT_TOKEN, JWT_*_SECRET
+cp .env.example .env        # заполните TELEGRAM_BOT_TOKEN, JWT_ACCESS_SECRET
 pnpm docker:up               # поднимает Postgres в Docker
-pnpm dev                      # api на :3000, Expo dev server для apps/app
+pnpm db:migrate                # накатывает схему
+pnpm db:seed                    # системные категории (продукты, транспорт, ...)
+pnpm dev                         # api на :3000, Expo dev server для apps/app
 ```
 
 Проверить, что всё поднялось:
@@ -49,7 +51,8 @@ pnpm test               # unit-тесты (vitest в packages/*, jest в apps/ap
 pnpm format               # prettier --write
 pnpm db:generate            # сгенерировать SQL-миграцию из схемы Drizzle
 pnpm db:migrate               # применить миграции к DATABASE_URL
-pnpm docker:down                # остановить Postgres
+pnpm db:seed                    # заполнить системные категории
+pnpm docker:down                  # остановить Postgres
 ```
 
 ## Структура репозитория
@@ -84,5 +87,5 @@ docs/
 
 ## Roadmap
 
-См. таблицу этапов в `docs/architecture/overview.md`. Текущий статус: **Stage 0** —
-репозиторий, CI, Docker, Postgres, конвенции, ADR — готово.
+См. таблицу этапов в `docs/architecture/overview.md`. Текущий статус: **Stage 1** —
+Telegram-авторизация, users/sessions, accounts/categories — готово.

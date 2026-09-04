@@ -13,6 +13,9 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@money-dock/shared-types": "workspace:*"
+  },
   "devDependencies": {
     "@money-dock/config": "workspace:*",
     "eslint": "^9.17.0",

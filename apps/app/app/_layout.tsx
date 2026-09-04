@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { queryClient } from "../src/api/queryClient";
+import { AuthProvider } from "../src/auth/AuthProvider";
 import { TelegramProvider, useTelegram } from "../src/telegram/TelegramProvider";
 import { useTheme } from "../src/theme/useTheme";
 
@@ -29,7 +30,9 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <TelegramProvider>
-          <ThemedStack />
+          <AuthProvider>
+            <ThemedStack />
+          </AuthProvider>
         </TelegramProvider>
       </QueryClientProvider>
     </SafeAreaProvider>

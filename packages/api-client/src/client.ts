@@ -1,3 +1,5 @@
+import type { Account, AuthTokens, Category, User } from "@money-dock/shared-types";
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -33,12 +35,39 @@ export function createApiClient({ baseUrl, getAccessToken }: ApiClientOptions) {
     if (!res.ok) {
       throw new ApiError(res.status, await res.text());
     }
-
+    if (res.status === 204) {
+      return undefined as T;
+    }
     return (await res.json()) as T;
   }
 
+  const post = <T>(path: string, body?: unknown) =>
+    request<T>(path, {
+      method: "POST",
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
   return {
     health: () => request<HealthResponse>("/health"),
+
+    auth: {
+      loginWithTelegram: (initData: string) =>
+        post<{ user: User } & AuthTokens>("/auth/telegram", { initData }),
+      refresh: (refreshToken: string) => post<AuthTokens>("/auth/refresh", { refreshToken }),
+      logout: (refreshToken: string) => post<void>("/auth/logout", { refreshToken }),
+    },
+
+    users: {
+      me: () => request<User>("/users/me"),
+    },
+
+    accounts: {
+      list: () => request<Account[]>("/accounts"),
+    },
+
+    categories: {
+      list: () => request<Category[]>("/categories"),
+    },
   };
 }
 

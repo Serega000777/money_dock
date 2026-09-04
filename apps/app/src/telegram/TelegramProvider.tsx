@@ -25,15 +25,18 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     webApp?.expand();
   }, [webApp]);
 
-  const value = useMemo<TelegramContextValue>(
-    () => ({
+  const value = useMemo<TelegramContextValue>(() => {
+    // telegram-web-app.js defines window.Telegram.WebApp as a stub even outside Telegram
+    // (so devs can test the page directly in a browser) — its `initData` is only ever
+    // non-empty when actually launched from a real Telegram client with launch params.
+    const initData = webApp?.initData || null;
+    return {
       webApp,
-      isInsideTelegram: webApp !== null,
-      initData: webApp?.initData || null,
+      isInsideTelegram: initData !== null,
+      initData,
       user: webApp?.initDataUnsafe.user ?? null,
-    }),
-    [webApp],
-  );
+    };
+  }, [webApp]);
 
   return <TelegramContext.Provider value={value}>{children}</TelegramContext.Provider>;
 }

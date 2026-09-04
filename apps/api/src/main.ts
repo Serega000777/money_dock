@@ -11,6 +11,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService<Env, true>);
 
+  app.enableShutdownHooks();
   app.use(helmet());
   app.enableCors({ origin: config.get("CORS_ORIGIN", { infer: true }) });
   // DTO validation is Zod-based at the boundary (ADR 0008), not class-validator —
