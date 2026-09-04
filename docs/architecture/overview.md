@@ -68,7 +68,7 @@ Analytics Engine, safe-to-spend, категоризация по правила�
 | ---------- | -------------------------------------------------------- |
 | 0 (готово) | repo, CI, Docker, Postgres, конвенции, ADR, health-check |
 | 1 (готово) | Telegram auth, users/sessions, accounts/categories       |
-| 2          | transactions, ручной ввод, правила баланса               |
+| 2 (готово) | transactions, ручной ввод, правила баланса               |
 | 3          | analytics engine, safe-to-spend, главный экран           |
 | 4          | import framework, dedup, Review Inbox, user rules        |
 | 5          | voice pipeline, rule-based parser, entitlements          |

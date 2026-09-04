@@ -35,10 +35,32 @@ FK с `ON DELETE CASCADE` от `user_identities/sessions/accounts/categories` н
 идут через `WHERE user_id = :ownerId`, это и есть механизм защиты от IDOR на уровне
 сервиса (см. `docs/security/threat-model.md`).
 
+## Таблицы (Stage 2)
+
+**transactions** — `id, user_id, account_id, category_id, type(expense|income|transfer),
+amount_minor, currency, transfer_direction(out|in, только для transfer), occurred_at,
+merchant, note, source, status, client_id, created_at, updated_at`. `amount_minor` всегда
+положительный — знак задаёт `type`/`transfer_direction` (см. `AccountsService.netMovement`).
+`client_id` — идемпотентность: повторный POST с тем же `(user_id, client_id)` возвращает
+уже созданную операцию, а не дублирует её. Перевод — две связанные строки с одним
+исходным `clientId`, разведённые суффиксами `:out`/`:in` (поэтому колонка `text`, а не
+`uuid` — то, что видит клиент, Zod всё равно валидирует как UUID).
+
+**transaction_splits** — `id, transaction_id, category_id, amount_minor`. Сумма сплитов
+обязана совпадать с `amount_minor` родительской операции — проверяется до записи в БД
+через `packages/business-rules` (`assertSplitsMatchTotal`), а не полагается на constraint.
+
+**transfers** — `id, outgoing_transaction_id, incoming_transaction_id` (оба unique) —
+связывает две строки `transactions` одного перевода. Удаление любой из двух строк удаляет
+обе (см. `TransactionsService.remove`).
+
+Баланс счёта не хранится отдельным полем — считается на лету:
+`initial_balance_minor + SUM(...)` по знаку `type`/`transfer_direction`, одним SQL-запросом
+на всю выборку через `LEFT JOIN` + `GROUP BY` (не построчно в Node — дешевле при росте
+истории).
+
 ## Дальше
 
-`transactions`, `transaction_splits`, `transfers` — Stage 2. `import_jobs`, `review_items`,
-`category_rules`, `merchant_aliases` — Stage 4. `budgets`, `recurring_rules`, `insights` —
-Stage 3/6. `voice_requests` — Stage 5. `subscriptions`, `usage_counters` — Stage 5.
-`audit_logs` — вводится вместе с первым модулем, где решения пользователя нужно
-аудировать (Review Inbox, Stage 4).
+`import_jobs`, `review_items`, `category_rules`, `merchant_aliases` — Stage 4. `budgets`,
+`recurring_rules`, `insights` — Stage 3/6. `voice_requests`, `subscriptions`,
+`usage_counters` — Stage 5. `audit_logs` — вместе с Review Inbox (Stage 4).

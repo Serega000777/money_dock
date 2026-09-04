@@ -1,4 +1,4 @@
-import type { Account, AuthTokens, Category, User } from "@money-dock/shared-types";
+import type { Account, AuthTokens, Category, Transaction, User } from "@money-dock/shared-types";
 
 export class ApiError extends Error {
   constructor(
@@ -67,6 +67,39 @@ export function createApiClient({ baseUrl, getAccessToken }: ApiClientOptions) {
 
     categories: {
       list: () => request<Category[]>("/categories"),
+      create: (input: {
+        type: "expense" | "income";
+        name: string;
+        parentId?: string;
+        icon?: string;
+      }) => post<Category>("/categories", input),
+    },
+
+    transactions: {
+      list: (params?: { accountId?: string; limit?: number; offset?: number }) => {
+        const query = new URLSearchParams();
+        if (params?.accountId) query.set("accountId", params.accountId);
+        if (params?.limit) query.set("limit", String(params.limit));
+        if (params?.offset) query.set("offset", String(params.offset));
+        const qs = query.toString();
+        return request<Transaction[]>(`/transactions${qs ? `?${qs}` : ""}`);
+      },
+      create: (input: {
+        type: "expense" | "income";
+        accountId: string;
+        categoryId?: string;
+        amountMinor: number;
+        currency: string;
+        note?: string;
+        clientId: string;
+      }) => post<Transaction>("/transactions", input),
+      createTransfer: (input: {
+        fromAccountId: string;
+        toAccountId: string;
+        amountMinor: number;
+        currency: string;
+        clientId: string;
+      }) => post<void>("/transactions/transfer", input),
     },
   };
 }

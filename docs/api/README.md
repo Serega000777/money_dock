@@ -50,7 +50,8 @@ Access-токен живёт 15 минут; когда истёк — `POST /aut
 Все операции скоуплены владельцем — чужой `id` возвращает `404`, не `403` (не палим
 существование чужих данных).
 
-- `GET /accounts` — список неархивных счетов.
+- `GET /accounts` — список неархивных счетов, каждый с `currentBalanceMinor` (Stage 2:
+  `initialBalanceMinor` + сумма связанных операций, считается в БД).
 - `POST /accounts` — `{ type, name, currency, initialBalanceMinor }`.
 - `GET /accounts/:id`
 - `PATCH /accounts/:id` — частичное обновление.
@@ -62,3 +63,19 @@ Access-токен живёт 15 минут; когда истёк — `POST /aut
 - `POST /categories` — `{ type, name, parentId?, icon? }`.
 - `DELETE /categories/:id` — только свои кастомные; системные категории удалить нельзя
   ни при каких условиях (даже владельцу — `404`, т.к. `user_id` у системных всегда `null`).
+
+## Transactions (Stage 2)
+
+Все — скоуплены владельцем, как Accounts. `clientId` (UUID) обязателен на создании —
+повтор с тем же `clientId` идемпотентен (возвращает уже созданную операцию, не дублирует).
+
+- `GET /transactions?accountId=&limit=&offset=` — список, новые сверху.
+- `POST /transactions` — `{ type: expense|income, accountId, categoryId?, amountMinor,
+currency, occurredAt?, merchant?, note?, clientId, splits? }`. `splits` — опционально,
+  сумма обязана совпадать с `amountMinor` (`400`, если нет).
+- `POST /transactions/transfer` — `{ fromAccountId, toAccountId, amountMinor, currency,
+clientId, note? }`. Создаёт две связанные строки, не попадает в доходы/расходы, только
+  двигает баланс между счетами.
+- `GET /transactions/:id`
+- `PATCH /transactions/:id`
+- `DELETE /transactions/:id` — для перевода удаляет обе связанные строки.

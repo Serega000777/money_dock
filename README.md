@@ -87,5 +87,5 @@ docs/
 
 ## Roadmap
 
-См. таблицу этапов в `docs/architecture/overview.md`. Текущий статус: **Stage 1** —
-Telegram-авторизация, users/sessions, accounts/categories — готово.
+См. таблицу этапов в `docs/architecture/overview.md`. Текущий статус: **Stage 2** —
+transactions, ручной ввод, правила баланса — готово.

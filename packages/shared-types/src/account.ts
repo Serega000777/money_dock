@@ -8,5 +8,6 @@ export interface Account {
   name: string;
   currency: CurrencyCode;
   initialBalanceMinor: MinorUnits;
+  currentBalanceMinor: MinorUnits;
   archivedAt: string | null;
 }
