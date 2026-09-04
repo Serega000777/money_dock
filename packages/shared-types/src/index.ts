@@ -1,4 +1,5 @@
 export * from "./account";
+export * from "./analytics";
 export * from "./category";
 export * from "./money";
 export * from "./transaction";

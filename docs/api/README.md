@@ -79,3 +79,29 @@ clientId, note? }`. Создаёт две связанные строки, не 
 - `GET /transactions/:id`
 - `PATCH /transactions/:id`
 - `DELETE /transactions/:id` — для перевода удаляет обе связанные строки.
+
+## Analytics (Stage 3)
+
+### `GET /analytics/summary`
+
+Всё детерминированно (никакого LLM), считается в SQL/TS — см.
+`packages/business-rules/src/{period,analytics}.ts`. Периоды — по таймзоне пользователя
+(`users.timezone`), не по UTC.
+
+```json
+{
+  "totalBalanceMinor": 123400,
+  "safeToSpendPerDayMinor": 4113,
+  "daysRemainingInMonth": 30,
+  "daysInMonth": 31,
+  "monthEndForecastMinor": 98000,
+  "currentMonthExpenseMinor": 25400,
+  "currentMonthIncomeMinor": 80000,
+  "expenseChangePercent": 18.2,
+  "todayExpenseMinor": 3280
+}
+```
+
+`expenseChangePercent` — сравнение с тем же числом дней прошлого месяца (не всего месяца
+целиком — иначе середина месяца искажает рост в меньшую сторону); `null`, если в
+сравниваемом периоде прошлого месяца расходов не было (нет базы для роста).

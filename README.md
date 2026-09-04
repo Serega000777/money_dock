@@ -87,5 +87,5 @@ docs/
 
 ## Roadmap
 
-См. таблицу этапов в `docs/architecture/overview.md`. Текущий статус: **Stage 2** —
-transactions, ручной ввод, правила баланса — готово.
+См. таблицу этапов в `docs/architecture/overview.md`. Текущий статус: **Stage 3** —
+analytics engine, safe-to-spend, главный экран — готово.

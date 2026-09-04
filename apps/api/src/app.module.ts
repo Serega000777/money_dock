@@ -6,6 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { validateEnv } from "./config/env";
 import { DbModule } from "./db/db.module";
 import { AccountsModule } from "./modules/accounts/accounts.module";
+import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { CategoriesModule } from "./modules/categories/categories.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -26,6 +27,7 @@ import { UsersModule } from "./modules/users/users.module";
     AccountsModule,
     CategoriesModule,
     TransactionsModule,
+    AnalyticsModule,
     HealthModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

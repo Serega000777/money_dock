@@ -44,7 +44,10 @@ export default function AddTransaction() {
         currency: account.currency,
         clientId: generateClientId(),
       });
-      await queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["accounts"] }),
+        queryClient.invalidateQueries({ queryKey: ["analytics"] }),
+      ]);
       router.back();
     } finally {
       setSaving(false);

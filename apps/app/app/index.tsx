@@ -12,6 +12,14 @@ function formatMinor(amountMinor: number): string {
   return (amountMinor / 100).toLocaleString("ru-RU", { minimumFractionDigits: 0 });
 }
 
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 6) return "Доброй ночи";
+  if (hour < 12) return "Доброе утро";
+  if (hour < 18) return "Добрый день";
+  return "Добрый вечер";
+}
+
 export default function Home() {
   const theme = useTheme();
   const { user, isInsideTelegram } = useTelegram();
@@ -30,24 +38,70 @@ export default function Home() {
     retry: false,
   });
 
-  const greetingName = user?.first_name ?? "гость";
-  const totalBalanceMinor = accounts?.reduce((sum, a) => sum + a.currentBalanceMinor, 0) ?? null;
+  const { data: summary } = useQuery({
+    queryKey: ["analytics", "summary"],
+    queryFn: () => apiClient.analytics.summary(),
+    enabled: Boolean(accessToken),
+    retry: false,
+  });
+
+  const hasAccounts = Boolean(accounts && accounts.length > 0);
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
-      <Text style={[styles.greeting, { color: theme.textSecondary }]}>Привет, {greetingName}</Text>
+      <Text style={[styles.greeting, { color: theme.textSecondary }]}>
+        {greeting()}
+        {user?.first_name ? `, ${user.first_name}` : ""}
+      </Text>
 
       <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>На счетах</Text>
+        <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>
+          Можно безопасно потратить
+        </Text>
         <Text style={[styles.amount, { color: theme.textPrimary }]}>
-          {totalBalanceMinor !== null ? `${formatMinor(totalBalanceMinor)} ₽` : "—"}
+          {summary ? `${formatMinor(summary.safeToSpendPerDayMinor)} ₽` : "—"}
         </Text>
         <Text style={[styles.cardHint, { color: theme.textSecondary }]}>
-          {accessToken ? `Счетов: ${accounts?.length ?? 0}` : "Появится после подключения счетов"}
+          {summary ? "в день до конца месяца" : "Появится после подключения счетов"}
         </Text>
       </View>
 
-      {accessToken && accounts && accounts.length > 0 ? (
+      {summary ? (
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>На счетах</Text>
+            <Text style={[styles.statValue, { color: theme.textPrimary }]}>
+              {formatMinor(summary.totalBalanceMinor)} ₽
+            </Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Прогноз на конец месяца
+            </Text>
+            <Text
+              style={[
+                styles.statValue,
+                { color: summary.monthEndForecastMinor < 0 ? theme.negative : theme.textPrimary },
+              ]}
+            >
+              {formatMinor(summary.monthEndForecastMinor)} ₽
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {summary && summary.todayExpenseMinor > 0 ? (
+        <Text style={[styles.today, { color: theme.textSecondary }]}>
+          Сегодня потрачено: {formatMinor(summary.todayExpenseMinor)} ₽
+          {summary.expenseChangePercent !== null
+            ? summary.expenseChangePercent >= 0
+              ? ` · на ${Math.round(summary.expenseChangePercent)}% больше обычного`
+              : ` · на ${Math.round(-summary.expenseChangePercent)}% меньше обычного`
+            : ""}
+        </Text>
+      ) : null}
+
+      {hasAccounts ? (
         <Link href="/add-transaction" asChild>
           <Pressable style={[styles.addButton, { backgroundColor: theme.accent }]}>
             <Text style={styles.addButtonText}>Добавить операцию</Text>
@@ -70,6 +124,11 @@ const styles = StyleSheet.create({
   cardLabel: { fontSize: 14 },
   amount: { fontSize: 34, fontWeight: "700" },
   cardHint: { fontSize: 13 },
+  statsRow: { flexDirection: "row", gap: 12 },
+  statItem: { flex: 1, gap: 4 },
+  statLabel: { fontSize: 12 },
+  statValue: { fontSize: 18, fontWeight: "600" },
+  today: { fontSize: 13 },
   addButton: { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   addButtonText: { color: "#fff", fontWeight: "600" },
   status: { fontSize: 12, marginTop: "auto" },

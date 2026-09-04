@@ -1,4 +1,11 @@
-import type { Account, AuthTokens, Category, Transaction, User } from "@money-dock/shared-types";
+import type {
+  Account,
+  AnalyticsSummary,
+  AuthTokens,
+  Category,
+  Transaction,
+  User,
+} from "@money-dock/shared-types";
 
 export class ApiError extends Error {
   constructor(
@@ -100,6 +107,10 @@ export function createApiClient({ baseUrl, getAccessToken }: ApiClientOptions) {
         currency: string;
         clientId: string;
       }) => post<void>("/transactions/transfer", input),
+    },
+
+    analytics: {
+      summary: () => request<AnalyticsSummary>("/analytics/summary"),
     },
   };
 }
