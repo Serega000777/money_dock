@@ -5,10 +5,10 @@ import { useMemo } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { apiClient } from "../src/api/client";
-import { useAuthStore } from "../src/auth/authStore";
-import { useTheme } from "../src/theme/useTheme";
-import { formatMinor } from "../src/utils/format";
+import { apiClient } from "../../src/api/client";
+import { useAuthStore } from "../../src/auth/authStore";
+import { useTheme } from "../../src/theme/useTheme";
+import { formatMinor } from "../../src/utils/format";
 
 function formatDay(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });

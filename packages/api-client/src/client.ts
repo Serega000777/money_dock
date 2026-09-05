@@ -3,6 +3,8 @@ import type {
   AnalyticsSummary,
   AuthTokens,
   Category,
+  ImportPreview,
+  ReviewInboxItem,
   Transaction,
   User,
 } from "@money-dock/shared-types";
@@ -112,6 +114,29 @@ export function createApiClient({ baseUrl, getAccessToken }: ApiClientOptions) {
 
     analytics: {
       summary: () => request<AnalyticsSummary>("/analytics/summary"),
+    },
+
+    reviewInbox: {
+      list: () => request<ReviewInboxItem[]>("/review-inbox"),
+      resolve: (id: string, action: string, categoryId?: string) =>
+        post<void>(`/review-inbox/${id}/resolve`, { action, categoryId }),
+    },
+
+    imports: {
+      /** `file` is a browser File/Blob; multipart is built here so screens stay dumb. */
+      preview: async (accountId: string, file: Blob, fileName: string) => {
+        const form = new FormData();
+        form.append("file", file, fileName);
+        const token = getAccessToken?.();
+        const res = await fetch(`${baseUrl}/import/preview/${accountId}`, {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          body: form,
+        });
+        if (!res.ok) throw new ApiError(res.status, await res.text());
+        return (await res.json()) as ImportPreview;
+      },
+      commit: (jobId: string) => post<unknown>(`/import/${jobId}/commit`),
     },
   };
 }

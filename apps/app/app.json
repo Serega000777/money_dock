@@ -8,9 +8,6 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "plugins": ["expo-router", "expo-status-bar", "expo-splash-screen", "expo-font"],
-    "experiments": {
-      "typedRoutes": true
-    },
     "web": {
       "bundler": "metro",
       "output": "static"

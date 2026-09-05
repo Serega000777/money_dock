@@ -3,11 +3,11 @@ import { Link } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { apiClient } from "../src/api/client";
-import { useAuthStore } from "../src/auth/authStore";
-import { useTelegram } from "../src/telegram/TelegramProvider";
-import { useTheme } from "../src/theme/useTheme";
-import { formatMinor } from "../src/utils/format";
+import { apiClient } from "../../src/api/client";
+import { useAuthStore } from "../../src/auth/authStore";
+import { useTelegram } from "../../src/telegram/TelegramProvider";
+import { useTheme } from "../../src/theme/useTheme";
+import { formatMinor } from "../../src/utils/format";
 
 function greeting(): string {
   const hour = new Date().getHours();
