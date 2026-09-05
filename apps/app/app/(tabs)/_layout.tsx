@@ -1,8 +1,8 @@
 import { Tabs } from "expo-router";
 import type { ColorValue } from "react-native";
 
-import { TabIcon, type TabIconName } from "../../src/ui/TabIcon";
 import { useTheme } from "../../src/theme/useTheme";
+import { TabIcon, type TabIconName } from "../../src/ui/TabIcon";
 
 // expo-router types the tint as ColorValue; our themes are always plain strings.
 const icon =
