@@ -28,6 +28,15 @@ export class AuthController {
     return { user, ...tokens };
   }
 
+  /** Browser/demo entry point. Returns 404 in production. */
+  @Throttle(AUTH_THROTTLE)
+  @HttpCode(HttpStatus.OK)
+  @Post("dev-login")
+  async devLogin(): Promise<{ user: User } & AuthTokens> {
+    const { user, tokens } = await this.auth.devLogin();
+    return { user, ...tokens };
+  }
+
   @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @Post("refresh")

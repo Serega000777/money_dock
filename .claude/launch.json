@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@money-dock/app", "web"],
       "port": 8081
+    },
+    {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@money-dock/api", "dev"],
+      "port": 3000
     }
   ]
 }

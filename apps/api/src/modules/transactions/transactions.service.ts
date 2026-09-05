@@ -14,8 +14,11 @@ import { DATABASE } from "../../db/database.token";
 import { firstOrThrow } from "../../db/first-or-throw";
 import { transactionSplits, transactions, transfers } from "../../db/schema";
 import { AccountsService } from "../accounts/accounts.service";
+import { CategorizationService } from "../categorization/categorization.service";
 
 type TransactionRow = typeof transactions.$inferSelect;
+type TransactionSourceValue = TransactionRow["source"];
+type TransactionStatusValue = TransactionRow["status"];
 
 function toTransaction(row: TransactionRow, splits: TransactionSplit[] = []): Transaction {
   return {
@@ -39,9 +42,19 @@ export class TransactionsService {
   constructor(
     @Inject(DATABASE) private readonly db: Database,
     private readonly accountsService: AccountsService,
+    private readonly categorization: CategorizationService,
   ) {}
 
-  async create(userId: string, input: CreateTransactionInput): Promise<Transaction> {
+  /**
+   * `internal` is for server-side callers (statement import) that need to record a
+   * different provenance than a hand-typed entry. The HTTP DTO can't set these — the
+   * client has no way to claim a transaction came from a bank feed.
+   */
+  async create(
+    userId: string,
+    input: CreateTransactionInput,
+    internal?: { source?: TransactionSourceValue; status?: TransactionStatusValue },
+  ): Promise<Transaction> {
     await this.accountsService.getOwned(userId, input.accountId);
 
     if (input.splits?.length) {
@@ -77,6 +90,8 @@ export class TransactionsService {
             merchant: input.merchant,
             note: input.note,
             clientId: input.clientId,
+            source: internal?.source,
+            status: internal?.status,
           })
           .returning(),
       );
@@ -191,8 +206,18 @@ export class TransactionsService {
   }
 
   async update(userId: string, id: string, input: UpdateTransactionInput): Promise<Transaction> {
-    await this.getOwned(userId, id);
+    const before = await this.getOwned(userId, id);
     if (input.accountId) await this.accountsService.getOwned(userId, input.accountId);
+
+    // A manual category correction becomes a personal rule, so the next statement with
+    // the same merchant lands in the right place without asking again.
+    if (input.categoryId && input.categoryId !== before.categoryId) {
+      await this.categorization.learnFromCorrection(
+        userId,
+        input.merchant ?? before.merchant,
+        input.categoryId,
+      );
+    }
 
     const row = firstOrThrow(
       await this.db

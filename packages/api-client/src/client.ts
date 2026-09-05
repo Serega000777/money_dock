@@ -60,6 +60,7 @@ export function createApiClient({ baseUrl, getAccessToken }: ApiClientOptions) {
     auth: {
       loginWithTelegram: (initData: string) =>
         post<{ user: User } & AuthTokens>("/auth/telegram", { initData }),
+      devLogin: () => post<{ user: User } & AuthTokens>("/auth/dev-login"),
       refresh: (refreshToken: string) => post<AuthTokens>("/auth/refresh", { refreshToken }),
       logout: (refreshToken: string) => post<void>("/auth/logout", { refreshToken }),
     },

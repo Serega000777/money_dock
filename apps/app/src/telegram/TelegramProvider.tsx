@@ -18,7 +18,15 @@ const TelegramContext = createContext<TelegramContextValue>({
 });
 
 export function TelegramProvider({ children }: { children: ReactNode }) {
-  const [webApp] = useState(getTelegramWebApp);
+  const [webApp, setWebApp] = useState(getTelegramWebApp);
+
+  // telegram-web-app.js may still be loading when React first renders; without this
+  // re-check we'd latch "not in Telegram" forever and never send initData to the API.
+  useEffect(() => {
+    if (webApp) return;
+    const found = getTelegramWebApp();
+    if (found) setWebApp(found);
+  }, [webApp]);
 
   useEffect(() => {
     webApp?.ready();

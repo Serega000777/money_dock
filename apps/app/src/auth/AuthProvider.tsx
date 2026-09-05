@@ -6,18 +6,27 @@ import { useTelegram } from "../telegram/TelegramProvider";
 
 import { useAuthStore } from "./authStore";
 
-/** Logs into the API with the Telegram initData as soon as it's available. No-op outside Telegram. */
+/**
+ * Signs in as soon as possible: with Telegram initData inside Telegram, and with the
+ * dev/demo user when the app is opened as a plain website (that endpoint 404s in
+ * production, so this can't become a backdoor).
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { initData, isInsideTelegram } = useTelegram();
   const accessToken = useAuthStore((state) => state.accessToken);
   const setTokens = useAuthStore((state) => state.setTokens);
 
   useEffect(() => {
-    if (!isInsideTelegram || !initData || accessToken) return;
+    if (accessToken) return;
+    if (isInsideTelegram && !initData) return;
 
     let cancelled = false;
-    apiClient.auth
-      .loginWithTelegram(initData)
+    const login =
+      isInsideTelegram && initData
+        ? apiClient.auth.loginWithTelegram(initData)
+        : apiClient.auth.devLogin();
+
+    login
       .then((res) => {
         if (!cancelled) {
           setTokens({

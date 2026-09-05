@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 
 import type { Env } from "../../config/env";
+import { DemoModule } from "../demo/demo.module";
 import { UsersModule } from "../users/users.module";
 
 import { AuthController } from "./auth.controller";
@@ -14,6 +15,7 @@ import { SessionsService } from "./sessions.service";
 @Module({
   imports: [
     UsersModule,
+    DemoModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({

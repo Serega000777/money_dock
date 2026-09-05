@@ -7,10 +7,7 @@ import { apiClient } from "../src/api/client";
 import { useAuthStore } from "../src/auth/authStore";
 import { useTelegram } from "../src/telegram/TelegramProvider";
 import { useTheme } from "../src/theme/useTheme";
-
-function formatMinor(amountMinor: number): string {
-  return (amountMinor / 100).toLocaleString("ru-RU", { minimumFractionDigits: 0 });
-}
+import { formatMinor } from "../src/utils/format";
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -102,8 +99,24 @@ export default function Home() {
       ) : null}
 
       {hasAccounts ? (
+        <Link href="/transactions" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.secondaryButton, { borderColor: theme.border }])}
+          >
+            <Text style={[styles.secondaryButtonText, { color: theme.textPrimary }]}>
+              Все операции
+            </Text>
+          </Pressable>
+        </Link>
+      ) : null}
+
+      {hasAccounts ? (
         <Link href="/add-transaction" asChild>
-          <Pressable style={[styles.addButton, { backgroundColor: theme.accent }]}>
+          {/* Link + asChild clones its child, and expo-router rejects array styles there —
+              flatten before handing the style over. */}
+          <Pressable
+            style={StyleSheet.flatten([styles.addButton, { backgroundColor: theme.accent }])}
+          >
             <Text style={styles.addButtonText}>Добавить операцию</Text>
           </Pressable>
         </Link>
@@ -130,6 +143,8 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 18, fontWeight: "600" },
   today: { fontSize: 13 },
   addButton: { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  secondaryButton: { borderRadius: 12, paddingVertical: 14, alignItems: "center", borderWidth: 1 },
+  secondaryButtonText: { fontWeight: "600" },
   addButtonText: { color: "#fff", fontWeight: "600" },
   status: { fontSize: 12, marginTop: "auto" },
 });
