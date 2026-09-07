@@ -100,7 +100,7 @@ describe("Voice/text commands + entitlements (e2e)", () => {
 
   it("does not meter typed commands", async () => {
     const fresh = await newUser();
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 3; i++) {
       await request(app.getHttpServer())
         .post("/commands/parse")
         .set("Authorization", `Bearer ${fresh.accessToken}`)
@@ -132,13 +132,18 @@ describe("Voice/text commands + entitlements (e2e)", () => {
     const fresh = await newUser();
     await entitlements.setPlan(fresh.user.id, "pro");
 
+    // Checked through the service: driving 12 requests at the endpoint would hit its own
+    // rate limit, which is a different guard from the plan limit under test here.
     for (let i = 0; i < 12; i++) {
-      await request(app.getHttpServer())
-        .post("/commands/parse")
-        .set("Authorization", `Bearer ${fresh.accessToken}`)
-        .send({ text: "потратил 100", source: "voice" })
-        .expect(200);
+      await expect(entitlements.consume(fresh.user.id, "voice")).resolves.toBeUndefined();
     }
+
+    // And the endpoint still works for a Pro user past what free would have allowed.
+    await request(app.getHttpServer())
+      .post("/commands/parse")
+      .set("Authorization", `Bearer ${fresh.accessToken}`)
+      .send({ text: "потратил 100", source: "voice" })
+      .expect(200);
   });
 
   it("treats an expired paid plan as free", async () => {
@@ -150,6 +155,12 @@ describe("Voice/text commands + entitlements (e2e)", () => {
       .set("Authorization", `Bearer ${fresh.accessToken}`)
       .expect(200);
     expect(state.body.plan).toBe("free");
+  });
+
+  it("gives the free plan exactly one statement import a month", async () => {
+    const fresh = await newUser();
+    await expect(entitlements.consume(fresh.user.id, "import")).resolves.toBeUndefined();
+    await expect(entitlements.consume(fresh.user.id, "import")).rejects.toThrow(/Pro/);
   });
 
   it("reports the current plan and usage", async () => {

@@ -5,6 +5,8 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 
 import { AppModule } from "../../app.module";
+import { EntitlementsService } from "../entitlements/entitlements.service";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const runPrefix = Math.floor(Math.random() * 1_000_000);
@@ -56,6 +58,9 @@ describe("Statement import (e2e)", () => {
       .send({ initData: signInitData(runPrefix * 1_000_000 + idCounter) })
       .expect(200);
     token = login.body.accessToken;
+    // This suite covers parsing/dedup/commit mechanics; the free plan's one-import-a-month
+    // cap is exercised in the entitlements suite rather than tripped over here.
+    await app.get(EntitlementsService).setPlan(login.body.user.id, "pro");
 
     const account = await authed("post", "/accounts")
       .send({ type: "card", name: "Карта", currency: "RUB", initialBalanceMinor: 100_000_00 })
