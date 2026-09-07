@@ -24,6 +24,12 @@ export class ApiError extends Error {
 export interface ApiClientOptions {
   baseUrl: string;
   getAccessToken?: () => string | null | undefined;
+  /**
+   * Called once when a request comes back 401, to obtain a fresh access token. Access
+   * tokens are deliberately short-lived, so without this every session would break a
+   * quarter-hour in. Return null to give up and let the 401 surface.
+   */
+  onUnauthorized?: () => Promise<string | null>;
 }
 
 export interface HealthResponse {
@@ -31,10 +37,20 @@ export interface HealthResponse {
   db: "ok" | "error";
 }
 
-export function createApiClient({ baseUrl, getAccessToken }: ApiClientOptions) {
-  async function request<T>(path: string, init?: RequestInit): Promise<T> {
-    const token = getAccessToken?.();
-    const res = await fetch(`${baseUrl}${path}`, {
+export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: ApiClientOptions) {
+  /** Shared so a burst of parallel 401s triggers a single refresh, not one per request. */
+  let refreshInFlight: Promise<string | null> | null = null;
+
+  function refreshOnce(): Promise<string | null> {
+    if (!onUnauthorized) return Promise.resolve(null);
+    refreshInFlight ??= onUnauthorized().finally(() => {
+      refreshInFlight = null;
+    });
+    return refreshInFlight;
+  }
+
+  async function send(path: string, token: string | null | undefined, init?: RequestInit) {
+    return fetch(`${baseUrl}${path}`, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -42,6 +58,16 @@ export function createApiClient({ baseUrl, getAccessToken }: ApiClientOptions) {
         ...init?.headers,
       },
     });
+  }
+
+  async function request<T>(path: string, init?: RequestInit): Promise<T> {
+    let res = await send(path, getAccessToken?.(), init);
+
+    // The auth endpoints are how we recover from a 401; retrying them would loop.
+    if (res.status === 401 && !path.startsWith("/auth/")) {
+      const refreshed = await refreshOnce();
+      if (refreshed) res = await send(path, refreshed, init);
+    }
 
     if (!res.ok) {
       throw new ApiError(res.status, await res.text());
@@ -141,12 +167,20 @@ export function createApiClient({ baseUrl, getAccessToken }: ApiClientOptions) {
       preview: async (accountId: string, file: Blob, fileName: string) => {
         const form = new FormData();
         form.append("file", file, fileName);
-        const token = getAccessToken?.();
-        const res = await fetch(`${baseUrl}/import/preview/${accountId}`, {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          body: form,
-        });
+        // Multipart can't go through request(): setting Content-Type by hand would drop
+        // the boundary. The 401-refresh handling is mirrored here instead.
+        const upload = (token: string | null | undefined) =>
+          fetch(`${baseUrl}/import/preview/${accountId}`, {
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            body: form,
+          });
+
+        let res = await upload(getAccessToken?.());
+        if (res.status === 401) {
+          const refreshed = await refreshOnce();
+          if (refreshed) res = await upload(refreshed);
+        }
         if (!res.ok) throw new ApiError(res.status, await res.text());
         return (await res.json()) as ImportPreview;
       },

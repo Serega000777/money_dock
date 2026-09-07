@@ -1,12 +1,15 @@
+import { radii, spacing, typography } from "@money-dock/design-tokens";
 import { useQuery } from "@tanstack/react-query";
 import { Link, type Href } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
 import { useTelegram } from "../../src/telegram/TelegramProvider";
 import { useTheme } from "../../src/theme/useTheme";
+import { Card, FadeIn, PressableScale } from "../../src/ui/primitives";
+import { TabIcon } from "../../src/ui/TabIcon";
 import { formatMinor } from "../../src/utils/format";
 
 /** Everything that used to be split across "План" and "Ещё" lives here. */
@@ -31,6 +34,11 @@ export default function Account() {
     queryFn: () => apiClient.reviewInbox.list(),
     enabled,
   });
+  const { data: entitlements } = useQuery({
+    queryKey: ["entitlements"],
+    queryFn: () => apiClient.entitlements.get(),
+    enabled,
+  });
 
   const pendingCount = reviewItems?.length ?? 0;
 
@@ -46,15 +54,17 @@ export default function Account() {
           </Text>
         </View>
 
-        <Section title="Проверка и импорт" theme={theme}>
-          <NavRow
-            href="/review-inbox"
-            label="Нужно проверить"
-            badge={pendingCount > 0 ? String(pendingCount) : undefined}
-            theme={theme}
-          />
-          <NavRow href="/import" label="Импорт выписки" theme={theme} />
-        </Section>
+        <FadeIn index={1}>
+          <Section title="Проверка и импорт" theme={theme}>
+            <NavRow
+              href="/review-inbox"
+              label="Нужно проверить"
+              badge={pendingCount > 0 ? String(pendingCount) : undefined}
+              theme={theme}
+            />
+            <NavRow href="/import" label="Импорт выписки" theme={theme} />
+          </Section>
+        </FadeIn>
 
         <Section title="Счета" theme={theme}>
           {(accounts ?? []).map((account) => (
@@ -70,10 +80,23 @@ export default function Account() {
           ) : null}
         </Section>
 
+        <Section title="Тариф" theme={theme}>
+          <View style={styles.row}>
+            <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>
+              {entitlements?.plan === "free" ? "Бесплатный" : "Pro"}
+            </Text>
+            <Text style={[styles.rowValue, { color: theme.textSecondary }]}>
+              {entitlements && entitlements.limits.voice >= 0
+                ? `голос ${entitlements.used.voice}/${entitlements.limits.voice} в месяц`
+                : "без ограничений"}
+            </Text>
+          </View>
+        </Section>
+
         <Section title="Скоро" theme={theme}>
           <Text style={[styles.soon, { color: theme.textSecondary }]}>
-            Голосовой ввод, регулярные платежи, подписка, экспорт данных и подключение банков
-            появятся на следующих этапах.
+            Регулярные платежи, экспорт данных, Telegram-уведомления и подключение банков появятся
+            на следующих этапах.
           </Text>
         </Section>
       </ScrollView>
@@ -95,9 +118,7 @@ function Section({
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
-      <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        {children}
-      </View>
+      <Card style={styles.card}>{children}</Card>
     </View>
   );
 }
@@ -115,41 +136,49 @@ function NavRow({
 }) {
   return (
     <Link href={href} asChild>
-      <Pressable style={StyleSheet.flatten([styles.row, styles.navRow])}>
+      <PressableScale style={styles.row}>
         <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>{label}</Text>
         {badge ? (
           <View style={[styles.badge, { backgroundColor: theme.accent }]}>
-            <Text style={styles.badgeText}>{badge}</Text>
+            <Text style={[styles.badgeText, { color: theme.onAccent }]}>{badge}</Text>
           </View>
         ) : (
-          <Text style={[styles.chevron, { color: theme.textSecondary }]}>›</Text>
+          <TabIcon name="chevron" color={theme.textTertiary} size={18} />
         )}
-      </Pressable>
+      </PressableScale>
     </Link>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: 20, gap: 20 },
-  header: { gap: 4 },
-  name: { fontSize: 24, fontWeight: "700" },
-  subtitle: { fontSize: 13 },
-  section: { gap: 8 },
-  sectionTitle: { fontSize: 12, textTransform: "uppercase", letterSpacing: 0.6 },
-  card: { borderRadius: 16, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 4 },
+  content: {
+    padding: spacing.lg,
+    paddingTop: spacing.xl,
+    gap: spacing.xl,
+    paddingBottom: spacing.xxl,
+  },
+  header: { gap: spacing.xs },
+  name: typography.display,
+  subtitle: typography.caption,
+  section: { gap: spacing.sm },
+  sectionTitle: { ...typography.overline, textTransform: "uppercase" },
+  card: { paddingVertical: spacing.xs },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
-    gap: 12,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
   },
-  navRow: {},
-  rowLabel: { fontSize: 15 },
-  rowValue: { fontSize: 14 },
-  chevron: { fontSize: 20 },
-  badge: { minWidth: 22, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
-  badgeText: { color: "#fff", fontSize: 12, fontWeight: "700", textAlign: "center" },
-  soon: { fontSize: 13, paddingVertical: 12, lineHeight: 19 },
+  rowLabel: typography.body,
+  rowValue: typography.callout,
+  badge: {
+    minWidth: 26,
+    borderRadius: radii.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  badgeText: { ...typography.caption, fontWeight: "700", textAlign: "center" },
+  soon: { ...typography.caption, paddingVertical: spacing.md, lineHeight: 19 },
 });

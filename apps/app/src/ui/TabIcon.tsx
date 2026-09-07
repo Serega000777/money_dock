@@ -1,6 +1,6 @@
 import Svg, { Circle, Path } from "react-native-svg";
 
-export type TabIconName = "home" | "list" | "plus" | "chart" | "person";
+export type TabIconName = "home" | "list" | "plus" | "chart" | "person" | "mic" | "chevron";
 
 interface Props {
   name: TabIconName;
@@ -49,6 +49,18 @@ export function TabIcon({ name, color, size = 24 }: Props) {
           <Path d="M7.2 19.2V11M12 19.2V5.6M16.8 19.2v-5.4" {...common} />
         </>
       ) : null}
+
+      {name === "mic" ? (
+        <>
+          <Path
+            d="M12 4.2a2.6 2.6 0 0 1 2.6 2.6v4.6a2.6 2.6 0 0 1-5.2 0V6.8A2.6 2.6 0 0 1 12 4.2Z"
+            {...common}
+          />
+          <Path d="M6.4 11.2a5.6 5.6 0 0 0 11.2 0M12 16.8v3" {...common} />
+        </>
+      ) : null}
+
+      {name === "chevron" ? <Path d="M9.5 5.5 16 12l-6.5 6.5" {...common} /> : null}
 
       {name === "person" ? (
         <>

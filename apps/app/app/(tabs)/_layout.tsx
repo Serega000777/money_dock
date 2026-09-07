@@ -1,5 +1,7 @@
+import { typography } from "@money-dock/design-tokens";
 import { Tabs } from "expo-router";
 import type { ColorValue } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 
 import { useTheme } from "../../src/theme/useTheme";
 import { TabIcon, type TabIconName } from "../../src/ui/TabIcon";
@@ -17,15 +19,22 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.accent,
-        tabBarInactiveTintColor: theme.textSecondary,
+        tabBarInactiveTintColor: theme.textTertiary,
         tabBarStyle: {
-          backgroundColor: theme.background,
+          backgroundColor: theme.surface,
           borderTopColor: theme.border,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          height: Platform.OS === "web" ? 82 : 88,
+          paddingBottom: Platform.OS === "web" ? 16 : 28,
+          paddingTop: 10,
         },
-        tabBarLabelStyle: { fontSize: 11 },
+        tabBarLabelStyle: {
+          ...typography.overline,
+          letterSpacing: 0.2,
+          textTransform: "none",
+          lineHeight: 16,
+        },
+        tabBarItemStyle: { gap: 4, paddingVertical: 2 },
         sceneStyle: { backgroundColor: theme.background },
       }}
     >

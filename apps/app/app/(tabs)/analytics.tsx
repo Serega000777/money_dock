@@ -1,3 +1,4 @@
+import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type { Category, Transaction } from "@money-dock/shared-types";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -7,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
 import { useTheme } from "../../src/theme/useTheme";
+import { Card, FadeIn } from "../../src/ui/primitives";
 import { formatMinor } from "../../src/utils/format";
 
 interface CategoryTotal {
@@ -67,9 +69,7 @@ export default function Analytics() {
         <Text style={[styles.title, { color: theme.textPrimary }]}>Аналитика</Text>
 
         <View style={styles.row}>
-          <View
-            style={[styles.tile, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          >
+          <Card style={styles.tile}>
             <Text style={[styles.tileLabel, { color: theme.textSecondary }]}>Расходы за месяц</Text>
             <Text style={[styles.tileValue, { color: theme.textPrimary }]}>
               {summary ? `${formatMinor(summary.currentMonthExpenseMinor)} ₽` : "—"}
@@ -87,16 +87,14 @@ export default function Analytics() {
                 {Math.round(summary.expenseChangePercent)}% к прошлому месяцу
               </Text>
             ) : null}
-          </View>
+          </Card>
 
-          <View
-            style={[styles.tile, { backgroundColor: theme.surface, borderColor: theme.border }]}
-          >
+          <Card style={styles.tile}>
             <Text style={[styles.tileLabel, { color: theme.textSecondary }]}>Доходы за месяц</Text>
             <Text style={[styles.tileValue, { color: theme.textPrimary }]}>
               {summary ? `${formatMinor(summary.currentMonthIncomeMinor)} ₽` : "—"}
             </Text>
-          </View>
+          </Card>
         </View>
 
         <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Куда уходят деньги</Text>
@@ -106,8 +104,8 @@ export default function Analytics() {
             Пока нет расходов для анализа
           </Text>
         ) : (
-          breakdown.map((item) => (
-            <View key={item.id} style={styles.breakdownRow}>
+          breakdown.map((item, i) => (
+            <FadeIn key={item.id} index={Math.min(i, 6)} style={styles.breakdownRow}>
               <View style={styles.breakdownHeader}>
                 <Text
                   style={[styles.breakdownName, { color: theme.textPrimary }]}
@@ -127,7 +125,7 @@ export default function Analytics() {
                   ]}
                 />
               </View>
-            </View>
+            </FadeIn>
           ))
         )}
       </ScrollView>
@@ -137,19 +135,24 @@ export default function Analytics() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: 20, gap: 16 },
-  title: { fontSize: 24, fontWeight: "700" },
-  row: { flexDirection: "row", gap: 12 },
-  tile: { flex: 1, borderRadius: 16, borderWidth: 1, padding: 16, gap: 4 },
-  tileLabel: { fontSize: 12 },
-  tileValue: { fontSize: 20, fontWeight: "700" },
-  tileHint: { fontSize: 11 },
-  sectionTitle: { fontSize: 16, fontWeight: "600", marginTop: 8 },
-  breakdownRow: { gap: 6 },
-  breakdownHeader: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
-  breakdownName: { fontSize: 14, flex: 1 },
-  breakdownAmount: { fontSize: 14, fontWeight: "600" },
-  barTrack: { height: 6, borderRadius: 999, overflow: "hidden" },
-  barFill: { height: 6, borderRadius: 999 },
-  empty: { fontSize: 14 },
+  content: {
+    padding: spacing.lg,
+    paddingTop: spacing.xl,
+    gap: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
+  title: { ...typography.display, marginBottom: spacing.xs },
+  row: { flexDirection: "row", gap: spacing.md },
+  tile: { flex: 1, gap: spacing.xs, paddingVertical: spacing.lg },
+  tileLabel: typography.caption,
+  tileValue: typography.title,
+  tileHint: typography.caption,
+  sectionTitle: { ...typography.headline, marginTop: spacing.lg, marginBottom: spacing.xs },
+  breakdownRow: { gap: spacing.sm },
+  breakdownHeader: { flexDirection: "row", justifyContent: "space-between", gap: spacing.md },
+  breakdownName: { ...typography.body, flex: 1 },
+  breakdownAmount: { ...typography.body, fontWeight: "600" },
+  barTrack: { height: 8, borderRadius: radii.pill, overflow: "hidden" },
+  barFill: { height: 8, borderRadius: radii.pill },
+  empty: typography.body,
 });
