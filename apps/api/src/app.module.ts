@@ -10,7 +10,9 @@ import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { CategoriesModule } from "./modules/categories/categories.module";
 import { CategorizationModule } from "./modules/categorization/categorization.module";
+import { CommandsModule } from "./modules/commands/commands.module";
 import { DemoModule } from "./modules/demo/demo.module";
+import { EntitlementsModule } from "./modules/entitlements/entitlements.module";
 import { HealthModule } from "./modules/health/health.module";
 import { ImportModule } from "./modules/import/import.module";
 import { ReviewInboxModule } from "./modules/review-inbox/review-inbox.module";
@@ -34,6 +36,8 @@ import { UsersModule } from "./modules/users/users.module";
     TransactionsModule,
     ImportModule,
     ReviewInboxModule,
+    CommandsModule,
+    EntitlementsModule,
     DemoModule,
     AnalyticsModule,
     HealthModule,

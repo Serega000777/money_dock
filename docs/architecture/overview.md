@@ -71,7 +71,7 @@ Analytics Engine, safe-to-spend, категоризация по правила�
 | 2 (готово) | transactions, ручной ввод, правила баланса               |
 | 3 (готово) | analytics engine, safe-to-spend, главный экран           |
 | 4          | import framework, dedup, Review Inbox, user rules        |
-| 5          | voice pipeline, rule-based parser, entitlements          |
+| 5 (готово) | voice pipeline, rule-based parser, entitlements          |
 | 6          | insights/финансовый директор, export, delete, admin      |
 | 7          | security hardening, observability, staging → production  |
 

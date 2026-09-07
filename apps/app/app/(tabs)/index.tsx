@@ -99,6 +99,16 @@ export default function Home() {
       ) : null}
 
       {hasAccounts ? (
+        <Link href="/voice" asChild>
+          <Pressable
+            style={StyleSheet.flatten([styles.addButton, { backgroundColor: theme.accent }])}
+          >
+            <Text style={styles.addButtonText}>Добавить голосом</Text>
+          </Pressable>
+        </Link>
+      ) : null}
+
+      {hasAccounts ? (
         <Link href="/transactions" asChild>
           <Pressable
             style={StyleSheet.flatten([styles.secondaryButton, { borderColor: theme.border }])}

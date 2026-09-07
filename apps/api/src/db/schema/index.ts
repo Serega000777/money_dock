@@ -5,6 +5,7 @@ export * from "./category-rules";
 export * from "./import-jobs";
 export * from "./review-items";
 export * from "./sessions";
+export * from "./subscriptions";
 export * from "./transaction-splits";
 export * from "./transactions";
 export * from "./transfers";

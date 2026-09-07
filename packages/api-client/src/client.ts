@@ -3,6 +3,8 @@ import type {
   AnalyticsSummary,
   AuthTokens,
   Category,
+  CommandDraft,
+  Entitlements,
   ImportPreview,
   ReviewInboxItem,
   Transaction,
@@ -100,6 +102,8 @@ export function createApiClient({ baseUrl, getAccessToken }: ApiClientOptions) {
         categoryId?: string;
         amountMinor: number;
         currency: string;
+        occurredAt?: string;
+        merchant?: string;
         note?: string;
         clientId: string;
       }) => post<Transaction>("/transactions", input),
@@ -120,6 +124,16 @@ export function createApiClient({ baseUrl, getAccessToken }: ApiClientOptions) {
       list: () => request<ReviewInboxItem[]>("/review-inbox"),
       resolve: (id: string, action: string, categoryId?: string) =>
         post<void>(`/review-inbox/${id}/resolve`, { action, categoryId }),
+    },
+
+    commands: {
+      /** Returns a draft for confirmation — the server never saves from a phrase. */
+      parse: (text: string, source: "voice" | "text") =>
+        post<CommandDraft>("/commands/parse", { text, source }),
+    },
+
+    entitlements: {
+      get: () => request<Entitlements>("/entitlements"),
     },
 
     imports: {

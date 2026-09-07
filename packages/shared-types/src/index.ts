@@ -6,3 +6,4 @@ export * from "./transaction";
 export * from "./user";
 export * from "./import";
 export * from "./review";
+export * from "./command";

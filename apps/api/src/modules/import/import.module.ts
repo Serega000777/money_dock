@@ -2,13 +2,14 @@ import { Module } from "@nestjs/common";
 
 import { AccountsModule } from "../accounts/accounts.module";
 import { CategorizationModule } from "../categorization/categorization.module";
+import { EntitlementsModule } from "../entitlements/entitlements.module";
 import { TransactionsModule } from "../transactions/transactions.module";
 
 import { ImportController } from "./import.controller";
 import { ImportService } from "./import.service";
 
 @Module({
-  imports: [AccountsModule, CategorizationModule, TransactionsModule],
+  imports: [AccountsModule, CategorizationModule, TransactionsModule, EntitlementsModule],
   controllers: [ImportController],
   providers: [ImportService],
 })

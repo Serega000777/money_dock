@@ -28,7 +28,7 @@
 | Replay            | Telegram `initData`              | ✅ Stage 1 — HMAC-подпись + окно свежести `auth_date`; тесты в `telegram-init-data.spec.ts`                |
 | Token reuse       | refresh-токен                    | ✅ Stage 1 — ротация с отзывом старой сессии; тест в `auth-and-ownership.e2e.spec.ts`                      |
 | IDOR              | `accounts/:id`, `categories/:id` | ✅ Stage 1 (эти модули) — scoping по `user_id` в сервисе + e2e-тест; остальные модули по мере появления    |
-| Upload abuse      | импорт выписок                   | Stage 4 (ImportModule)                                                                                     |
+| Upload abuse      | импорт выписок                   | ✅ Stage 4/5 — 5 МБ на файл, 10 загрузок/60с, плюс месячный лимит тарифа на коммит                         |
 | Rate limit bypass | auth                             | ✅ Stage 1 — `@nestjs/throttler`, 20 запросов/60с на `/auth/*`; voice/import/export — при появлении модуля |
 
 ## Stage 7 (полный STRIDE + блокеры релиза)

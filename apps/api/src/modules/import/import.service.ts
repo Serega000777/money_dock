@@ -27,6 +27,7 @@ import {
   CategorizationService,
   REVIEW_CONFIDENCE_THRESHOLD,
 } from "../categorization/categorization.service";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 import { TransactionsService } from "../transactions/transactions.service";
 
 /** How far back to look for possible duplicates of an imported row. */
@@ -47,6 +48,7 @@ export class ImportService {
     private readonly accounts: AccountsService,
     private readonly categorization: CategorizationService,
     private readonly transactionsService: TransactionsService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   /**
@@ -139,6 +141,9 @@ export class ImportService {
       .where(and(eq(importJobs.id, jobId), eq(importJobs.userId, userId)));
     if (!job) throw new NotFoundException("Импорт не найден");
     if (job.status === "committed") return job.statsJson ?? emptyStats();
+
+    // Previewing is free; committing is the act that costs a plan slot.
+    await this.entitlements.consume(userId, "import");
 
     const account = await this.accounts.getOwned(userId, job.accountId);
     const draft = job.draftJson ?? [];
