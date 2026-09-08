@@ -1,9 +1,9 @@
 import type { TextScaleName } from "@money-dock/design-tokens";
 import { radii, spacing, typography } from "@money-dock/design-tokens";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, type Href } from "expo-router";
 import type { ReactNode } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
@@ -20,6 +20,19 @@ import { Icon, type IconName } from "../../src/ui/Icon";
 import { Text } from "../../src/ui/Text";
 import { Card, FadeIn, PressableScale, Screen, Segmented } from "../../src/ui/primitives";
 import { formatMinor } from "../../src/utils/format";
+
+/** Web-only: turns the export payload into a downloaded .json file. The Mini App is a
+ * web target, so this covers the real use case; native would need Share/FS APIs instead. */
+function downloadReport(data: unknown): void {
+  if (Platform.OS !== "web") return;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `money-dock-report-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 /** Everything that used to be split across "План" and "Ещё" lives here. */
 export default function Account() {
@@ -58,6 +71,10 @@ export default function Account() {
     queryKey: ["entitlements"],
     queryFn: () => apiClient.entitlements.get(),
     enabled,
+  });
+  const generateReport = useMutation({
+    mutationFn: () => apiClient.exports.generate(),
+    onSuccess: (data) => downloadReport(data),
   });
 
   const pendingCount = reviewItems?.length ?? 0;
@@ -227,6 +244,23 @@ export default function Account() {
       </FadeIn>
 
       <FadeIn index={8}>
+        <Section title="Данные">
+          <PressableScale
+            style={styles.row}
+            onPress={() => !generateReport.isPending && generateReport.mutate()}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: theme.accentSoft }]}>
+              <Icon name="note" color={theme.accent} size={18} />
+            </View>
+            <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>
+              {generateReport.isPending ? "Формирую…" : "Сформировать отчёт"}
+            </Text>
+            <Icon name="chevron" color={theme.textTertiary} size={18} />
+          </PressableScale>
+        </Section>
+      </FadeIn>
+
+      <FadeIn index={9}>
         <Section title="Скоро">
           <Text style={[styles.soon, { color: theme.textSecondary }]}>
             Регулярные платежи, экспорт данных, Telegram-уведомления и подключение банков появятся

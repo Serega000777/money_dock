@@ -107,6 +107,75 @@ describe("Analytics (e2e)", () => {
     expect(res.body.monthEndForecastMinor).toBe(
       Math.round(monthEndForecast(expectedBalance, expectedAvgDaily, daysRemaining)),
     );
+    // The one expense in this suite's fixture is on the cash account created above.
+    expect(res.body.currentMonthExpenseCashMinor).toBe(5_000);
+    expect(res.body.currentMonthExpenseBankMinor).toBe(0);
+  });
+
+  it("buckets expenses by account type — cash separate from card/bank combined", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/auth/telegram")
+      .send({ initData: signInitData(runPrefix * 1_000_000 + 3) })
+      .expect(200);
+    const t = login.body.accessToken as string;
+
+    const cashAccount = await request(app.getHttpServer())
+      .post("/accounts")
+      .set("Authorization", `Bearer ${t}`)
+      .send({ type: "cash", name: "Наличные", currency: "RUB", initialBalanceMinor: 100_000 })
+      .expect(201);
+    const cardAccount = await request(app.getHttpServer())
+      .post("/accounts")
+      .set("Authorization", `Bearer ${t}`)
+      .send({ type: "card", name: "Карта", currency: "RUB", initialBalanceMinor: 100_000 })
+      .expect(201);
+    const bankAccount = await request(app.getHttpServer())
+      .post("/accounts")
+      .set("Authorization", `Bearer ${t}`)
+      .send({ type: "bank", name: "Счёт", currency: "RUB", initialBalanceMinor: 100_000 })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post("/transactions")
+      .set("Authorization", `Bearer ${t}`)
+      .send({
+        type: "expense",
+        accountId: cashAccount.body.id,
+        amountMinor: 1_000,
+        currency: "RUB",
+        clientId: randomUUID(),
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post("/transactions")
+      .set("Authorization", `Bearer ${t}`)
+      .send({
+        type: "expense",
+        accountId: cardAccount.body.id,
+        amountMinor: 2_000,
+        currency: "RUB",
+        clientId: randomUUID(),
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post("/transactions")
+      .set("Authorization", `Bearer ${t}`)
+      .send({
+        type: "expense",
+        accountId: bankAccount.body.id,
+        amountMinor: 3_000,
+        currency: "RUB",
+        clientId: randomUUID(),
+      })
+      .expect(201);
+
+    const res = await request(app.getHttpServer())
+      .get("/analytics/summary")
+      .set("Authorization", `Bearer ${t}`)
+      .expect(200);
+
+    expect(res.body.currentMonthExpenseCashMinor).toBe(1_000);
+    expect(res.body.currentMonthExpenseBankMinor).toBe(5_000); // card (2 000) + bank (3 000)
   });
 
   it("never leaks another user's transactions into the summary", async () => {

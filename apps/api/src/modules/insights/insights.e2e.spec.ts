@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 
+import { addDays, startOfDay } from "@money-dock/business-rules";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
@@ -24,12 +25,18 @@ function signInitData(userId: number): string {
   return params.toString();
 }
 
-/** Noon UTC N days ago — comfortably inside "N days ago" in any timezone this suite uses. */
+/**
+ * Noon, Moscow time, N days before the *Moscow* calendar day containing right now —
+ * comfortably inside "N days ago" the way InsightsService means it (users default to
+ * Europe/Moscow). Anchoring in UTC instead, like a plain `setUTCDate` would, is wrong
+ * for ~3 hours of every UTC day: 21:00-24:00 UTC is already past midnight in Moscow, so
+ * "yesterday" by UTC's calendar and by Moscow's calendar are off by one during that
+ * window — exactly the case that turned this fixture flaky.
+ */
 function daysAgoNoon(days: number): string {
-  const date = new Date();
-  date.setUTCDate(date.getUTCDate() - days);
-  date.setUTCHours(12, 0, 0, 0);
-  return date.toISOString();
+  const todayMoscow = startOfDay(new Date(), "Europe/Moscow");
+  const target = addDays(todayMoscow, -days);
+  return new Date(target.getTime() + 12 * 3_600_000).toISOString();
 }
 
 describe("Insights (e2e)", () => {

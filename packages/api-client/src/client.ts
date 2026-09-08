@@ -166,6 +166,12 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       markRead: (id: string) => post<void>(`/insights/${id}/read`),
     },
 
+    exports: {
+      /** The full-account JSON dump from POST /exports (spec §6 Export). The caller
+       * decides what to do with it — the home screen turns it into a file download. */
+      generate: () => post<Record<string, unknown>>("/exports"),
+    },
+
     reviewInbox: {
       list: () => request<ReviewInboxItem[]>("/review-inbox"),
       resolve: (id: string, action: string, categoryId?: string) =>
