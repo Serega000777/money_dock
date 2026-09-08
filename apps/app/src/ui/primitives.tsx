@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useTheme } from "../theme/useTheme";
 
-import { GradientBackground } from "./Gradient";
+import { GradientBackground, GradientBox } from "./Gradient";
 import { Text } from "./Text";
 
 /** Page shell: gradient ground in both themes, safe area, and a scrolling body. */
@@ -48,17 +48,40 @@ export function Screen({
   );
 }
 
-/** A soft raised surface — the app's single card look, so nothing drifts apart. */
+/** A soft raised surface — the app's single card look, so nothing drifts apart.
+ * `gradient` swaps the flat surface fill for `theme.tileGradient` — a barely-there tint
+ * for cards that carry a number (stat tiles), not for ordinary list rows. */
 export function Card({
   children,
   style,
   sunken,
+  gradient,
 }: {
   children: ReactNode;
   style?: ViewStyle;
   sunken?: boolean;
+  gradient?: boolean;
 }) {
   const theme = useTheme();
+
+  if (gradient) {
+    return (
+      <GradientBox
+        colors={theme.tileGradient}
+        diagonal
+        radius={radii.lg}
+        style={StyleSheet.flatten([
+          styles.card,
+          { shadowColor: theme.shadowColor, borderColor: theme.border },
+          elevation.card,
+          style,
+        ])}
+      >
+        {children}
+      </GradientBox>
+    );
+  }
+
   return (
     <View
       style={[

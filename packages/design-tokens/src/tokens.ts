@@ -28,8 +28,12 @@ export interface Theme {
   accentSoft: string;
   accentPressed: string;
   onAccent: string;
-  /** Magenta → violet, used only on the central add button. */
+  /** Magenta → violet, used on the hero balance card and the central/mic button — the
+   * one clearly-a-gradient surface in the app. */
   accentGradient: readonly [string, string];
+  /** A whisper of the same hue, for secondary "block with a number" surfaces (stat
+   * tiles) — just enough to read as not-flat, nowhere near accentGradient's intensity. */
+  tileGradient: readonly [string, string];
 
   /** The page background is a gradient in both themes, never a flat fill. */
   backgroundGradient: readonly [string, string, string];
@@ -63,14 +67,19 @@ export const darkTheme: Theme = {
   accentPressed: "#7A4CE0",
   onAccent: "#FFFFFF",
   accentGradient: ["#E935C1", "#8B5CF6"],
+  // A muted step of the same hue — visibly a gradient, well short of accentGradient's
+  // intensity, for stat tiles that shouldn't shout as loud as the hero card/button.
+  tileGradient: ["#251A40", "#191330"],
 
-  backgroundGradient: ["#0A0D15", "#0D1220", "#141B2E"],
-  background: "#0A0D15",
-  surface: "#151B29",
-  sheet: "#1C2438",
-  surfaceSunken: "#101623",
-  border: "#232C40",
-  borderStrong: "#313B52",
+  // Black base with just a trace of the brand hue — "еле видный" per the reference: the
+  // page reads as black, not navy, but isn't a flat fill either.
+  backgroundGradient: ["#0A0810", "#0D0A14", "#100B18"],
+  background: "#0A0810",
+  surface: "#151220",
+  sheet: "#1C1830",
+  surfaceSunken: "#100D18",
+  border: "#241F33",
+  borderStrong: "#322B48",
 
   textPrimary: "#F4F6FB",
   textSecondary: "#8E97AB",
@@ -94,6 +103,8 @@ export const lightTheme: Theme = {
   accentPressed: "#6B3FE8",
   onAccent: "#FFFFFF",
   accentGradient: ["#E935C1", "#7C4DFF"],
+  // A visibly-lavender step, a bit stronger than the page background's barely-there tint.
+  tileGradient: ["#FBF6FF", "#ECE1FF"],
 
   // Same gradient idea as dark, only barely tinted — it keeps the two themes related
   // instead of making light mode a flat sheet of paper.

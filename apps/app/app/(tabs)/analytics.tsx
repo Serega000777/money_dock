@@ -353,7 +353,7 @@ export default function Analytics() {
 
       <FadeIn index={3}>
         <View style={styles.row}>
-          <Card style={styles.tile}>
+          <Card gradient style={styles.tile}>
             <Text style={[styles.tileLabel, { color: theme.textSecondary }]}>Расходы</Text>
             <Text style={[styles.tileValue, { color: theme.textPrimary }]}>
               {formatMinor(view.spent)} ₽
@@ -367,7 +367,7 @@ export default function Analytics() {
             ) : null}
           </Card>
 
-          <Card style={styles.tile}>
+          <Card gradient style={styles.tile}>
             <Text style={[styles.tileLabel, { color: theme.textSecondary }]}>Доходы</Text>
             <Text style={[styles.tileValue, { color: theme.textPrimary }]}>
               {formatMinor(view.income)} ₽

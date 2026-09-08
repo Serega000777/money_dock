@@ -118,7 +118,7 @@ export default function Import() {
           ) : null}
 
           <FadeIn index={2}>
-            <Card style={styles.statsCard}>
+            <Card gradient style={styles.statsCard}>
               <Stat label="Строк в файле" value={preview.stats.rowsFound} />
               <Stat label="Новых" value={preview.stats.new} tone="positive" />
               <Stat label="Дублей" value={preview.stats.duplicates} />
