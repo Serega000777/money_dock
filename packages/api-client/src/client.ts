@@ -4,8 +4,10 @@ import type {
   AuthTokens,
   Category,
   CommandDraft,
+  DailySummary,
   Entitlements,
   ImportPreview,
+  Insight,
   Note,
   ReviewInboxItem,
   Transaction,
@@ -156,6 +158,12 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
 
     analytics: {
       summary: () => request<AnalyticsSummary>("/analytics/summary"),
+    },
+
+    insights: {
+      dailySummary: () => request<DailySummary>("/insights/daily-summary"),
+      list: () => request<Insight[]>("/insights"),
+      markRead: (id: string) => post<void>(`/insights/${id}/read`),
     },
 
     reviewInbox: {

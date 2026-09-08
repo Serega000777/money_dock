@@ -1,5 +1,6 @@
 import { radii, spacing, typography } from "@money-dock/design-tokens";
-import { useQuery } from "@tanstack/react-query";
+import type { CategoryGrowthFacts, Insight } from "@money-dock/shared-types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { Pressable, StyleSheet, View } from "react-native";
 
@@ -30,6 +31,18 @@ function plural(count: number, one: string, few: string, many: string): string {
   return many;
 }
 
+/** The server sends facts + a template key, never a finished sentence (spec §20) — this
+ * is the one place that turns `category_growth` into the RU text from the product doc's
+ * own mockup ("доставка еды выросла на 4 800 ₽ за 30 дней"). */
+function insightMessage(insight: Insight): string {
+  if (insight.code === "category_growth") {
+    const facts = insight.facts as CategoryGrowthFacts;
+    const growthMinor = facts.currentMinor - facts.previousMinor;
+    return `${facts.categoryName} выросли на ${formatMinor(growthMinor)} ₽ за ${facts.windowDays} дней`;
+  }
+  return "";
+}
+
 export default function Home() {
   const theme = useTheme();
   const { user } = useTelegram();
@@ -37,6 +50,7 @@ export default function Home() {
   const setThemeMode = useSettingsStore((state) => state.setThemeMode);
   const accessToken = useAuthStore((state) => state.accessToken);
   const enabled = Boolean(accessToken);
+  const queryClient = useQueryClient();
 
   const { data: summary } = useQuery({
     queryKey: ["analytics", "summary"],
@@ -48,8 +62,20 @@ export default function Home() {
     queryFn: () => apiClient.reviewInbox.list(),
     enabled,
   });
+  const { data: insights } = useQuery({
+    queryKey: ["insights"],
+    queryFn: () => apiClient.insights.list(),
+    enabled,
+  });
+  const dismissInsight = useMutation({
+    mutationFn: (id: string) => apiClient.insights.markRead(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["insights"] }),
+  });
 
   const pending = reviewItems?.length ?? 0;
+  // Highest-priority insight the user hasn't already dismissed — the home screen shows
+  // one "Совет" at a time, not a feed (spec §5: "Диаграммы вторичны").
+  const topInsight = insights?.find((insight) => !insight.readAt);
   const isDark = theme.name === "dark";
 
   // "Свободная сумма" is what is left to spend until the end of the month — the daily
@@ -236,7 +262,30 @@ export default function Home() {
         </FadeIn>
       ) : null}
 
-      <FadeIn index={5}>
+      {topInsight ? (
+        <FadeIn index={5}>
+          <Card style={styles.tipCard}>
+            <View style={[styles.tipIcon, { backgroundColor: theme.warningSoft }]}>
+              <Icon name="chart" color={theme.warning} size={20} />
+            </View>
+            <View style={styles.tipLeft}>
+              <Text style={[styles.tipTitle, { color: theme.textPrimary }]}>Совет</Text>
+              <Text style={[styles.tipHint, { color: theme.textSecondary }]}>
+                {insightMessage(topInsight)}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => dismissInsight.mutate(topInsight.id)}
+              accessibilityLabel="Скрыть совет"
+              style={styles.tipDismiss}
+            >
+              <Icon name="close" color={theme.textTertiary} size={18} />
+            </Pressable>
+          </Card>
+        </FadeIn>
+      ) : null}
+
+      <FadeIn index={6}>
         <View style={styles.actions}>
           <Action href="/add-transaction" icon="plus" label="Вручную" />
           <Action href="/import" icon="upload" label="Импорт выписки" />
@@ -356,6 +405,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   reviewBadgeText: { ...typography.callout, fontWeight: "700" },
+
+  tipCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  tipIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tipLeft: { flex: 1, gap: 2 },
+  tipTitle: typography.headline,
+  tipHint: typography.caption,
+  tipDismiss: { padding: spacing.xs },
 
   actions: { flexDirection: "row", gap: spacing.sm },
   action: { flex: 1 },
