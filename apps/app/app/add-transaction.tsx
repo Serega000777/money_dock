@@ -6,7 +6,6 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native
 
 import { apiClient } from "../src/api/client";
 import { useTheme } from "../src/theme/useTheme";
-import { GradientBox } from "../src/ui/Gradient";
 import { Icon } from "../src/ui/Icon";
 import { Text } from "../src/ui/Text";
 import { categoryColor, categoryIcon } from "../src/ui/categoryVisual";
@@ -86,12 +85,12 @@ export default function AddTransaction() {
             autoFocus
             keyboardType="decimal-pad"
             placeholder="0"
-            placeholderTextColor={theme.textTertiary}
+            placeholderTextColor={theme.onGradientSecondary}
             value={amount}
             onChangeText={setAmount}
-            style={[styles.amountInput, { color: theme.textPrimary }]}
+            style={[styles.amountInput, { color: theme.onGradientPrimary }]}
           />
-          <Text style={[styles.currency, { color: theme.textTertiary }]}>₽</Text>
+          <Text style={[styles.currency, { color: theme.onGradientSecondary }]}>₽</Text>
         </View>
       </FadeIn>
 
@@ -108,7 +107,7 @@ export default function AddTransaction() {
         />
       </FadeIn>
 
-      <Text style={[styles.label, { color: theme.textSecondary }]}>Категория</Text>
+      <Text style={[styles.label, { color: theme.onGradientSecondary }]}>Категория</Text>
 
       <ScrollView contentContainerStyle={styles.categoryGrid} showsVerticalScrollIndicator={false}>
         {visibleCategories.map((c) => {
@@ -135,16 +134,19 @@ export default function AddTransaction() {
 
       <Pressable disabled={!canSave} onPress={save}>
         {canSave ? (
-          <GradientBox colors={theme.accentGradient} diagonal radius={radii.md}>
-            <View style={styles.saveButton}>
-              <Text style={[styles.saveText, { color: theme.onAccent }]}>
-                {saving ? "Сохраняю…" : "Сохранить"}
-              </Text>
-            </View>
-          </GradientBox>
+          <View
+            style={StyleSheet.flatten([
+              styles.saveButton,
+              { backgroundColor: theme.surface, shadowColor: theme.shadowColor },
+            ])}
+          >
+            <Text style={[styles.saveText, { color: theme.accent }]}>
+              {saving ? "Сохраняю…" : "Сохранить"}
+            </Text>
+          </View>
         ) : (
-          <View style={[styles.saveButton, { backgroundColor: theme.surfaceSunken }]}>
-            <Text style={[styles.saveText, { color: theme.textTertiary }]}>Сохранить</Text>
+          <View style={[styles.saveButton, { backgroundColor: "rgba(255,255,255,0.25)" }]}>
+            <Text style={[styles.saveText, { color: "rgba(255,255,255,0.7)" }]}>Сохранить</Text>
           </View>
         )}
       </Pressable>
@@ -185,6 +187,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingVertical: spacing.lg,
     alignItems: "center",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 4,
   },
   saveText: { ...typography.headline, fontWeight: "700" },
 });

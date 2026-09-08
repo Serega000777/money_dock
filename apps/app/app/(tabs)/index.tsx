@@ -1,4 +1,4 @@
-import { radii, spacing, typography } from "@money-dock/design-tokens";
+import { elevation, radii, spacing, typography } from "@money-dock/design-tokens";
 import type { CategoryGrowthFacts, Insight } from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "expo-router";
@@ -9,7 +9,6 @@ import { useAuthStore } from "../../src/auth/authStore";
 import { useTelegram } from "../../src/telegram/TelegramProvider";
 import { useSettingsStore } from "../../src/theme/settingsStore";
 import { useTheme } from "../../src/theme/useTheme";
-import { GradientBox } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
 import { Text } from "../../src/ui/Text";
 import { Card, FadeIn, Pill, PressableScale, ProgressBar, Screen } from "../../src/ui/primitives";
@@ -110,11 +109,11 @@ export default function Home() {
       <FadeIn index={0}>
         <View style={styles.header}>
           <View>
-            <Text style={[styles.greeting, { color: theme.textSecondary }]}>
+            <Text style={[styles.greeting, { color: theme.onGradientSecondary }]}>
               {greeting()}
               {user?.first_name ? `, ${user.first_name}` : ""}
             </Text>
-            <Text style={[styles.brand, { color: theme.textPrimary }]}>amola</Text>
+            <Text style={[styles.brand, { color: theme.onGradientPrimary }]}>amola</Text>
           </View>
           {/* Quick switch only ever picks a concrete theme — "система" stays in the cabinet. */}
           <Pressable
@@ -135,64 +134,76 @@ export default function Home() {
       </FadeIn>
 
       {/* The one number the whole screen exists for, with the two configurable figures
-          right beside it — which two is a Кабинет → Главный экран setting. */}
+          right beside it — which two is a Кабинет → Главный экран setting. Light on the
+          app's own vivid gradient background, instead of carrying the gradient itself. */}
       <FadeIn index={1}>
-        <GradientBox colors={theme.accentGradient} diagonal radius={radii.xl}>
-          <View style={styles.heroBody}>
-            <Text style={styles.heroLabel}>Общий баланс</Text>
-            <View style={styles.heroAmountRow}>
-              <Text style={styles.heroAmount}>
-                {summary ? formatMinor(summary.totalBalanceMinor) : "—"}
-              </Text>
-              <Text style={styles.heroCurrency}>₽</Text>
-            </View>
-            <Text style={styles.heroHint}>
-              {summary
-                ? `${formatMinor(summary.safeToSpendPerDayMinor)} ₽ в день · осталось ${
-                    summary.daysRemainingInMonth
-                  } ${plural(summary.daysRemainingInMonth, "день", "дня", "дней")}`
-                : "Появится после подключения счетов"}
+        <View
+          style={[
+            styles.hero,
+            { backgroundColor: theme.surface, borderColor: theme.border, shadowColor: theme.shadowColor },
+            elevation.raised,
+          ]}
+        >
+          <Text style={[styles.heroLabel, { color: theme.textSecondary }]}>Общий баланс</Text>
+          <View style={styles.heroAmountRow}>
+            <Text style={[styles.heroAmount, { color: theme.textPrimary }]}>
+              {summary ? formatMinor(summary.totalBalanceMinor) : "—"}
             </Text>
+            <Text style={[styles.heroCurrency, { color: theme.textSecondary }]}>₽</Text>
+          </View>
+          <Text style={[styles.heroHint, { color: theme.textTertiary }]}>
+            {summary
+              ? `${formatMinor(summary.safeToSpendPerDayMinor)} ₽ в день · осталось ${
+                  summary.daysRemainingInMonth
+                } ${plural(summary.daysRemainingInMonth, "день", "дня", "дней")}`
+              : "Появится после подключения счетов"}
+          </Text>
 
-            <View style={styles.heroDivider} />
+          <View style={[styles.heroDivider, { backgroundColor: theme.border }]} />
 
-            <View style={styles.heroFooter}>
-              <View>
-                <Text style={styles.heroFooterLabel}>{leftMetric.label}</Text>
-                <Text style={styles.heroFooterValue}>
-                  {leftMetric.value !== undefined ? `${formatMinor(leftMetric.value)} ₽` : "—"}
-                </Text>
-              </View>
-              <View style={styles.heroFooterRight}>
-                <Text style={styles.heroFooterLabel}>{rightMetric.label}</Text>
-                <Text style={styles.heroFooterValue}>
-                  {rightMetric.value !== undefined ? `${formatMinor(rightMetric.value)} ₽` : "—"}
-                </Text>
-              </View>
+          <View style={styles.heroFooter}>
+            <View>
+              <Text style={[styles.heroFooterLabel, { color: theme.textSecondary }]}>
+                {leftMetric.label}
+              </Text>
+              <Text style={[styles.heroFooterValue, { color: theme.textPrimary }]}>
+                {leftMetric.value !== undefined ? `${formatMinor(leftMetric.value)} ₽` : "—"}
+              </Text>
+            </View>
+            <View style={styles.heroFooterRight}>
+              <Text style={[styles.heroFooterLabel, { color: theme.textSecondary }]}>
+                {rightMetric.label}
+              </Text>
+              <Text style={[styles.heroFooterValue, { color: theme.textPrimary }]}>
+                {rightMetric.value !== undefined ? `${formatMinor(rightMetric.value)} ₽` : "—"}
+              </Text>
             </View>
           </View>
-        </GradientBox>
+        </View>
       </FadeIn>
 
-      {/* The big mic is the primary action — one tap from anything else on the screen. */}
+      {/* The big mic is the primary action — one tap from anything else on the screen.
+          Light, like the hero card — it's the vivid background doing the popping now. */}
       <FadeIn index={2}>
         <View style={styles.micBlock}>
           <Link href="/voice" asChild>
             <PressableScale accessibilityLabel="Добавить операцию голосом">
-              <GradientBox
-                colors={theme.accentGradient}
-                diagonal
-                radius={radii.pill}
-                style={StyleSheet.flatten([styles.mic, { shadowColor: theme.accent }])}
+              <View
+                style={StyleSheet.flatten([
+                  styles.mic,
+                  { backgroundColor: theme.surface, shadowColor: theme.shadowColor },
+                ])}
               >
                 <View style={styles.micInner}>
-                  <Icon name="mic" color="#FFFFFF" size={44} strokeWidth={1.8} />
+                  <Icon name="mic" color={theme.accent} size={44} strokeWidth={1.8} />
                 </View>
-              </GradientBox>
+              </View>
             </PressableScale>
           </Link>
-          <Text style={[styles.micTitle, { color: theme.textPrimary }]}>Скажите, что потратили</Text>
-          <Text style={[styles.micHint, { color: theme.textTertiary }]}>
+          <Text style={[styles.micTitle, { color: theme.onGradientPrimary }]}>
+            Скажите, что потратили
+          </Text>
+          <Text style={[styles.micHint, { color: theme.onGradientSecondary }]}>
             «Потратил 840 рублей в кафе» — разберём и покажем на подтверждение
           </Text>
         </View>
@@ -358,28 +369,33 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
 
-  heroBody: { padding: spacing.xl, gap: spacing.xs },
-  heroLabel: { ...typography.callout, color: "rgba(255,255,255,0.82)" },
+  hero: {
+    padding: spacing.xl,
+    gap: spacing.xs,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.xl,
+  },
+  heroLabel: typography.callout,
   heroAmountRow: { flexDirection: "row", alignItems: "baseline", gap: spacing.sm },
-  heroAmount: { ...typography.hero, color: "#FFFFFF" },
-  heroCurrency: { ...typography.display, fontWeight: "500", color: "rgba(255,255,255,0.72)" },
-  heroHint: { ...typography.caption, color: "rgba(255,255,255,0.78)" },
+  heroAmount: typography.hero,
+  heroCurrency: { ...typography.display, fontWeight: "500" },
+  heroHint: typography.caption,
   heroDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(255,255,255,0.28)",
     marginVertical: spacing.md,
   },
   heroFooter: { flexDirection: "row", justifyContent: "space-between", gap: spacing.md },
   heroFooterRight: { alignItems: "flex-end" },
-  heroFooterLabel: { ...typography.caption, color: "rgba(255,255,255,0.72)" },
-  heroFooterValue: { ...typography.headline, color: "#FFFFFF" },
+  heroFooterLabel: typography.caption,
+  heroFooterValue: typography.headline,
 
   micBlock: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.lg },
   mic: {
     width: 132,
     height: 132,
+    borderRadius: radii.pill,
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.22,
     shadowRadius: 24,
     elevation: 10,
   },

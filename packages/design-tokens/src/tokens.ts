@@ -31,7 +31,8 @@ export interface Theme {
   /** Magenta → violet, used only on the central add button. */
   accentGradient: readonly [string, string];
 
-  /** The page background is a gradient in both themes, never a flat fill. */
+  /** The page background is a gradient in both themes, never a flat fill — the same
+   * magenta→violet hue as the brand, carried by the whole app instead of one card. */
   backgroundGradient: readonly [string, string, string];
   background: string;
   surface: string;
@@ -44,6 +45,12 @@ export interface Theme {
   textPrimary: string;
   textSecondary: string;
   textTertiary: string;
+
+  /** Text/icons sitting directly on the vivid page background (screen titles, the
+   * greeting, section labels between cards) — never used inside a Card, which stays
+   * light and keeps textPrimary/Secondary/Tertiary. */
+  onGradientPrimary: string;
+  onGradientSecondary: string;
 
   positive: string;
   positiveSoft: string;
@@ -64,8 +71,8 @@ export const darkTheme: Theme = {
   onAccent: "#FFFFFF",
   accentGradient: ["#E935C1", "#8B5CF6"],
 
-  backgroundGradient: ["#0A0D15", "#0D1220", "#141B2E"],
-  background: "#0A0D15",
+  backgroundGradient: ["#C21FA0", "#8B3FE0", "#6D28D9"],
+  background: "#8B3FE0",
   surface: "#151B29",
   sheet: "#1C2438",
   surfaceSunken: "#101623",
@@ -75,6 +82,9 @@ export const darkTheme: Theme = {
   textPrimary: "#F4F6FB",
   textSecondary: "#8E97AB",
   textTertiary: "#5F6979",
+
+  onGradientPrimary: "#FFFFFF",
+  onGradientSecondary: "rgba(255,255,255,0.78)",
 
   positive: "#34D399",
   positiveSoft: "#10281F",
@@ -95,10 +105,8 @@ export const lightTheme: Theme = {
   onAccent: "#FFFFFF",
   accentGradient: ["#E935C1", "#7C4DFF"],
 
-  // Same gradient idea as dark, only barely tinted — it keeps the two themes related
-  // instead of making light mode a flat sheet of paper.
-  backgroundGradient: ["#FBFAFF", "#F5F5FD", "#EDEFFB"],
-  background: "#F7F7FC",
+  backgroundGradient: ["#E935C1", "#A855F7", "#7C4DFF"],
+  background: "#7C4DFF",
   surface: "#FFFFFF",
   sheet: "#FFFFFF",
   surfaceSunken: "#F0F1F8",
@@ -108,6 +116,9 @@ export const lightTheme: Theme = {
   textPrimary: "#0E1220",
   textSecondary: "#6B7285",
   textTertiary: "#9AA0B3",
+
+  onGradientPrimary: "#FFFFFF",
+  onGradientSecondary: "rgba(255,255,255,0.82)",
 
   positive: "#0FA36B",
   positiveSoft: "#E6F7F0",

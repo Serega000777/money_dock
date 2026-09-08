@@ -242,7 +242,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   const theme = useTheme();
   return (
     <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
+      <Text style={[styles.sectionTitle, { color: theme.onGradientSecondary }]}>{title}</Text>
       <Card style={styles.card}>{children}</Card>
     </View>
   );

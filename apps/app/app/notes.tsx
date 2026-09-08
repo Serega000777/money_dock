@@ -114,7 +114,7 @@ export default function Notes() {
       {isLoading ? <ActivityIndicator color={theme.accent} style={styles.loader} /> : null}
 
       {!isLoading && (notes ?? []).length === 0 ? (
-        <Text style={[styles.empty, { color: theme.textSecondary }]}>
+        <Text style={[styles.empty, { color: theme.onGradientSecondary }]}>
           Заметок пока нет. Первая запись появится здесь.
         </Text>
       ) : null}

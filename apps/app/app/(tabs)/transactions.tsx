@@ -86,16 +86,16 @@ export default function Transactions() {
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: theme.textSecondary }]}>
+            <Text style={[styles.empty, { color: theme.onGradientSecondary }]}>
               Операций пока нет. Добавьте первую — голосом или вручную.
             </Text>
           }
           renderSectionHeader={({ section }) => (
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+              <Text style={[styles.sectionTitle, { color: theme.onGradientSecondary }]}>
                 {section.title}
               </Text>
-              <Text style={[styles.sectionTotal, { color: theme.textTertiary }]}>
+              <Text style={[styles.sectionTotal, { color: theme.onGradientSecondary }]}>
                 {section.total > 0 ? "+" : ""}
                 {formatMinor(section.total)} ₽
               </Text>

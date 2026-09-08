@@ -57,7 +57,7 @@ export default function ReviewInbox() {
       {isLoading ? <ActivityIndicator style={styles.loader} color={theme.accent} /> : null}
 
       {!isLoading && (items ?? []).length === 0 ? (
-        <Text style={[styles.empty, { color: theme.textSecondary }]}>
+        <Text style={[styles.empty, { color: theme.onGradientSecondary }]}>
           Всё разобрано. Новые сомнительные операции появятся здесь.
         </Text>
       ) : null}

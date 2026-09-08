@@ -7,7 +7,6 @@ import { Animated, Easing, Pressable, StyleSheet, TextInput, View } from "react-
 
 import { apiClient } from "../src/api/client";
 import { useTheme } from "../src/theme/useTheme";
-import { GradientBox } from "../src/ui/Gradient";
 import { Icon } from "../src/ui/Icon";
 import { Text } from "../src/ui/Text";
 import { Card, FadeIn, PressableScale, Screen } from "../src/ui/primitives";
@@ -131,24 +130,29 @@ export default function Voice() {
       {speech.supported ? (
         <FadeIn index={0}>
           <View style={styles.micWrap}>
-            <PulseRing active={speech.listening} color={theme.accent} />
+            <PulseRing active={speech.listening} color={theme.onGradientPrimary} />
             <Pressable onPressIn={speech.start} onPressOut={speech.stop}>
-              <GradientBox
-                colors={speech.listening ? [theme.negative, theme.accent] : theme.accentGradient}
-                diagonal
-                radius={radii.pill}
-                style={styles.mic}
+              <View
+                style={StyleSheet.flatten([
+                  styles.mic,
+                  { backgroundColor: theme.surface, shadowColor: theme.shadowColor },
+                ])}
               >
                 <View style={styles.micInner}>
-                  <Icon name="mic" color="#FFFFFF" size={34} strokeWidth={1.9} />
+                  <Icon
+                    name="mic"
+                    color={speech.listening ? theme.negative : theme.accent}
+                    size={34}
+                    strokeWidth={1.9}
+                  />
                 </View>
-              </GradientBox>
+              </View>
             </Pressable>
-            <Text style={[styles.micHint, { color: theme.textSecondary }]}>
+            <Text style={[styles.micHint, { color: theme.onGradientPrimary }]}>
               {speech.listening ? "Говорите…" : "Удерживайте и говорите"}
             </Text>
             {voiceLeft !== null ? (
-              <Text style={[styles.hint, { color: theme.textTertiary }]}>
+              <Text style={[styles.hint, { color: theme.onGradientSecondary }]}>
                 Осталось голосовых операций в этом месяце: {voiceLeft}
                 {voiceLeft === 0 ? " · безлимит входит в Pro" : ""}
               </Text>
@@ -156,7 +160,7 @@ export default function Voice() {
           </View>
         </FadeIn>
       ) : (
-        <Text style={[styles.hint, { color: theme.textSecondary }]}>
+        <Text style={[styles.hint, { color: theme.onGradientSecondary }]}>
           Этот браузер не поддерживает распознавание речи — введите команду текстом.
         </Text>
       )}
@@ -242,7 +246,7 @@ export default function Voice() {
       ) : (
         <FadeIn index={2}>
           <View style={styles.examples}>
-            <Text style={[styles.hint, { color: theme.textSecondary }]}>Например:</Text>
+            <Text style={[styles.hint, { color: theme.onGradientSecondary }]}>Например:</Text>
             {EXAMPLES.map((example) => (
               <Pressable
                 key={example}
@@ -250,8 +254,12 @@ export default function Voice() {
                   setText(example);
                   parse.mutate({ value: example, source: "text" });
                 }}
+                style={StyleSheet.flatten([
+                  styles.exampleChip,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                ])}
               >
-                <Text style={[styles.example, { color: theme.accent }]}>«{example}»</Text>
+                <Text style={[styles.example, { color: theme.textPrimary }]}>«{example}»</Text>
               </Pressable>
             ))}
           </View>
@@ -277,7 +285,15 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
 
 const styles = StyleSheet.create({
   micWrap: { alignItems: "center", gap: spacing.md, paddingVertical: spacing.lg },
-  mic: { width: 108, height: 108 },
+  mic: {
+    width: 108,
+    height: 108,
+    borderRadius: radii.pill,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 20,
+    elevation: 8,
+  },
   micInner: { flex: 1, alignItems: "center", justifyContent: "center" },
   pulse: {
     position: "absolute",
@@ -325,6 +341,12 @@ const styles = StyleSheet.create({
   primary: { flex: 2, borderRadius: radii.md, paddingVertical: spacing.md, alignItems: "center" },
   actionText: { ...typography.callout, fontWeight: "600" },
 
-  examples: { gap: spacing.xs },
+  examples: { gap: spacing.sm },
+  exampleChip: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
   example: { ...typography.callout, lineHeight: 22 },
 });

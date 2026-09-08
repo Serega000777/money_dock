@@ -324,10 +324,12 @@ export default function Analytics() {
             }}
             style={styles.stepLabelWrap}
           >
-            <Text style={[styles.stepLabel, { color: theme.textPrimary }]}>{current.label}</Text>
+            <Text style={[styles.stepLabel, { color: theme.onGradientPrimary }]}>
+              {current.label}
+            </Text>
             {period === "month" || period === "year" || period === "custom" ? (
               <View style={styles.dropdownHint}>
-                <Icon name="chevron" color={theme.textTertiary} size={12} strokeWidth={2.4} />
+                <Icon name="chevron" color={theme.onGradientSecondary} size={12} strokeWidth={2.4} />
               </View>
             ) : null}
           </Pressable>
@@ -395,10 +397,10 @@ export default function Analytics() {
         </FadeIn>
       ) : null}
 
-      <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>По категориям</Text>
+      <Text style={[styles.sectionTitle, { color: theme.onGradientPrimary }]}>По категориям</Text>
 
       {view.breakdown.length === 0 ? (
-        <Text style={[styles.empty, { color: theme.textSecondary }]}>
+        <Text style={[styles.empty, { color: theme.onGradientSecondary }]}>
           Пока нет расходов за этот период
         </Text>
       ) : (

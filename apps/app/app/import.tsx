@@ -7,7 +7,6 @@ import { Platform, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
 import { useTheme } from "../src/theme/useTheme";
-import { GradientBox } from "../src/ui/Gradient";
 import { Icon } from "../src/ui/Icon";
 import { Text } from "../src/ui/Text";
 import { Card, FadeIn, Pill, PressableScale, Screen } from "../src/ui/primitives";
@@ -63,7 +62,7 @@ export default function Import() {
       <Stack.Screen options={{ headerShown: true, title: "Импорт выписки" }} />
 
       <FadeIn index={0}>
-        <Text style={[styles.hint, { color: theme.textSecondary }]}>
+        <Text style={[styles.hint, { color: theme.onGradientSecondary }]}>
           CSV-выписка из банка. Колонки даты, суммы и назначения определяются автоматически. Ничего
           не сохранится, пока вы не подтвердите.
         </Text>
@@ -160,15 +159,18 @@ export default function Import() {
           </Card>
 
           <PressableScale onPress={() => !commit.isPending && commit.mutate(preview.jobId)}>
-            <GradientBox colors={theme.accentGradient} diagonal radius={radii.md}>
-              <View style={styles.commitButton}>
-                <Text style={[styles.commitText, { color: theme.onAccent }]}>
-                  {commit.isPending
-                    ? "Сохраняю…"
-                    : `Импортировать ${preview.stats.new + preview.stats.reviewNeeded} операций`}
-                </Text>
-              </View>
-            </GradientBox>
+            <View
+              style={StyleSheet.flatten([
+                styles.commitButton,
+                { backgroundColor: theme.surface, shadowColor: theme.shadowColor },
+              ])}
+            >
+              <Text style={[styles.commitText, { color: theme.accent }]}>
+                {commit.isPending
+                  ? "Сохраняю…"
+                  : `Импортировать ${preview.stats.new + preview.stats.reviewNeeded} операций`}
+              </Text>
+            </View>
           </PressableScale>
         </>
       ) : null}
@@ -237,6 +239,14 @@ const styles = StyleSheet.create({
   rowMeta: typography.caption,
   rowAmount: { ...typography.body, fontWeight: "600" },
 
-  commitButton: { paddingVertical: spacing.lg, alignItems: "center" },
+  commitButton: {
+    paddingVertical: spacing.lg,
+    alignItems: "center",
+    borderRadius: radii.md,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 4,
+  },
   commitText: { ...typography.headline, fontWeight: "700" },
 });
