@@ -208,7 +208,7 @@ export class ImportService {
     userId: string,
     rowNumber: number,
     record: string[],
-    columns: { date: number; amount: number; merchant: number | null },
+    columns: { date: number; amount: number; merchant: number | null; mcc: number | null },
     history: DedupMatch[],
   ): Promise<ImportDraftRow> {
     const occurredAt = parseRowDate(record[columns.date] ?? "");
@@ -216,11 +216,12 @@ export class ImportService {
     if (signedMinor === 0) throw new RowParseError("Нулевая сумма");
 
     const merchant = (columns.merchant === null ? "" : (record[columns.merchant] ?? "")).trim();
+    const mcc = columns.mcc === null ? undefined : (record[columns.mcc] ?? "").trim() || undefined;
     const amountMinor = Math.abs(signedMinor);
     const type = signedMinor < 0 ? ("expense" as const) : ("income" as const);
 
     const verdict = classifyDedup({ amountMinor, merchant }, history);
-    const categorization = await this.categorization.categorize(userId, merchant);
+    const categorization = await this.categorization.categorize(userId, merchant, mcc);
     const needsCategoryReview = categorization.confidence < REVIEW_CONFIDENCE_THRESHOLD;
 
     const status: ImportDraftRow["status"] =
@@ -238,11 +239,17 @@ export class ImportService {
       type,
       merchant: merchant || undefined,
       categoryId: categorization.categoryId,
+      categoryConfidence: categorization.confidence,
       ...(verdict.matchId ? { duplicateOfTransactionId: verdict.matchId } : {}),
     };
   }
 
-  /** Explains to the user *why* a row needs a look, instead of silently guessing. */
+  /**
+   * Explains to the user *why* a row needs a look, instead of silently guessing. Fires
+   * for `status === "review"` regardless of whether a category was suggested — a
+   * low-confidence MCC/keyword guess (spec: Review Inbox shows "Категория: Покупки •
+   * уверенность 61%", not a blank category) still needs a human to confirm it.
+   */
   private async flagForReview(
     userId: string,
     transactionId: string,
@@ -259,13 +266,13 @@ export class ImportService {
       return;
     }
 
-    if (row.categoryId == null) {
+    if (row.status === "review") {
       await this.db.insert(reviewItems).values({
         userId,
         transactionId,
         reason: "low_category_confidence",
-        confidence: 0,
-        suggestedJson: { merchant: row.merchant },
+        confidence: row.categoryConfidence ?? 0,
+        suggestedJson: { categoryId: row.categoryId ?? undefined, merchant: row.merchant },
       });
     }
   }

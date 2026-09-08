@@ -90,6 +90,7 @@ describe("detectColumns", () => {
       date: 0,
       amount: 1,
       merchant: 2,
+      mcc: null,
     });
   });
 
@@ -98,11 +99,26 @@ describe("detectColumns", () => {
       date: 2,
       amount: 1,
       merchant: 0,
+      mcc: null,
     });
   });
 
   it("allows a missing merchant column", () => {
-    expect(detectColumns(["Дата", "Сумма"])).toEqual({ date: 0, amount: 1, merchant: null });
+    expect(detectColumns(["Дата", "Сумма"])).toEqual({
+      date: 0,
+      amount: 1,
+      merchant: null,
+      mcc: null,
+    });
+  });
+
+  it("detects an MCC column when the statement includes one", () => {
+    expect(detectColumns(["Дата", "Сумма", "Назначение", "MCC"])).toEqual({
+      date: 0,
+      amount: 1,
+      merchant: 2,
+      mcc: 3,
+    });
   });
 
   it("fails loudly when date or amount is missing", () => {

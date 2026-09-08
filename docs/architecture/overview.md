@@ -40,12 +40,16 @@ money-dock/
 
 Каждый модуль (`AuthModule`, `UsersModule`, `AccountsModule`, `CategoriesModule`,
 `TransactionsModule`, `ImportModule`, `ReviewInboxModule`, `CategorizationModule`,
-`DeduplicationModule`, `AnalyticsModule`, `VoiceModule`, `InsightsModule`,
-`BankingModule`, `SubscriptionModule`, `NotificationsModule`, `AdminModule`,
-`ExportModule`) владеет своими таблицами и экспортирует только сервисы — не
-репозитории и не сущности. Модули добавляются по этапам roadmap (ниже), не все сразу.
-Исключение: `AuthModule` помечен `@Global()` и экспортирует `JwtAuthGuard` — это чисто
-инфраструктурный guard, нужный почти всем контроллерам, а не доменная логика.
+`AnalyticsModule`, `CommandsModule`, `EntitlementsModule`, `ExportModule`,
+`InsightsModule`, `BankingModule`, `NotesModule` — все реализованы; `AdminModule`,
+`NotificationsModule` — ещё нет) владеет своими таблицами и экспортирует только
+сервисы — не репозитории и не сущности. Модули добавляются по этапам roadmap (ниже), не
+все сразу. Исключение: `DbModule` помечен `@Global()` (даёт `DATABASE` и
+`AuditLogService` без явного импорта), как и `AuthModule` (экспортирует `JwtAuthGuard`) —
+оба инфраструктурные, не доменная логика.
+`BankingModule` — частный случай: он не владеет таблицами и не экспортирует HTTP-роуты,
+только контракт `BankProvider` + два MVP-адаптера (`ManualBankProvider`,
+`CsvBankProvider`), готовых для будущего потребителя.
 
 ## Клиент
 
@@ -57,10 +61,13 @@ money-dock/
 
 ## Интеллект без дорогого ИИ
 
-Analytics Engine, safe-to-spend, категоризация по правилам и дедупликация —
-детерминированный TypeScript/SQL. LLM подключается только как fallback-адаптер
-(категоризация при низкой уверенности, парсинг голосовой команды, текст инсайта) и
-никогда не считает суммы — см. ADR 0005.
+Analytics Engine, safe-to-spend, Insights (`InsightsService`), категоризация
+(`CategorizationService`: личное правило → история → глобальный алиас мерчанта → MCC →
+локальный keyword-классификатор) и дедупликация — детерминированный TypeScript/SQL,
+без единого сетевого вызова к LLM. Спека оставляет между локальным классификатором и
+"не определено" слот под LLM fallback — он сознательно не подключён: до появления
+платящих пользователей это чистые расходы без окупающей их выручки (см.
+`docs/api/README.md#категоризация-stage-6`). LLM никогда не считает суммы — см. ADR 0005.
 
 ## Roadmap (этапы, не спринты)
 
@@ -72,7 +79,7 @@ Analytics Engine, safe-to-spend, категоризация по правила�
 | 3 (готово) | analytics engine, safe-to-spend, главный экран           |
 | 4 (готово) | import framework, dedup, Review Inbox, user rules        |
 | 5 (готово) | voice pipeline, rule-based parser, entitlements          |
-| 6 (в процессе) | заметки, безопасный захват (Siri/виджет), export, delete account, soft-delete транзакций, единый error envelope, audit-логи login/logout/delete/export сделаны; insights/финансовый директор и admin — впереди |
+| 6 (в процессе) | заметки, безопасный захват (Siri/виджет), export, delete account, soft-delete транзакций, единый error envelope, audit-логи, insights/финансовый директор, категоризация (global alias/MCC/keyword), banking-контракт — сделаны; admin, notifications, LLM fallback — впереди |
 | 7          | security hardening, observability, staging → production  |
 
 Не переходим к следующему этапу, пока не выполнены критерии текущего (тесты зелёные,

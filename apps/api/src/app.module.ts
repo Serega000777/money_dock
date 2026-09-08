@@ -11,6 +11,7 @@ import { DbModule } from "./db/db.module";
 import { AccountsModule } from "./modules/accounts/accounts.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { BankingModule } from "./modules/banking/banking.module";
 import { CategoriesModule } from "./modules/categories/categories.module";
 import { CategorizationModule } from "./modules/categorization/categorization.module";
 import { CommandsModule } from "./modules/commands/commands.module";
@@ -19,6 +20,7 @@ import { EntitlementsModule } from "./modules/entitlements/entitlements.module";
 import { ExportModule } from "./modules/export/export.module";
 import { HealthModule } from "./modules/health/health.module";
 import { ImportModule } from "./modules/import/import.module";
+import { InsightsModule } from "./modules/insights/insights.module";
 import { NotesModule } from "./modules/notes/notes.module";
 import { ReviewInboxModule } from "./modules/review-inbox/review-inbox.module";
 import { TransactionsModule } from "./modules/transactions/transactions.module";
@@ -34,6 +36,7 @@ import { UsersModule } from "./modules/users/users.module";
     ThrottlerModule.forRoot({ throttlers: [{ limit: 100, ttl: 60_000 }] }),
     DbModule,
     AuthModule,
+    BankingModule,
     UsersModule,
     AccountsModule,
     CategoriesModule,
@@ -47,6 +50,7 @@ import { UsersModule } from "./modules/users/users.module";
     ExportModule,
     DemoModule,
     AnalyticsModule,
+    InsightsModule,
     HealthModule,
   ],
   providers: [

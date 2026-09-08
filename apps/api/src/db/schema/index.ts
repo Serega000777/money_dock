@@ -3,6 +3,8 @@ export * from "./audit-logs";
 export * from "./categories";
 export * from "./category-rules";
 export * from "./import-jobs";
+export * from "./insights";
+export * from "./merchant-aliases";
 export * from "./notes";
 export * from "./review-items";
 export * from "./sessions";

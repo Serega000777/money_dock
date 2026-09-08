@@ -50,6 +50,13 @@
       "when": 1788854697267,
       "tag": "0006_icy_karnak",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788857008663,
+      "tag": "0007_nostalgic_the_leader",
+      "breakpoints": true
     }
   ]
 }

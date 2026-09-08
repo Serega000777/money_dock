@@ -59,8 +59,24 @@ merchant, note, source, status, client_id, created_at, updated_at`. `amount_mino
 на всю выборку через `LEFT JOIN` + `GROUP BY` (не построчно в Node — дешевле при росте
 истории).
 
+## Таблицы (Stage 6)
+
+**merchant_aliases** — `id, normalized_name, raw_pattern, default_category_id, created_at`.
+Глобальный (не per-user) справочник мерчант → категория, сид в `db/seed.ts`.
+`raw_pattern` — нормализованная подстрока ("ozon", "пятерочка"), не полное имя мерчанта.
+
+**insights** — `id, user_id, type, entity_id, severity, payload_json,
+message_template_key, priority, valid_until, read_at, created_at`. Уникальность на
+`(user_id, type, entity_id)` — повторная генерация обновляет существующую строку, а не
+плодит дубли; `read_at` не сбрасывается, если пересчитанные факты не изменились.
+
+**transactions.deleted_at** — добавлен в Stage 6: мягкое удаление вместо `DELETE`, с
+окном отмены (`TransactionsService.restore`). Все выборки по `transactions` фильтруют
+`deleted_at IS NULL`.
+
 ## Дальше
 
-`import_jobs`, `review_items`, `category_rules`, `merchant_aliases` — Stage 4. `budgets`,
-`recurring_rules`, `insights` — Stage 3/6. `voice_requests`, `subscriptions`,
-`usage_counters` — Stage 5. `audit_logs` — вместе с Review Inbox (Stage 4).
+`budgets`, `recurring_rules` — не реализованы (нет UI/API поверх них, добавляются вместе
+с конкретной фичей, а не заранее). `voice_requests`, `subscriptions`, `usage_counters` —
+Stage 5. `bank_connections`, `external_transactions` — ждут реального банковского
+провайдера (контракт уже есть, см. `docs/api/README.md#banking-provider-stage-6`).

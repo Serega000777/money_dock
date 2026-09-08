@@ -91,5 +91,9 @@ docs/
 (voice/text-команды, тарифы и лимиты) готов; в работе **Stage 6** — заметки, безопасный
 захват операций через Siri/виджет (`POST /commands/capture`, см.
 `docs/siri-and-widget.md`), soft-delete транзакций с undo, единый error envelope
-(`{code, message, correlationId}`), audit-логи login/logout/delete/export, `POST /exports`
-и `DELETE /users/me`. Insights/финансовый директор и admin-панель — ещё впереди.
+(`{code, message, correlationId}`), audit-логи login/logout/delete/export, `POST /exports`,
+`DELETE /users/me`, категоризация через глобальные алиасы мерчантов/MCC/keyword-классификатор
+(`docs/api/README.md#категоризация-stage-6`), Insights/«Финансовый директор»
+(`GET /insights`, `GET /insights/daily-summary`) и контракт `BankProvider`
+(`apps/api/src/modules/banking`). Admin-панель, Notifications и LLM fallback для
+категоризации — ещё впереди.

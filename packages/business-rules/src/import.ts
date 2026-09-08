@@ -99,11 +99,15 @@ const MERCHANT_HEADERS = [
   "получатель",
   "контрагент",
 ];
+// MCC ("merchant category code") — some RU bank exports include it as its own column,
+// which lets categorization skip straight to a reliable signal (spec §18).
+const MCC_HEADERS = ["mcc", "мсс", "код категории", "категория мсс"];
 
 export interface ColumnMap {
   date: number;
   amount: number;
   merchant: number | null;
+  mcc: number | null;
 }
 
 /**
@@ -118,11 +122,17 @@ export function detectColumns(header: readonly string[]): ColumnMap {
   const date = find(DATE_HEADERS);
   const amount = find(AMOUNT_HEADERS);
   const merchant = find(MERCHANT_HEADERS);
+  const mcc = find(MCC_HEADERS);
 
   if (date === -1) throw new RowParseError("В файле не найдена колонка с датой");
   if (amount === -1) throw new RowParseError("В файле не найдена колонка с суммой");
 
-  return { date, amount, merchant: merchant === -1 ? null : merchant };
+  return {
+    date,
+    amount,
+    merchant: merchant === -1 ? null : merchant,
+    mcc: mcc === -1 ? null : mcc,
+  };
 }
 
 export type DedupTier = "duplicate" | "review" | "new";

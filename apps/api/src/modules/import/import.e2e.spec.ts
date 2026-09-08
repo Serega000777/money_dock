@@ -6,7 +6,6 @@ import request from "supertest";
 
 import { AppModule } from "../../app.module";
 import { EntitlementsService } from "../entitlements/entitlements.service";
-import { EntitlementsService } from "../entitlements/entitlements.service";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const runPrefix = Math.floor(Math.random() * 1_000_000);

@@ -19,6 +19,9 @@ export interface ImportDraftRow {
   type?: "expense" | "income";
   merchant?: string;
   categoryId?: string | null;
+  /** 0-100 — carried through so a low-confidence *but non-null* suggestion (MCC, local
+   * classifier) still shows its confidence in the Review Inbox instead of looking unset. */
+  categoryConfidence?: number;
   /** Set when status is "duplicate"/"review" — the transaction this row looks like. */
   duplicateOfTransactionId?: string;
 }
