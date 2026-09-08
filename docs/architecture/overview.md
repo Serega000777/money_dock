@@ -80,7 +80,7 @@ Analytics Engine, safe-to-spend, Insights (`InsightsService`), категори�
 | 4 (готово) | import framework, dedup, Review Inbox, user rules        |
 | 5 (готово) | voice pipeline, rule-based parser, entitlements          |
 | 6 (в процессе) | заметки, безопасный захват (Siri/виджет), export, delete account, soft-delete транзакций, единый error envelope, audit-логи, insights/финансовый директор, категоризация (global alias/MCC/keyword), banking-контракт — сделаны; admin, notifications, LLM fallback — впереди |
-| 7          | security hardening, observability, staging → production  |
+| 7 (в процессе) | STRIDE threat model, structured HTTP access-логи с correlationId, backup/restore процедура сделаны; см. «Блокеры релиза» в `docs/security/threat-model.md` для остального |
 
 Не переходим к следующему этапу, пока не выполнены критерии текущего (тесты зелёные,
 lint/typecheck чистые, документация обновлена).

@@ -5,6 +5,7 @@ import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 
 import { correlationIdMiddleware } from "./common/correlation-id.middleware";
+import { httpAccessLogMiddleware } from "./common/http-access-log.middleware";
 import { HttpExceptionFilter } from "./common/http-exception.filter";
 import { validateEnv } from "./config/env";
 import { DbModule } from "./db/db.module";
@@ -63,6 +64,8 @@ export class AppModule implements NestModule {
   // [AppModule] })` — what every e2e spec uses — gets the same correlation id on every
   // request, not just a production bootstrap.
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(correlationIdMiddleware).forRoutes("*");
+    // Order matters: correlationIdMiddleware must set req.correlationId before the
+    // access-log middleware reads it in its `res.on("finish")` handler.
+    consumer.apply(correlationIdMiddleware, httpAccessLogMiddleware).forRoutes("*");
   }
 }

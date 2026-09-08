@@ -7,5 +7,5 @@ pnpm db:generate   # writes a new SQL migration from schema changes
 pnpm db:migrate    # applies pending migrations to DATABASE_URL
 ```
 
-Empty in Stage 0: no domain tables exist yet. The first schema (`users`, `user_identities`,
-`sessions`, `accounts`, `categories`) lands with the Auth module in Stage 1.
+Backup/restore procedure for the underlying Postgres data: see
+`docs/security/threat-model.md#резервное-копирование-и-восстановление-спека-33`.
