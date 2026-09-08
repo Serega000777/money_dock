@@ -1,11 +1,16 @@
+import { radii, spacing, typography } from "@money-dock/design-tokens";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
+import { Stack, router } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
 import { useTheme } from "../src/theme/useTheme";
+import { GradientBox } from "../src/ui/Gradient";
+import { Icon } from "../src/ui/Icon";
+import { Text } from "../src/ui/Text";
+import { categoryColor, categoryIcon } from "../src/ui/categoryVisual";
+import { FadeIn, PressableScale, Screen, Segmented } from "../src/ui/primitives";
 import { generateClientId } from "../src/utils/uuid";
 
 // Fast manual entry: amount → category → save. Account defaults to the first one and
@@ -15,6 +20,7 @@ export default function AddTransaction() {
   const queryClient = useQueryClient();
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState("");
+  const [merchant, setMerchant] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -29,7 +35,6 @@ export default function AddTransaction() {
 
   const account = accounts?.[0];
   const visibleCategories = (categories ?? []).filter((c) => c.type === type);
-
   const canSave = Boolean(account) && Number(amount) > 0 && !saving;
 
   async function save() {
@@ -42,9 +47,11 @@ export default function AddTransaction() {
         categoryId: categoryId ?? undefined,
         amountMinor: Math.round(Number(amount) * 100),
         currency: account.currency,
+        merchant: merchant.trim() || undefined,
         clientId: generateClientId(),
       });
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
         queryClient.invalidateQueries({ queryKey: ["accounts"] }),
         queryClient.invalidateQueries({ queryKey: ["analytics"] }),
       ]);
@@ -55,80 +62,129 @@ export default function AddTransaction() {
   }
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
-      <View style={styles.typeRow}>
-        {(["expense", "income"] as const).map((t) => (
-          <Pressable
-            key={t}
-            onPress={() => {
-              setType(t);
-              setCategoryId(null);
-            }}
-            style={[
-              styles.typeButton,
-              { borderColor: theme.border },
-              type === t && { backgroundColor: theme.accent, borderColor: theme.accent },
-            ]}
-          >
-            <Text style={{ color: type === t ? "#fff" : theme.textPrimary }}>
-              {t === "expense" ? "Расход" : "Доход"}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+    <Screen scroll={false} contentStyle={styles.screen}>
+      <Stack.Screen options={{ headerShown: true, title: "Новая операция" }} />
 
-      <TextInput
-        autoFocus
-        keyboardType="decimal-pad"
-        placeholder="0"
-        placeholderTextColor={theme.textSecondary}
-        value={amount}
-        onChangeText={setAmount}
-        style={[styles.amountInput, { color: theme.textPrimary }]}
-      />
+      <FadeIn index={0}>
+        <Segmented
+          value={type}
+          onChange={(next: "expense" | "income") => {
+            setType(next);
+            setCategoryId(null);
+          }}
+          options={[
+            { value: "expense", label: "Расход" },
+            { value: "income", label: "Доход" },
+          ]}
+        />
+      </FadeIn>
 
-      <ScrollView contentContainerStyle={styles.categoryGrid}>
-        {visibleCategories.map((c) => (
-          <Pressable
-            key={c.id}
-            onPress={() => setCategoryId(c.id)}
-            style={[
-              styles.categoryChip,
-              { borderColor: theme.border },
-              categoryId === c.id && { backgroundColor: theme.accent, borderColor: theme.accent },
-            ]}
-          >
-            <Text style={{ color: categoryId === c.id ? "#fff" : theme.textPrimary }}>
-              {c.name}
-            </Text>
-          </Pressable>
-        ))}
+      {/* The amount is the screen — everything else is optional decoration around it. */}
+      <FadeIn index={1}>
+        <View style={styles.amountRow}>
+          <TextInput
+            autoFocus
+            keyboardType="decimal-pad"
+            placeholder="0"
+            placeholderTextColor={theme.textTertiary}
+            value={amount}
+            onChangeText={setAmount}
+            style={[styles.amountInput, { color: theme.textPrimary }]}
+          />
+          <Text style={[styles.currency, { color: theme.textTertiary }]}>₽</Text>
+        </View>
+      </FadeIn>
+
+      <FadeIn index={2}>
+        <TextInput
+          value={merchant}
+          onChangeText={setMerchant}
+          placeholder="Где потрачено (необязательно)"
+          placeholderTextColor={theme.textTertiary}
+          style={[
+            styles.merchantInput,
+            { color: theme.textPrimary, backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+        />
+      </FadeIn>
+
+      <Text style={[styles.label, { color: theme.textSecondary }]}>Категория</Text>
+
+      <ScrollView contentContainerStyle={styles.categoryGrid} showsVerticalScrollIndicator={false}>
+        {visibleCategories.map((c) => {
+          const active = categoryId === c.id;
+          const color = categoryColor(c.systemCode ?? c.id);
+          return (
+            <PressableScale
+              key={c.id}
+              onPress={() => setCategoryId(active ? null : c.id)}
+              style={StyleSheet.flatten([
+                styles.categoryChip,
+                {
+                  backgroundColor: active ? `${color}26` : theme.surface,
+                  borderColor: active ? color : theme.border,
+                },
+              ])}
+            >
+              <Icon name={categoryIcon(c)} color={color} size={18} />
+              <Text style={[styles.categoryText, { color: theme.textPrimary }]}>{c.name}</Text>
+            </PressableScale>
+          );
+        })}
       </ScrollView>
 
-      <Pressable
-        disabled={!canSave}
-        onPress={save}
-        style={[styles.saveButton, { backgroundColor: canSave ? theme.accent : theme.border }]}
-      >
-        <Text style={styles.saveButtonText}>{saving ? "Сохраняю…" : "Сохранить"}</Text>
+      <Pressable disabled={!canSave} onPress={save}>
+        {canSave ? (
+          <GradientBox colors={theme.accentGradient} diagonal radius={radii.md}>
+            <View style={styles.saveButton}>
+              <Text style={[styles.saveText, { color: theme.onAccent }]}>
+                {saving ? "Сохраняю…" : "Сохранить"}
+              </Text>
+            </View>
+          </GradientBox>
+        ) : (
+          <View style={[styles.saveButton, { backgroundColor: theme.surfaceSunken }]}>
+            <Text style={[styles.saveText, { color: theme.textTertiary }]}>Сохранить</Text>
+          </View>
+        )}
       </Pressable>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 20, gap: 16 },
-  typeRow: { flexDirection: "row", gap: 8 },
-  typeButton: {
-    flex: 1,
+  screen: { padding: spacing.lg, gap: spacing.md },
+  amountRow: { flexDirection: "row", alignItems: "baseline", gap: spacing.sm },
+  amountInput: { ...typography.hero, fontSize: 52, lineHeight: 60, flex: 1 },
+  currency: { ...typography.display, fontWeight: "500" },
+  merchantInput: {
+    ...typography.body,
+    borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  label: { ...typography.overline, textTransform: "uppercase", marginTop: spacing.xs },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    paddingBottom: spacing.md,
+  },
+  categoryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 10,
+    borderRadius: radii.pill,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  categoryText: typography.callout,
+  saveButton: {
+    borderRadius: radii.md,
+    paddingVertical: spacing.lg,
     alignItems: "center",
   },
-  amountInput: { fontSize: 48, fontWeight: "700" },
-  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  categoryChip: { borderWidth: 1, borderRadius: 999, paddingVertical: 8, paddingHorizontal: 14 },
-  saveButton: { borderRadius: 12, paddingVertical: 16, alignItems: "center", marginTop: "auto" },
-  saveButtonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
+  saveText: { ...typography.headline, fontWeight: "700" },
 });

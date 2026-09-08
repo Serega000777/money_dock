@@ -2,16 +2,18 @@ import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type { Category, Transaction } from "@money-dock/shared-types";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { ActivityIndicator, SectionList, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, SectionList, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
 import { useTheme } from "../../src/theme/useTheme";
-import { Card, FadeIn } from "../../src/ui/primitives";
+import { Icon } from "../../src/ui/Icon";
+import { Text } from "../../src/ui/Text";
+import { categoryColor, categoryIcon } from "../../src/ui/categoryVisual";
+import { Card, FadeIn, Screen, ScreenTitle } from "../../src/ui/primitives";
 import { formatMinor } from "../../src/utils/format";
 
-/** "сегодня" / "вчера" read faster than a date for the two days people actually check. */
+/** "Сегодня" / "Вчера" read faster than a date for the two days people actually check. */
 function dayLabel(iso: string): string {
   const date = new Date(iso);
   const today = new Date();
@@ -41,8 +43,8 @@ export default function Transactions() {
     enabled,
   });
 
-  const categoryNames = useMemo(
-    () => new Map((categories ?? []).map((c: Category) => [c.id, c.name])),
+  const categoryById = useMemo(
+    () => new Map((categories ?? []).map((c: Category) => [c.id, c])),
     [categories],
   );
 
@@ -68,16 +70,10 @@ export default function Transactions() {
       }));
   }, [transactions]);
 
-  function meta(item: Transaction): string {
-    if (item.type === "transfer") return "Перевод между счетами";
-    const name = item.categoryId ? categoryNames.get(item.categoryId) : undefined;
-    return name ?? "Без категории";
-  }
-
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
+    <Screen scroll={false}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.textPrimary }]}>Операции</Text>
+        <ScreenTitle title="Операции" subtitle="История по дням" />
       </View>
 
       {isLoading ? (
@@ -106,68 +102,70 @@ export default function Transactions() {
             </View>
           )}
           renderSectionFooter={() => <View style={styles.sectionGap} />}
-          renderItem={({ item, index, section }) => (
-            <FadeIn index={Math.min(index, 6)}>
-              <Card
-                style={StyleSheet.flatten([
-                  styles.row,
-                  index === 0 && styles.rowFirst,
-                  index === section.data.length - 1 && styles.rowLast,
-                  index !== section.data.length - 1 && styles.rowMiddle,
-                ])}
-              >
-                <View
-                  style={[
-                    styles.dot,
-                    {
-                      backgroundColor:
-                        item.type === "income"
-                          ? theme.positiveSoft
-                          : item.type === "transfer"
-                            ? theme.surfaceSunken
-                            : theme.accentSoft,
-                    },
-                  ]}
-                />
-                <View style={styles.rowMain}>
-                  <Text style={[styles.merchant, { color: theme.textPrimary }]} numberOfLines={1}>
-                    {item.merchant ?? "Без описания"}
-                  </Text>
-                  <Text style={[styles.meta, { color: theme.textSecondary }]} numberOfLines={1}>
-                    {meta(item)}
-                  </Text>
-                </View>
-                <Text
-                  style={[
-                    styles.amount,
-                    {
-                      color:
-                        item.type === "income"
+          renderItem={({ item, index, section }) => {
+            const category = item.categoryId ? categoryById.get(item.categoryId) : undefined;
+            const transfer = item.type === "transfer";
+            const income = item.type === "income";
+            const tint = transfer
+              ? theme.textSecondary
+              : income
+                ? theme.positive
+                : categoryColor(category?.systemCode ?? category?.id ?? null);
+
+            return (
+              <FadeIn index={Math.min(index, 6)}>
+                <Card
+                  style={StyleSheet.flatten([
+                    styles.row,
+                    index === 0 && styles.rowFirst,
+                    index === section.data.length - 1 && styles.rowLast,
+                    index !== section.data.length - 1 && styles.rowMiddle,
+                  ])}
+                >
+                  <View style={[styles.avatar, { backgroundColor: `${tint}1F` }]}>
+                    <Icon
+                      name={transfer ? "card" : income ? "wallet" : categoryIcon(category)}
+                      color={tint}
+                      size={19}
+                    />
+                  </View>
+                  <View style={styles.rowMain}>
+                    <Text style={[styles.merchant, { color: theme.textPrimary }]} numberOfLines={1}>
+                      {item.merchant ?? "Без описания"}
+                    </Text>
+                    <Text style={[styles.meta, { color: theme.textSecondary }]} numberOfLines={1}>
+                      {transfer ? "Перевод между счетами" : (category?.name ?? "Без категории")}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.amount,
+                      {
+                        color: income
                           ? theme.positive
-                          : item.type === "transfer"
+                          : transfer
                             ? theme.textSecondary
                             : theme.textPrimary,
-                    },
-                  ]}
-                >
-                  {item.type === "income" ? "+" : item.type === "expense" ? "−" : ""}
-                  {formatMinor(item.amountMinor)} ₽
-                </Text>
-              </Card>
-            </FadeIn>
-          )}
+                      },
+                    ]}
+                  >
+                    {income ? "+" : item.type === "expense" ? "−" : ""}
+                    {formatMinor(item.amountMinor)} ₽
+                  </Text>
+                </Card>
+              </FadeIn>
+            );
+          }}
         />
       )}
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.md },
-  title: typography.display,
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   loader: { marginTop: spacing.xxl },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  list: { paddingHorizontal: spacing.lg, paddingBottom: 120 },
 
   sectionHeader: {
     flexDirection: "row",
@@ -185,7 +183,13 @@ const styles = StyleSheet.create({
   rowFirst: { borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg },
   rowMiddle: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0 },
   rowLast: { borderBottomLeftRadius: radii.lg, borderBottomRightRadius: radii.lg },
-  dot: { width: 10, height: 10, borderRadius: radii.pill },
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   rowMain: { flex: 1, gap: 2 },
   merchant: typography.body,
   meta: typography.caption,

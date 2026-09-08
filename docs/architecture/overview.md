@@ -70,9 +70,9 @@ Analytics Engine, safe-to-spend, категоризация по правила�
 | 1 (готово) | Telegram auth, users/sessions, accounts/categories       |
 | 2 (готово) | transactions, ручной ввод, правила баланса               |
 | 3 (готово) | analytics engine, safe-to-spend, главный экран           |
-| 4          | import framework, dedup, Review Inbox, user rules        |
+| 4 (готово) | import framework, dedup, Review Inbox, user rules        |
 | 5 (готово) | voice pipeline, rule-based parser, entitlements          |
-| 6          | insights/финансовый директор, export, delete, admin      |
+| 6 (в процессе) | заметки, безопасный захват (Siri/виджет) сделаны; insights/финансовый директор, export, delete, admin — впереди |
 | 7          | security hardening, observability, staging → production  |
 
 Не переходим к следующему этапу, пока не выполнены критерии текущего (тесты зелёные,

@@ -3,7 +3,8 @@ export type ReviewReason =
   | "probable_duplicate"
   | "possible_transfer"
   | "import_error"
-  | "missing_account";
+  | "missing_account"
+  | "unconfirmed_capture";
 
 export interface ReviewInboxItem {
   id: string;

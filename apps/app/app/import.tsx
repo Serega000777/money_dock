@@ -1,12 +1,16 @@
+import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type { ImportPreview } from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import { useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Platform, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
 import { useTheme } from "../src/theme/useTheme";
+import { GradientBox } from "../src/ui/Gradient";
+import { Icon } from "../src/ui/Icon";
+import { Text } from "../src/ui/Text";
+import { Card, FadeIn, Pill, PressableScale, Screen } from "../src/ui/primitives";
 import { formatMinor } from "../src/utils/format";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -55,63 +59,75 @@ export default function Import() {
   });
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
+    <Screen>
       <Stack.Screen options={{ headerShown: true, title: "Импорт выписки" }} />
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <FadeIn index={0}>
         <Text style={[styles.hint, { color: theme.textSecondary }]}>
           CSV-выписка из банка. Колонки даты, суммы и назначения определяются автоматически. Ничего
           не сохранится, пока вы не подтвердите.
         </Text>
+      </FadeIn>
 
-        {Platform.OS === "web" ? (
-          // RN has no file input; on web (which is where the Mini App lives) we drive the
-          // native one directly instead of pulling in a picker dependency.
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".csv,text/csv"
-            style={{ display: "none" }}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) upload.mutate(file);
-            }}
-          />
-        ) : null}
+      {Platform.OS === "web" ? (
+        // RN has no file input; on web (which is where the Mini App lives) we drive the
+        // native one directly instead of pulling in a picker dependency.
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".csv,text/csv"
+          style={{ display: "none" }}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) upload.mutate(file);
+          }}
+        />
+      ) : null}
 
-        <Pressable
-          onPress={() => inputRef.current?.click()}
-          disabled={upload.isPending || !account}
-          style={[styles.button, { backgroundColor: account ? theme.accent : theme.border }]}
+      <FadeIn index={1}>
+        <PressableScale
+          onPress={() => !upload.isPending && account && inputRef.current?.click()}
+          style={StyleSheet.flatten([
+            styles.dropzone,
+            { borderColor: theme.borderStrong, backgroundColor: theme.surface },
+          ])}
         >
-          <Text style={styles.buttonText}>
+          <View style={[styles.dropIcon, { backgroundColor: theme.accentSoft }]}>
+            <Icon name="upload" color={theme.accent} size={24} />
+          </View>
+          <Text style={[styles.dropTitle, { color: theme.textPrimary }]}>
             {upload.isPending ? "Разбираю файл…" : "Выбрать CSV-файл"}
           </Text>
-        </Pressable>
+          <Text style={[styles.dropHint, { color: theme.textTertiary }]}>
+            Сбербанк, Тинькофф, Альфа — любой CSV
+          </Text>
+        </PressableScale>
+      </FadeIn>
 
-        {!account ? (
-          <Text style={[styles.error, { color: theme.warning }]}>Сначала добавьте счёт</Text>
-        ) : null}
-        {error ? <Text style={[styles.error, { color: theme.negative }]}>{error}</Text> : null}
+      {!account ? (
+        <Text style={[styles.error, { color: theme.warning }]}>Сначала добавьте счёт</Text>
+      ) : null}
+      {error ? <Text style={[styles.error, { color: theme.negative }]}>{error}</Text> : null}
 
-        {preview ? (
-          <>
-            {preview.alreadyImportedJobId ? (
-              <Text style={[styles.error, { color: theme.warning }]}>
-                Этот файл уже импортировали раньше — повторные строки будут отмечены дублями.
-              </Text>
-            ) : null}
+      {preview ? (
+        <>
+          {preview.alreadyImportedJobId ? (
+            <Text style={[styles.error, { color: theme.warning }]}>
+              Этот файл уже импортировали раньше — повторные строки будут отмечены дублями.
+            </Text>
+          ) : null}
 
-            <View
-              style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            >
-              <Stat label="Строк в файле" value={preview.stats.rowsFound} theme={theme} />
-              <Stat label="Новых" value={preview.stats.new} theme={theme} />
-              <Stat label="Дублей" value={preview.stats.duplicates} theme={theme} />
-              <Stat label="На проверку" value={preview.stats.reviewNeeded} theme={theme} />
-              <Stat label="Ошибок" value={preview.stats.errors} theme={theme} />
-            </View>
+          <FadeIn index={2}>
+            <Card style={styles.statsCard}>
+              <Stat label="Строк в файле" value={preview.stats.rowsFound} />
+              <Stat label="Новых" value={preview.stats.new} tone="positive" />
+              <Stat label="Дублей" value={preview.stats.duplicates} />
+              <Stat label="На проверку" value={preview.stats.reviewNeeded} tone="warning" />
+              <Stat label="Ошибок" value={preview.stats.errors} tone="negative" />
+            </Card>
+          </FadeIn>
 
+          <Card style={styles.rowsCard}>
             {preview.rows.slice(0, 30).map((row) => (
               <View key={row.rowNumber} style={styles.row}>
                 <View style={styles.rowMain}>
@@ -141,50 +157,86 @@ export default function Import() {
                 ) : null}
               </View>
             ))}
+          </Card>
 
-            <Pressable
-              onPress={() => commit.mutate(preview.jobId)}
-              disabled={commit.isPending}
-              style={[styles.button, { backgroundColor: theme.accent }]}
-            >
-              <Text style={styles.buttonText}>
-                {commit.isPending
-                  ? "Сохраняю…"
-                  : `Импортировать ${preview.stats.new + preview.stats.reviewNeeded} операций`}
-              </Text>
-            </Pressable>
-          </>
-        ) : null}
-      </ScrollView>
-    </SafeAreaView>
+          <PressableScale onPress={() => !commit.isPending && commit.mutate(preview.jobId)}>
+            <GradientBox colors={theme.accentGradient} diagonal radius={radii.md}>
+              <View style={styles.commitButton}>
+                <Text style={[styles.commitText, { color: theme.onAccent }]}>
+                  {commit.isPending
+                    ? "Сохраняю…"
+                    : `Импортировать ${preview.stats.new + preview.stats.reviewNeeded} операций`}
+                </Text>
+              </View>
+            </GradientBox>
+          </PressableScale>
+        </>
+      ) : null}
+    </Screen>
   );
 }
 
-type Theme = ReturnType<typeof useTheme>;
+function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "positive" | "warning" | "negative";
+}) {
+  const theme = useTheme();
+  const colors = {
+    positive: [theme.positive, theme.positiveSoft],
+    warning: [theme.warning, theme.warningSoft],
+    negative: [theme.negative, theme.negativeSoft],
+  } as const;
 
-function Stat({ label, value, theme }: { label: string; value: number; theme: Theme }) {
   return (
     <View style={styles.stat}>
       <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{label}</Text>
-      <Text style={[styles.statValue, { color: theme.textPrimary }]}>{value}</Text>
+      {tone && value > 0 ? (
+        <Pill label={String(value)} color={colors[tone][0]} background={colors[tone][1]} />
+      ) : (
+        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{value}</Text>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  content: { padding: 20, gap: 12 },
-  hint: { fontSize: 13, lineHeight: 19 },
-  button: { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
-  buttonText: { color: "#fff", fontWeight: "600" },
-  error: { fontSize: 13 },
-  card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 8 },
-  stat: { flexDirection: "row", justifyContent: "space-between" },
-  statLabel: { fontSize: 13 },
-  statValue: { fontSize: 13, fontWeight: "600" },
-  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 },
+  hint: { ...typography.caption, lineHeight: 19 },
+  dropzone: {
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    paddingVertical: spacing.xl,
+  },
+  dropIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dropTitle: { ...typography.headline },
+  dropHint: typography.caption,
+  error: typography.caption,
+
+  statsCard: { gap: spacing.sm },
+  stat: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  statLabel: typography.callout,
+  statValue: { ...typography.callout, fontWeight: "700" },
+
+  rowsCard: { gap: 0 },
+  row: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm },
   rowMain: { flex: 1, gap: 2 },
-  rowMerchant: { fontSize: 14 },
-  rowMeta: { fontSize: 11 },
-  rowAmount: { fontSize: 14, fontWeight: "600" },
+  rowMerchant: typography.body,
+  rowMeta: typography.caption,
+  rowAmount: { ...typography.body, fontWeight: "600" },
+
+  commitButton: { paddingVertical: spacing.lg, alignItems: "center" },
+  commitText: { ...typography.headline, fontWeight: "700" },
 });

@@ -3,9 +3,8 @@ export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48
 export const radii = { sm: 10, md: 14, lg: 20, xl: 28, pill: 999 } as const;
 
 /**
- * A real scale, not a flat list: the hero number is meant to dominate the screen and
- * everything else steps down from it. Line heights are tuned for Cyrillic, which sits
- * taller than Latin at the same size.
+ * A real scale, not a flat list: the hero number dominates and everything steps down
+ * from it. Line heights are tuned for Cyrillic, which sits taller than Latin.
  */
 export const typography = {
   hero: { fontSize: 44, lineHeight: 50, fontWeight: "700", letterSpacing: -1.2 },
@@ -18,85 +17,128 @@ export const typography = {
   overline: { fontSize: 11, lineHeight: 14, fontWeight: "600", letterSpacing: 0.7 },
 } as const;
 
-/** One accent, as the product spec demands — no rainbow of category colors. */
-const ACCENT = "#3B5BFF";
+/** Interface scale from settings — every font size is multiplied by this. */
+export const textScale = { small: 0.92, medium: 1, large: 1.12 } as const;
+export type TextScaleName = keyof typeof textScale;
 
 export interface Theme {
+  name: "light" | "dark";
+
   accent: string;
   accentSoft: string;
   accentPressed: string;
   onAccent: string;
+  /** Magenta → violet, used only on the central add button. */
+  accentGradient: readonly [string, string];
+
+  /** The page background is a gradient in both themes, never a flat fill. */
+  backgroundGradient: readonly [string, string, string];
   background: string;
   surface: string;
+  /** Bottom sheets sit visibly above the page instead of blending into it. */
+  sheet: string;
   surfaceSunken: string;
   border: string;
   borderStrong: string;
+
   textPrimary: string;
   textSecondary: string;
   textTertiary: string;
+
   positive: string;
   positiveSoft: string;
   negative: string;
   negativeSoft: string;
   warning: string;
   warningSoft: string;
+
   shadowColor: string;
 }
 
-export const lightTheme: Theme = {
-  accent: ACCENT,
-  accentSoft: "#EDF0FF",
-  accentPressed: "#2E49D9",
-  onAccent: "#FFFFFF",
-
-  // Two ground tones so cards can sit *above* the page instead of being outlined boxes.
-  background: "#F6F7FB",
-  surface: "#FFFFFF",
-  surfaceSunken: "#EFF1F7",
-  border: "#E6E9F0",
-  borderStrong: "#D3D8E4",
-
-  textPrimary: "#0E1525",
-  textSecondary: "#6B7488",
-  textTertiary: "#9AA1B2",
-
-  positive: "#12A150",
-  positiveSoft: "#E7F6ED",
-  negative: "#E5484D",
-  negativeSoft: "#FDECEC",
-  warning: "#C77700",
-  warningSoft: "#FDF3E4",
-
-  shadowColor: "#0E1525",
-};
-
 export const darkTheme: Theme = {
-  accent: "#6C86FF",
-  accentSoft: "#1B2340",
-  accentPressed: "#5872F0",
-  onAccent: "#0B0F1A",
+  name: "dark",
 
-  background: "#0B0F1A",
-  surface: "#141A28",
+  accent: "#8B5CF6",
+  accentSoft: "#211A3D",
+  accentPressed: "#7A4CE0",
+  onAccent: "#FFFFFF",
+  accentGradient: ["#E935C1", "#8B5CF6"],
+
+  backgroundGradient: ["#0A0D15", "#0D1220", "#141B2E"],
+  background: "#0A0D15",
+  surface: "#151B29",
+  sheet: "#1C2438",
   surfaceSunken: "#101623",
-  border: "#232B3D",
-  borderStrong: "#313A50",
+  border: "#232C40",
+  borderStrong: "#313B52",
 
-  textPrimary: "#F2F4F9",
-  textSecondary: "#98A1B6",
-  textTertiary: "#6C778F",
+  textPrimary: "#F4F6FB",
+  textSecondary: "#8E97AB",
+  textTertiary: "#5F6979",
 
-  positive: "#3DD68C",
-  positiveSoft: "#12271D",
-  negative: "#FF6369",
-  negativeSoft: "#2A1517",
+  positive: "#34D399",
+  positiveSoft: "#10281F",
+  negative: "#FF6B6B",
+  negativeSoft: "#2B1519",
   warning: "#F0A93B",
   warningSoft: "#2A2113",
 
   shadowColor: "#000000",
 };
 
-/** Soft, low-contrast elevation — "мягкие карточки", never a hard drop shadow. */
+export const lightTheme: Theme = {
+  name: "light",
+
+  accent: "#7C4DFF",
+  accentSoft: "#EFEAFF",
+  accentPressed: "#6B3FE8",
+  onAccent: "#FFFFFF",
+  accentGradient: ["#E935C1", "#7C4DFF"],
+
+  // Same gradient idea as dark, only barely tinted — it keeps the two themes related
+  // instead of making light mode a flat sheet of paper.
+  backgroundGradient: ["#FBFAFF", "#F5F5FD", "#EDEFFB"],
+  background: "#F7F7FC",
+  surface: "#FFFFFF",
+  sheet: "#FFFFFF",
+  surfaceSunken: "#F0F1F8",
+  border: "#E7E8F2",
+  borderStrong: "#D3D6E6",
+
+  textPrimary: "#0E1220",
+  textSecondary: "#6B7285",
+  textTertiary: "#9AA0B3",
+
+  positive: "#0FA36B",
+  positiveSoft: "#E6F7F0",
+  negative: "#E5484D",
+  negativeSoft: "#FDECEC",
+  warning: "#C77700",
+  warningSoft: "#FDF3E4",
+
+  shadowColor: "#101828",
+};
+
+/**
+ * The twelve colours a category can be painted in. Order matches the picker grid; the
+ * hex is what gets stored, so reordering the grid never re-paints existing categories.
+ */
+export const categoryPalette = [
+  "#10B981",
+  "#3B82F6",
+  "#EF4444",
+  "#8B5CF6",
+  "#EC4899",
+  "#F59E0B",
+  "#06B6D4",
+  "#A78BFA",
+  "#84CC16",
+  "#F97316",
+  "#14B8A6",
+  "#6366F1",
+] as const;
+
+/** Soft, low-contrast elevation — never a hard drop shadow. */
 export const elevation = {
   card: {
     shadowOffset: { width: 0, height: 2 },
@@ -106,14 +148,20 @@ export const elevation = {
   },
   raised: {
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 24,
     elevation: 6,
+  },
+  float: {
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 10,
   },
 } as const;
 
 export const motion = {
-  /** Calm, not bouncy — money apps shouldn't feel like games. */
+  /** Calm, not bouncy — money screens shouldn't feel like games. */
   fast: 160,
   normal: 260,
   slow: 420,

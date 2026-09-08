@@ -9,6 +9,9 @@ export const reviewReasonEnum = pgEnum("review_reason", [
   "possible_transfer",
   "import_error",
   "missing_account",
+  // Saved without confirmation (Siri shortcut, home-screen widget): the phrase was
+  // never shown back to the user, so it waits here until they confirm or fix it.
+  "unconfirmed_capture",
 ]);
 
 export const reviewStatusEnum = pgEnum("review_status", ["pending", "resolved", "dismissed"]);

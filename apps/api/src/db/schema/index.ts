@@ -3,6 +3,7 @@ export * from "./audit-logs";
 export * from "./categories";
 export * from "./category-rules";
 export * from "./import-jobs";
+export * from "./notes";
 export * from "./review-items";
 export * from "./sessions";
 export * from "./subscriptions";

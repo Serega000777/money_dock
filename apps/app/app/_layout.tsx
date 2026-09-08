@@ -1,3 +1,4 @@
+import { typography } from "@money-dock/design-tokens";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -5,19 +6,23 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { queryClient } from "../src/api/queryClient";
 import { AuthProvider } from "../src/auth/AuthProvider";
-import { TelegramProvider, useTelegram } from "../src/telegram/TelegramProvider";
+import { TelegramProvider } from "../src/telegram/TelegramProvider";
 import { useTheme } from "../src/theme/useTheme";
 
 function ThemedStack() {
   const theme = useTheme();
-  const { webApp } = useTelegram();
 
   return (
     <>
-      <StatusBar style={webApp?.colorScheme === "dark" ? "light" : "dark"} />
+      <StatusBar style={theme.name === "dark" ? "light" : "dark"} />
       <Stack
         screenOptions={{
           headerShown: false,
+          headerStyle: { backgroundColor: theme.surface },
+          headerTintColor: theme.textPrimary,
+          headerTitleStyle: { ...typography.headline, color: theme.textPrimary },
+          headerShadowVisible: false,
+          // Screens paint their own gradient, so the stack itself stays out of the way.
           contentStyle: { backgroundColor: theme.background },
         }}
       />

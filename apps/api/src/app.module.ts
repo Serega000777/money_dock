@@ -15,6 +15,7 @@ import { DemoModule } from "./modules/demo/demo.module";
 import { EntitlementsModule } from "./modules/entitlements/entitlements.module";
 import { HealthModule } from "./modules/health/health.module";
 import { ImportModule } from "./modules/import/import.module";
+import { NotesModule } from "./modules/notes/notes.module";
 import { ReviewInboxModule } from "./modules/review-inbox/review-inbox.module";
 import { TransactionsModule } from "./modules/transactions/transactions.module";
 import { UsersModule } from "./modules/users/users.module";
@@ -35,6 +36,7 @@ import { UsersModule } from "./modules/users/users.module";
     CategorizationModule,
     TransactionsModule,
     ImportModule,
+    NotesModule,
     ReviewInboxModule,
     CommandsModule,
     EntitlementsModule,

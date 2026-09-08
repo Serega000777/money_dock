@@ -6,6 +6,7 @@ import type {
   CommandDraft,
   Entitlements,
   ImportPreview,
+  Note,
   ReviewInboxItem,
   Transaction,
   User,
@@ -142,6 +143,17 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       }) => post<void>("/transactions/transfer", input),
     },
 
+    notes: {
+      list: () => request<Note[]>("/notes"),
+      create: (input: { title: string; body?: string; colorIndex?: number; pinned?: boolean }) =>
+        post<Note>("/notes", input),
+      update: (
+        id: string,
+        input: { title?: string; body?: string; colorIndex?: number; pinned?: boolean },
+      ) => request<Note>(`/notes/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+      remove: (id: string) => request<void>(`/notes/${id}`, { method: "DELETE" }),
+    },
+
     analytics: {
       summary: () => request<AnalyticsSummary>("/analytics/summary"),
     },
@@ -156,6 +168,9 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       /** Returns a draft for confirmation — the server never saves from a phrase. */
       parse: (text: string, source: "voice" | "text") =>
         post<CommandDraft>("/commands/parse", { text, source }),
+      /** Saves without confirmation — used by Siri and the widget, not by the screens. */
+      capture: (text: string, source: "voice" | "text", clientId: string) =>
+        post<Transaction>("/commands/capture", { text, source, clientId }),
     },
 
     entitlements: {

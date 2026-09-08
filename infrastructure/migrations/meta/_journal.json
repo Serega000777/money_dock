@@ -29,6 +29,20 @@
       "when": 1788769565054,
       "tag": "0003_typical_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788789433894,
+      "tag": "0004_glorious_miss_america",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788791255809,
+      "tag": "0005_real_snowbird",
+      "breakpoints": true
     }
   ]
 }

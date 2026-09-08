@@ -87,5 +87,7 @@ docs/
 
 ## Roadmap
 
-См. таблицу этапов в `docs/architecture/overview.md`. Текущий статус: **Stage 3** —
-analytics engine, safe-to-spend, главный экран — готово.
+См. таблицу этапов в `docs/architecture/overview.md`. Текущий статус: **Stage 5**
+(voice/text-команды, тарифы и лимиты) готов; в работе **Stage 6** — заметки, безопасный
+захват операций через Siri/виджет (`POST /commands/capture`, см.
+`docs/siri-and-widget.md`), финансовый директор/export/delete/admin ещё впереди.
