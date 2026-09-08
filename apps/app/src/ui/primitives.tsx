@@ -83,9 +83,9 @@ export function ScreenTitle({ title, subtitle }: { title: string; subtitle?: str
   return (
     <FadeIn>
       <View style={styles.titleBlock}>
-        <Text style={[styles.title, { color: theme.onGradientPrimary }]}>{title}</Text>
+        <Text style={[styles.title, { color: theme.textPrimary }]}>{title}</Text>
         {subtitle ? (
-          <Text style={[styles.subtitle, { color: theme.onGradientSecondary }]}>{subtitle}</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{subtitle}</Text>
         ) : null}
       </View>
     </FadeIn>
