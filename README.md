@@ -90,4 +90,6 @@ docs/
 См. таблицу этапов в `docs/architecture/overview.md`. Текущий статус: **Stage 5**
 (voice/text-команды, тарифы и лимиты) готов; в работе **Stage 6** — заметки, безопасный
 захват операций через Siri/виджет (`POST /commands/capture`, см.
-`docs/siri-and-widget.md`), финансовый директор/export/delete/admin ещё впереди.
+`docs/siri-and-widget.md`), soft-delete транзакций с undo, единый error envelope
+(`{code, message, correlationId}`), audit-логи login/logout/delete/export, `POST /exports`
+и `DELETE /users/me`. Insights/финансовый директор и admin-панель — ещё впереди.

@@ -56,11 +56,15 @@ export class SessionsService {
     return { userId: session.userId, issued };
   }
 
-  async revoke(refreshToken: string): Promise<void> {
+  /** Returns the session's userId so the caller can audit-log the logout, or null if the
+   * token was already revoked/unknown (logout is idempotent either way). */
+  async revoke(refreshToken: string): Promise<string | null> {
     const tokenHash = hashToken(refreshToken);
-    await this.db
+    const rows = await this.db
       .update(sessions)
       .set({ revokedAt: new Date() })
-      .where(and(eq(sessions.refreshTokenHash, tokenHash), isNull(sessions.revokedAt)));
+      .where(and(eq(sessions.refreshTokenHash, tokenHash), isNull(sessions.revokedAt)))
+      .returning({ userId: sessions.userId });
+    return rows[0]?.userId ?? null;
   }
 }

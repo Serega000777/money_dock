@@ -197,6 +197,55 @@ describe("Transactions (e2e)", () => {
     expect(cashAfter.body.currentBalanceMinor).toBe(cashBefore.body.currentBalanceMinor);
   });
 
+  it("soft-deleting a transaction hides it from list/balance, and restore undoes both", async () => {
+    const created = await authed("post", "/transactions")
+      .send({
+        type: "expense",
+        accountId: cashAccountId,
+        amountMinor: 777,
+        currency: "RUB",
+        clientId: randomUUID(),
+      })
+      .expect(201);
+    const before = await authed("get", `/accounts/${cashAccountId}`).expect(200);
+
+    await authed("delete", `/transactions/${created.body.id}`).expect(200);
+
+    const afterDelete = await authed("get", `/accounts/${cashAccountId}`).expect(200);
+    expect(afterDelete.body.currentBalanceMinor).toBe(before.body.currentBalanceMinor + 777);
+    const list = await authed("get", `/transactions?accountId=${cashAccountId}`).expect(200);
+    expect((list.body as Array<{ id: string }>).some((t) => t.id === created.body.id)).toBe(false);
+    await authed("get", `/transactions/${created.body.id}`).expect(404);
+
+    const restored = await authed("post", `/transactions/${created.body.id}/restore`).expect(201);
+    expect(restored.body.id).toBe(created.body.id);
+    const afterRestore = await authed("get", `/accounts/${cashAccountId}`).expect(200);
+    expect(afterRestore.body.currentBalanceMinor).toBe(before.body.currentBalanceMinor);
+  });
+
+  it("refuses to restore a transaction that was never deleted", async () => {
+    const created = await authed("post", "/transactions")
+      .send({
+        type: "expense",
+        accountId: cashAccountId,
+        amountMinor: 1,
+        currency: "RUB",
+        clientId: randomUUID(),
+      })
+      .expect(201);
+    await authed("post", `/transactions/${created.body.id}/restore`).expect(404);
+  });
+
+  it("returns the {code, message, correlationId} error envelope on a 404", async () => {
+    const res = await authed("get", `/transactions/${randomUUID()}`).expect(404);
+    expect(res.body).toMatchObject({
+      code: "NOT_FOUND",
+      message: expect.any(String) as string,
+      correlationId: expect.any(String) as string,
+    });
+    expect(res.headers["x-correlation-id"]).toBe(res.body.correlationId);
+  });
+
   it("prevents one user from reading or editing another user's transaction (IDOR)", async () => {
     idCounter += 1;
     const otherLogin = await request(app.getHttpServer())

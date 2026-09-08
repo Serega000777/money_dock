@@ -10,7 +10,7 @@ import {
 } from "@money-dock/business-rules";
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { parse } from "csv-parse/sync";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, isNull } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
@@ -283,6 +283,7 @@ export class ImportService {
         and(
           eq(transactions.userId, userId),
           eq(transactions.accountId, accountId),
+          isNull(transactions.deletedAt),
           gte(transactions.occurredAt, since),
         ),
       )

@@ -1,8 +1,11 @@
+import type { MiddlewareConsumer, NestModule } from "@nestjs/common";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 
+import { correlationIdMiddleware } from "./common/correlation-id.middleware";
+import { HttpExceptionFilter } from "./common/http-exception.filter";
 import { validateEnv } from "./config/env";
 import { DbModule } from "./db/db.module";
 import { AccountsModule } from "./modules/accounts/accounts.module";
@@ -13,6 +16,7 @@ import { CategorizationModule } from "./modules/categorization/categorization.mo
 import { CommandsModule } from "./modules/commands/commands.module";
 import { DemoModule } from "./modules/demo/demo.module";
 import { EntitlementsModule } from "./modules/entitlements/entitlements.module";
+import { ExportModule } from "./modules/export/export.module";
 import { HealthModule } from "./modules/health/health.module";
 import { ImportModule } from "./modules/import/import.module";
 import { NotesModule } from "./modules/notes/notes.module";
@@ -40,10 +44,21 @@ import { UsersModule } from "./modules/users/users.module";
     ReviewInboxModule,
     CommandsModule,
     EntitlementsModule,
+    ExportModule,
     DemoModule,
     AnalyticsModule,
     HealthModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  // Registered here (not only in main.ts) so `Test.createTestingModule({ imports:
+  // [AppModule] })` — what every e2e spec uses — gets the same correlation id on every
+  // request, not just a production bootstrap.
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(correlationIdMiddleware).forRoutes("*");
+  }
+}

@@ -45,6 +45,9 @@ export const transactions = pgTable(
     clientId: text("client_id").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    // Soft delete (spec §13): a deleted transaction is hidden from every read path below
+    // but stays on disk so the user has a limited-time undo and support/audit can see it.
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     unique("transactions_user_client_unique").on(table.userId, table.clientId),

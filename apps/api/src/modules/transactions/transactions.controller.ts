@@ -82,4 +82,13 @@ export class TransactionsController {
   ): Promise<void> {
     return this.transactions.remove(user.id, id);
   }
+
+  /** Undo, within the window — see TransactionsService.restore. */
+  @Post(":id/restore")
+  restore(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id", ParseUUIDPipe) id: string,
+  ): Promise<Transaction> {
+    return this.transactions.restore(user.id, id);
+  }
 }

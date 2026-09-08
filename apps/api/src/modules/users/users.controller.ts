@@ -1,5 +1,5 @@
 import type { User } from "@money-dock/shared-types";
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Controller, Delete, Get, HttpCode, HttpStatus, UseGuards } from "@nestjs/common";
 
 import { CurrentUser } from "../../common/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/authenticated-request";
@@ -15,5 +15,12 @@ export class UsersController {
   @Get("me")
   me(@CurrentUser() user: AuthenticatedUser): Promise<User> {
     return this.users.getById(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete("me")
+  deleteMe(@CurrentUser() user: AuthenticatedUser): Promise<void> {
+    return this.users.deleteAccount(user.id);
   }
 }

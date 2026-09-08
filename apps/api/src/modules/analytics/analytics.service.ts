@@ -13,7 +13,7 @@ import {
 } from "@money-dock/business-rules";
 import { asMinorUnits, type AnalyticsSummary } from "@money-dock/shared-types";
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, gte, lt, sql } from "drizzle-orm";
+import { and, eq, gte, isNull, lt, sql } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
@@ -82,7 +82,11 @@ export class AnalyticsService {
     from: Date,
     to: Date | undefined,
   ): Promise<PeriodTotals> {
-    const conditions = [eq(transactions.userId, userId), gte(transactions.occurredAt, from)];
+    const conditions = [
+      eq(transactions.userId, userId),
+      isNull(transactions.deletedAt),
+      gte(transactions.occurredAt, from),
+    ];
     if (to) conditions.push(lt(transactions.occurredAt, to));
 
     const [row] = await this.db

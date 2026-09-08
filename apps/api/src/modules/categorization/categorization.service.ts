@@ -1,6 +1,6 @@
 import { normalizeMerchant } from "@money-dock/business-rules";
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
@@ -69,6 +69,7 @@ export class CategorizationService {
       .where(
         and(
           eq(transactions.userId, userId),
+          isNull(transactions.deletedAt),
           isNotNull(transactions.categoryId),
           eq(sql`lower(trim(${transactions.merchant}))`, pattern),
         ),

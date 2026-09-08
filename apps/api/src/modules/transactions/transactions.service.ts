@@ -7,8 +7,9 @@ import type {
   UpdateTransactionInput,
 } from "@money-dock/validation";
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
+import { AuditLogService } from "../../common/audit-log.service";
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
 import { firstOrThrow } from "../../db/first-or-throw";
@@ -19,6 +20,10 @@ import { CategorizationService } from "../categorization/categorization.service"
 type TransactionRow = typeof transactions.$inferSelect;
 type TransactionSourceValue = TransactionRow["source"];
 type TransactionStatusValue = TransactionRow["status"];
+
+/** How long after a soft delete the user can still undo it (spec §13: "undo доступен
+ * ограниченное время"). Past this, the row is still there for audit but `restore` refuses. */
+const UNDO_WINDOW_MS = 5 * 60_000;
 
 function toTransaction(row: TransactionRow, splits: TransactionSplit[] = []): Transaction {
   return {
@@ -43,6 +48,7 @@ export class TransactionsService {
     @Inject(DATABASE) private readonly db: Database,
     private readonly accountsService: AccountsService,
     private readonly categorization: CategorizationService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   /**
@@ -170,14 +176,13 @@ export class TransactionsService {
   }
 
   async list(userId: string, query: ListTransactionsQuery): Promise<Transaction[]> {
+    const conditions = [eq(transactions.userId, userId), isNull(transactions.deletedAt)];
+    if (query.accountId) conditions.push(eq(transactions.accountId, query.accountId));
+
     const rows = await this.db
       .select()
       .from(transactions)
-      .where(
-        query.accountId
-          ? and(eq(transactions.userId, userId), eq(transactions.accountId, query.accountId))
-          : eq(transactions.userId, userId),
-      )
+      .where(and(...conditions))
       .orderBy(desc(transactions.occurredAt), desc(transactions.id))
       .limit(query.limit)
       .offset(query.offset);
@@ -188,7 +193,9 @@ export class TransactionsService {
     const [row] = await this.db
       .select()
       .from(transactions)
-      .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
+      .where(
+        and(eq(transactions.id, id), eq(transactions.userId, userId), isNull(transactions.deletedAt)),
+      );
     if (!row) throw new NotFoundException("Transaction not found");
 
     const splits = await this.db
@@ -233,11 +240,16 @@ export class TransactionsService {
     return toTransaction(row);
   }
 
-  /** Deleting either leg of a transfer removes both — a lone half-transfer isn't meaningful. */
+  /**
+   * Soft delete (spec §13): the row stays, `deletedAt` hides it from every read path, and
+   * an audit entry records who removed what. Deleting either leg of a transfer removes
+   * both — a lone half-transfer isn't meaningful.
+   */
   async remove(userId: string, id: string): Promise<void> {
     await this.getOwned(userId, id);
+    const deletedAt = new Date();
 
-    await this.db.transaction(async (tx) => {
+    const removedIds = await this.db.transaction(async (tx) => {
       const [asOutgoing] = await tx
         .select()
         .from(transfers)
@@ -247,15 +259,66 @@ export class TransactionsService {
         .from(transfers)
         .where(eq(transfers.incomingTransactionId, id));
       const pairId = asOutgoing?.incomingTransactionId ?? asIncoming?.outgoingTransactionId;
+      const ids = pairId ? [id, pairId] : [id];
 
-      await tx
-        .delete(transactions)
-        .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
-      if (pairId) {
+      for (const txId of ids) {
         await tx
-          .delete(transactions)
-          .where(and(eq(transactions.id, pairId), eq(transactions.userId, userId)));
+          .update(transactions)
+          .set({ deletedAt })
+          .where(and(eq(transactions.id, txId), eq(transactions.userId, userId)));
       }
+      return ids;
     });
+
+    await this.auditLog.record({
+      userId,
+      action: "transaction.delete",
+      entityType: "transaction",
+      entityId: id,
+      metadata: { pairedIds: removedIds.filter((txId) => txId !== id) },
+    });
+  }
+
+  /** Undoes a soft delete within the undo window. Restores both legs of a transfer. */
+  async restore(userId: string, id: string): Promise<Transaction> {
+    const [row] = await this.db
+      .select()
+      .from(transactions)
+      .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
+    if (!row || !row.deletedAt) throw new NotFoundException("Deleted transaction not found");
+    if (Date.now() - row.deletedAt.getTime() > UNDO_WINDOW_MS) {
+      throw new BadRequestException("Undo window has expired");
+    }
+
+    const restoredIds = await this.db.transaction(async (tx) => {
+      const [asOutgoing] = await tx
+        .select()
+        .from(transfers)
+        .where(eq(transfers.outgoingTransactionId, id));
+      const [asIncoming] = await tx
+        .select()
+        .from(transfers)
+        .where(eq(transfers.incomingTransactionId, id));
+      const pairId = asOutgoing?.incomingTransactionId ?? asIncoming?.outgoingTransactionId;
+      const ids = pairId ? [id, pairId] : [id];
+
+      for (const txId of ids) {
+        await tx
+          .update(transactions)
+          .set({ deletedAt: null })
+          .where(and(eq(transactions.id, txId), eq(transactions.userId, userId)));
+      }
+      return ids;
+    });
+
+    await this.auditLog.record({
+      userId,
+      action: "transaction.restore",
+      entityType: "transaction",
+      entityId: id,
+      metadata: { pairedIds: restoredIds.filter((txId) => txId !== id) },
+    });
+
+    return this.getOwned(userId, id);
   }
 }

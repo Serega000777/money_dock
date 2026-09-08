@@ -43,7 +43,10 @@ export class AccountsService {
     const rows = await this.db
       .select({ account: accounts, net: netMovement })
       .from(accounts)
-      .leftJoin(transactions, eq(transactions.accountId, accounts.id))
+      .leftJoin(
+        transactions,
+        and(eq(transactions.accountId, accounts.id), isNull(transactions.deletedAt)),
+      )
       .where(and(eq(accounts.userId, userId), isNull(accounts.archivedAt)))
       .groupBy(accounts.id);
     return rows.map(({ account, net }) => toAccount(account, net));
@@ -89,7 +92,7 @@ export class AccountsService {
     const [row] = await this.db
       .select({ net: netMovement })
       .from(transactions)
-      .where(eq(transactions.accountId, accountId));
+      .where(and(eq(transactions.accountId, accountId), isNull(transactions.deletedAt)));
     return row?.net ?? 0;
   }
 }

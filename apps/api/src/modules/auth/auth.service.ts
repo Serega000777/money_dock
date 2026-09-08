@@ -3,6 +3,7 @@ import { Injectable, NotFoundException, UnauthorizedException } from "@nestjs/co
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 
+import { AuditLogService } from "../../common/audit-log.service";
 import type { Env } from "../../config/env";
 import { DemoDataService } from "../demo/demo-data.service";
 import { UsersService } from "../users/users.service";
@@ -21,6 +22,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env, true>,
     private readonly demoData: DemoDataService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   async loginWithTelegram(initData: string): Promise<{ user: User; tokens: AuthTokens }> {
@@ -34,6 +36,14 @@ export class AuthService {
     const user = await this.users.findOrCreateByTelegramIdentity(result.user);
     const { refreshToken } = await this.sessions.issue(user.id);
     const accessToken = await this.jwt.signAsync({ sub: user.id });
+
+    await this.auditLog.record({
+      userId: user.id,
+      action: "auth.login",
+      entityType: "user",
+      entityId: user.id,
+      metadata: { provider: "telegram" },
+    });
 
     return { user, tokens: { accessToken, refreshToken } };
   }
@@ -68,7 +78,10 @@ export class AuthService {
     return { accessToken, refreshToken: rotated.issued.refreshToken };
   }
 
-  logout(refreshToken: string): Promise<void> {
-    return this.sessions.revoke(refreshToken);
+  async logout(refreshToken: string): Promise<void> {
+    const userId = await this.sessions.revoke(refreshToken);
+    if (userId) {
+      await this.auditLog.record({ userId, action: "auth.logout", entityType: "user", entityId: userId });
+    }
   }
 }

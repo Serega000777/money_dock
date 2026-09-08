@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
@@ -40,7 +40,13 @@ export class ReviewInboxService {
       .select({ item: reviewItems, transaction: transactions })
       .from(reviewItems)
       .innerJoin(transactions, eq(transactions.id, reviewItems.transactionId))
-      .where(and(eq(reviewItems.userId, userId), eq(reviewItems.status, "pending")))
+      .where(
+        and(
+          eq(reviewItems.userId, userId),
+          eq(reviewItems.status, "pending"),
+          isNull(transactions.deletedAt),
+        ),
+      )
       .orderBy(desc(reviewItems.createdAt));
 
     return rows.map(({ item, transaction }) => ({
@@ -96,8 +102,10 @@ export class ReviewInboxService {
       }
 
       case "confirm_duplicate": {
+        // Soft delete (spec §13) — the row stays for undo/audit, not gone from disk.
         await this.db
-          .delete(transactions)
+          .update(transactions)
+          .set({ deletedAt: new Date() })
           .where(and(eq(transactions.id, item.transactionId), eq(transactions.userId, userId)));
         break;
       }
@@ -114,13 +122,10 @@ export class ReviewInboxService {
         break;
     }
 
-    // confirm_duplicate deletes the transaction, which cascades the review item away.
-    if (action !== "confirm_duplicate") {
-      await this.db
-        .update(reviewItems)
-        .set({ status: action === "dismiss" ? "dismissed" : "resolved", resolvedAt: new Date() })
-        .where(eq(reviewItems.id, item.id));
-    }
+    await this.db
+      .update(reviewItems)
+      .set({ status: action === "dismiss" ? "dismissed" : "resolved", resolvedAt: new Date() })
+      .where(eq(reviewItems.id, item.id));
 
     await this.db.insert(auditLogs).values({
       userId,

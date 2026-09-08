@@ -43,6 +43,13 @@
       "when": 1788791255809,
       "tag": "0005_real_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788854697267,
+      "tag": "0006_icy_karnak",
+      "breakpoints": true
     }
   ]
 }

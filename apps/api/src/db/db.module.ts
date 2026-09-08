@@ -1,6 +1,7 @@
 import { Global, Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
+import { AuditLogService } from "../common/audit-log.service";
 import type { Env } from "../config/env";
 
 import { createDatabase } from "./client";
@@ -17,7 +18,8 @@ import { DbLifecycle } from "./db-lifecycle.provider";
         createDatabase(config.get("DATABASE_URL", { infer: true })),
     },
     DbLifecycle,
+    AuditLogService,
   ],
-  exports: [DATABASE],
+  exports: [DATABASE, AuditLogService],
 })
 export class DbModule {}

@@ -72,7 +72,7 @@ Analytics Engine, safe-to-spend, категоризация по правила�
 | 3 (готово) | analytics engine, safe-to-spend, главный экран           |
 | 4 (готово) | import framework, dedup, Review Inbox, user rules        |
 | 5 (готово) | voice pipeline, rule-based parser, entitlements          |
-| 6 (в процессе) | заметки, безопасный захват (Siri/виджет) сделаны; insights/финансовый директор, export, delete, admin — впереди |
+| 6 (в процессе) | заметки, безопасный захват (Siri/виджет), export, delete account, soft-delete транзакций, единый error envelope, audit-логи login/logout/delete/export сделаны; insights/финансовый директор и admin — впереди |
 | 7          | security hardening, observability, staging → production  |
 
 Не переходим к следующему этапу, пока не выполнены критерии текущего (тесты зелёные,
