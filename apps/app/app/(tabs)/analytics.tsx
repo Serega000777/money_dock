@@ -10,6 +10,7 @@ import { useTheme } from "../../src/theme/useTheme";
 import { BarChart, type Bar } from "../../src/ui/BarChart";
 import { Donut, type DonutSlice } from "../../src/ui/Donut";
 import { Icon } from "../../src/ui/Icon";
+import { CustomRangeSheet, MonthPickerSheet, YearPickerSheet } from "../../src/ui/PeriodPicker";
 import { Text } from "../../src/ui/Text";
 import { categoryColor, categoryIcon } from "../../src/ui/categoryVisual";
 import {
@@ -23,11 +24,18 @@ import {
 } from "../../src/ui/primitives";
 import { formatMinor } from "../../src/utils/format";
 
-type Period = "week" | "month" | "year";
+type Period = "week" | "month" | "year" | "custom";
+type CalendarPeriod = "week" | "month" | "year";
 
 interface CategoryTotal extends DonutSlice {
   icon: ReturnType<typeof categoryIcon>;
   share: number;
+}
+
+interface Window {
+  from: Date;
+  to: Date;
+  label: string;
 }
 
 const MONTHS = [
@@ -59,12 +67,13 @@ const MONTHS_SHORT = [
   "дек",
 ];
 const WEEKDAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
+const DAY_MS = 86_400_000;
 
 /**
  * The window being analysed. `offset` counts periods back from the current one, so the
  * arrows walk through history without any extra request — it is all local date math.
  */
-function windowFor(period: Period, offset: number): { from: Date; to: Date; label: string } {
+function windowFor(period: CalendarPeriod, offset: number): Window {
   const now = new Date();
 
   if (period === "week") {
@@ -72,7 +81,7 @@ function windowFor(period: Period, offset: number): { from: Date; to: Date; labe
     const weekday = (now.getDay() + 6) % 7;
     const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - weekday - offset * 7);
     const to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 7);
-    const last = new Date(to.getTime() - 86_400_000);
+    const last = new Date(to.getTime() - DAY_MS);
     const label =
       offset === 0
         ? "Эта неделя"
@@ -96,7 +105,16 @@ function windowFor(period: Period, offset: number): { from: Date; to: Date; labe
   return { from, to, label: String(from.getFullYear()) };
 }
 
-/** Bars: one per day for a week or month, one per month for a year. */
+function formatRangeLabel(from: Date, toExclusive: Date): string {
+  const lastDay = new Date(toExclusive.getTime() - DAY_MS);
+  const sameYear = from.getFullYear() === lastDay.getFullYear();
+  const fromStr = `${from.getDate()} ${MONTHS_SHORT[from.getMonth()]}${sameYear ? "" : ` ${from.getFullYear()}`}`;
+  const toStr = `${lastDay.getDate()} ${MONTHS_SHORT[lastDay.getMonth()]} ${lastDay.getFullYear()}`;
+  return `${fromStr} — ${toStr}`;
+}
+
+/** Bars: one per day for a week/month or a short custom range, one per month for a year
+ * or a long custom range, one per week for a mid-length custom range. */
 function buildBars(period: Period, from: Date, to: Date, expenses: Transaction[]): Bar[] {
   if (period === "year") {
     const totals: number[] = new Array(12).fill(0);
@@ -111,19 +129,54 @@ function buildBars(period: Period, from: Date, to: Date, expenses: Transaction[]
     }));
   }
 
-  const days = Math.round((to.getTime() - from.getTime()) / 86_400_000);
-  const totals: number[] = new Array(days).fill(0);
+  const totalDays = Math.round((to.getTime() - from.getTime()) / DAY_MS);
+
+  if (period === "custom" && totalDays > 180) {
+    const totals = new Map<string, number>();
+    for (const tx of expenses) {
+      const d = new Date(tx.occurredAt);
+      totals.set(`${d.getFullYear()}-${d.getMonth()}`, (totals.get(`${d.getFullYear()}-${d.getMonth()}`) ?? 0) + tx.amountMinor);
+    }
+    const bars: Bar[] = [];
+    const cursor = new Date(from.getFullYear(), from.getMonth(), 1);
+    while (cursor.getTime() < to.getTime()) {
+      const key = `${cursor.getFullYear()}-${cursor.getMonth()}`;
+      bars.push({
+        key,
+        label: `${MONTHS_SHORT[cursor.getMonth()]} ${String(cursor.getFullYear()).slice(2)}`,
+        value: totals.get(key) ?? 0,
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return bars;
+  }
+
+  if (period === "custom" && totalDays > 31) {
+    const weeks = Math.ceil(totalDays / 7);
+    const totals: number[] = new Array(weeks).fill(0);
+    for (const tx of expenses) {
+      const day = Math.floor((new Date(tx.occurredAt).getTime() - from.getTime()) / DAY_MS);
+      const week = Math.floor(day / 7);
+      if (week >= 0 && week < weeks) totals[week] = (totals[week] ?? 0) + tx.amountMinor;
+    }
+    return totals.map((value, index) => {
+      const date = new Date(from.getTime() + index * 7 * DAY_MS);
+      return { key: `w${index}`, label: `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`, value };
+    });
+  }
+
+  const totals: number[] = new Array(totalDays).fill(0);
   for (const tx of expenses) {
-    const day = Math.floor((new Date(tx.occurredAt).getTime() - from.getTime()) / 86_400_000);
-    if (day >= 0 && day < days) totals[day] = (totals[day] ?? 0) + tx.amountMinor;
+    const day = Math.floor((new Date(tx.occurredAt).getTime() - from.getTime()) / DAY_MS);
+    if (day >= 0 && day < totalDays) totals[day] = (totals[day] ?? 0) + tx.amountMinor;
   }
 
   return totals.map((value, index) => {
     const date = new Date(from.getFullYear(), from.getMonth(), from.getDate() + index);
-    // A month has 30 bars — labelling every one turns the axis into noise, so only
-    // every seventh day gets a tick.
+    // A long window has too many bars to label every one — thin the ticks out.
+    const everyNth = totalDays > 14 ? Math.ceil(totalDays / 8) : 1;
     const label =
-      period === "week" ? (WEEKDAYS[index] ?? "") : index % 7 === 0 ? String(date.getDate()) : "";
+      period === "week" ? (WEEKDAYS[index] ?? "") : index % everyNth === 0 ? String(date.getDate()) : "";
     return { key: `d${index}`, label, value };
   });
 }
@@ -132,6 +185,8 @@ export default function Analytics() {
   const theme = useTheme();
   const [period, setPeriod] = useState<Period>("month");
   const [offset, setOffset] = useState(0);
+  const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
+  const [picker, setPicker] = useState<"month" | "year" | "custom" | null>(null);
   const accessToken = useAuthStore((state) => state.accessToken);
   const enabled = Boolean(accessToken);
 
@@ -146,8 +201,21 @@ export default function Analytics() {
     enabled,
   });
 
-  const current = useMemo(() => windowFor(period, offset), [period, offset]);
-  const previous = useMemo(() => windowFor(period, offset + 1), [period, offset]);
+  const { current, previous } = useMemo((): { current: Window; previous: Window } => {
+    if (period === "custom" && customRange) {
+      const span = customRange.to.getTime() - customRange.from.getTime();
+      return {
+        current: { ...customRange, label: formatRangeLabel(customRange.from, customRange.to) },
+        previous: {
+          from: new Date(customRange.from.getTime() - span),
+          to: customRange.from,
+          label: "",
+        },
+      };
+    }
+    const calendarPeriod: CalendarPeriod = period === "custom" ? "month" : period;
+    return { current: windowFor(calendarPeriod, offset), previous: windowFor(calendarPeriod, offset + 1) };
+  }, [period, offset, customRange]);
 
   // Everything below is derived on the client from data the app already has — switching
   // period or stepping back a month costs no request at all.
@@ -202,9 +270,10 @@ export default function Analytics() {
 
   const daysElapsed = Math.max(
     1,
-    Math.ceil((Math.min(Date.now(), current.to.getTime()) - current.from.getTime()) / 86_400_000),
+    Math.ceil((Math.min(Date.now(), current.to.getTime()) - current.from.getTime()) / DAY_MS),
   );
   const perDay = Math.round(view.spent / daysElapsed);
+  const now = new Date();
 
   return (
     <Screen>
@@ -214,6 +283,10 @@ export default function Analytics() {
         <Segmented<Period>
           value={period}
           onChange={(next) => {
+            if (next === "custom") {
+              setPicker("custom");
+              return;
+            }
             setPeriod(next);
             setOffset(0);
           }}
@@ -221,38 +294,60 @@ export default function Analytics() {
             { value: "week", label: "Неделя" },
             { value: "month", label: "Месяц" },
             { value: "year", label: "Год" },
+            { value: "custom", label: "Свой период" },
           ]}
         />
       </FadeIn>
 
-      {/* Period stepper — the same "‹ Сентябрь 2026 ›" control the mockups use. */}
+      {/* Period stepper — the same "‹ Сентябрь 2026 ›" control the mockups use. Tapping
+          the label itself opens a direct month/year picker instead of only stepping. */}
       <FadeIn index={2}>
         <View style={styles.stepper}>
+          {period !== "custom" ? (
+            <Pressable
+              onPress={() => setOffset(offset + 1)}
+              accessibilityLabel="Предыдущий период"
+              style={[
+                styles.stepButton,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
+            >
+              <Icon name="chevronLeft" color={theme.textPrimary} size={18} />
+            </Pressable>
+          ) : null}
+
           <Pressable
-            onPress={() => setOffset(offset + 1)}
-            accessibilityLabel="Предыдущий период"
-            style={[
-              styles.stepButton,
-              { backgroundColor: theme.surface, borderColor: theme.border },
-            ]}
+            onPress={() => {
+              if (period === "month") setPicker("month");
+              else if (period === "year") setPicker("year");
+              else if (period === "custom") setPicker("custom");
+            }}
+            style={styles.stepLabelWrap}
           >
-            <Icon name="chevronLeft" color={theme.textPrimary} size={18} />
+            <Text style={[styles.stepLabel, { color: theme.textPrimary }]}>{current.label}</Text>
+            {period === "month" || period === "year" || period === "custom" ? (
+              <View style={styles.dropdownHint}>
+                <Icon name="chevron" color={theme.textTertiary} size={12} strokeWidth={2.4} />
+              </View>
+            ) : null}
           </Pressable>
-          <Text style={[styles.stepLabel, { color: theme.textPrimary }]}>{current.label}</Text>
-          <Pressable
-            onPress={() => offset > 0 && setOffset(offset - 1)}
-            accessibilityLabel="Следующий период"
-            style={[
-              styles.stepButton,
-              {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
-                opacity: offset > 0 ? 1 : 0.4,
-              },
-            ]}
-          >
-            <Icon name="chevron" color={theme.textPrimary} size={18} />
-          </Pressable>
+
+          {period !== "custom" ? (
+            <Pressable
+              onPress={() => offset > 0 && setOffset(offset - 1)}
+              accessibilityLabel="Следующий период"
+              style={[
+                styles.stepButton,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                  opacity: offset > 0 ? 1 : 0.4,
+                },
+              ]}
+            >
+              <Icon name="chevron" color={theme.textPrimary} size={18} />
+            </Pressable>
+          ) : null}
         </View>
       </FadeIn>
 
@@ -332,6 +427,50 @@ export default function Analytics() {
           ))}
         </Card>
       )}
+
+      {picker === "month" ? (
+        <MonthPickerSheet
+          visible
+          onClose={() => setPicker(null)}
+          initialYear={current.from.getFullYear()}
+          initialMonth={current.from.getMonth()}
+          maxDate={now}
+          onSelect={(year, month) => {
+            setOffset((now.getFullYear() * 12 + now.getMonth()) - (year * 12 + month));
+            setPeriod("month");
+            setPicker(null);
+          }}
+        />
+      ) : null}
+
+      {picker === "year" ? (
+        <YearPickerSheet
+          visible
+          onClose={() => setPicker(null)}
+          initialYear={current.from.getFullYear()}
+          maxYear={now.getFullYear()}
+          onSelect={(year) => {
+            setOffset(now.getFullYear() - year);
+            setPeriod("year");
+            setPicker(null);
+          }}
+        />
+      ) : null}
+
+      {picker === "custom" ? (
+        <CustomRangeSheet
+          visible
+          onClose={() => setPicker(null)}
+          maxDate={now}
+          initialFrom={period === "custom" ? current.from : undefined}
+          initialTo={period === "custom" ? current.to : undefined}
+          onApply={(from, to) => {
+            setCustomRange({ from, to });
+            setPeriod("custom");
+            setPicker(null);
+          }}
+        />
+      ) : null}
     </Screen>
   );
 }
@@ -346,7 +485,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: StyleSheet.hairlineWidth,
   },
+  stepLabelWrap: { flexDirection: "row", alignItems: "center", gap: 6, flex: 1, justifyContent: "center" },
   stepLabel: typography.headline,
+  dropdownHint: { transform: [{ rotate: "90deg" }] },
   row: { flexDirection: "row", gap: spacing.md },
   tile: { flex: 1, gap: spacing.xs, paddingVertical: spacing.lg },
   tileLabel: typography.caption,

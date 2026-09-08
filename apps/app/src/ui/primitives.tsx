@@ -3,6 +3,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import {
   Animated,
   Easing,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -257,6 +258,38 @@ export function Segmented<T extends string>({
   );
 }
 
+/** Modal sheet sliding up from the bottom — pickers, custom-period entry, anything that
+ * needs more room than an inline expand but shouldn't leave the current screen. */
+export function BottomSheet({
+  visible,
+  onClose,
+  title,
+  children,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  title?: string;
+  children: ReactNode;
+}) {
+  const theme = useTheme();
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.sheetOverlay} onPress={onClose}>
+        <Pressable
+          style={[styles.sheetBody, { backgroundColor: theme.sheet }]}
+          onPress={(event) => event.stopPropagation()}
+        >
+          <View style={[styles.sheetHandle, { backgroundColor: theme.border }]} />
+          {title ? (
+            <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>{title}</Text>
+          ) : null}
+          {children}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   screenContent: {
@@ -295,4 +328,18 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
   },
   segmentText: { ...typography.callout, fontWeight: "600" },
+
+  sheetOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(10,12,20,0.45)" },
+  sheetBody: {
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+    maxHeight: "82%",
+    width: "100%",
+    maxWidth: 560,
+    alignSelf: "center",
+  },
+  sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: spacing.md },
+  sheetTitle: { ...typography.headline, marginBottom: spacing.md, textAlign: "center" },
 });
