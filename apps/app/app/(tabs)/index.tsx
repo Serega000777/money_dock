@@ -48,6 +48,8 @@ export default function Home() {
   const { user } = useTelegram();
   const themeMode = useSettingsStore((state) => state.themeMode);
   const setThemeMode = useSettingsStore((state) => state.setThemeMode);
+  const homeLeftMetric = useSettingsStore((state) => state.homeLeftMetric);
+  const homeRightMetric = useSettingsStore((state) => state.homeRightMetric);
   const accessToken = useAuthStore((state) => state.accessToken);
   const enabled = Boolean(accessToken);
   const queryClient = useQueryClient();
@@ -92,6 +94,17 @@ export default function Home() {
       : 0;
   const forecastNegative = (summary?.monthEndForecastMinor ?? 0) < 0;
 
+  // Configurable in Кабинет → Главный экран (settingsStore): the hero card's two footer
+  // slots each show one of two related figures, picked per user rather than fixed.
+  const leftMetric =
+    homeLeftMetric === "income"
+      ? { label: "Доход", value: summary?.currentMonthIncomeMinor }
+      : { label: "Расход", value: summary?.currentMonthExpenseMinor };
+  const rightMetric =
+    homeRightMetric === "remaining"
+      ? { label: "Остаток", value: summary?.monthEndForecastMinor }
+      : { label: "Свободные деньги", value: summary ? freeMinor : undefined };
+
   return (
     <Screen>
       <FadeIn index={0}>
@@ -121,13 +134,16 @@ export default function Home() {
         </View>
       </FadeIn>
 
-      {/* The one number the whole screen exists for, with the balance right beside it. */}
+      {/* The one number the whole screen exists for, with the two configurable figures
+          right beside it — which two is a Кабинет → Главный экран setting. */}
       <FadeIn index={1}>
         <GradientBox colors={theme.accentGradient} diagonal radius={radii.xl}>
           <View style={styles.heroBody}>
-            <Text style={styles.heroLabel}>Свободная сумма</Text>
+            <Text style={styles.heroLabel}>Общий баланс</Text>
             <View style={styles.heroAmountRow}>
-              <Text style={styles.heroAmount}>{summary ? formatMinor(freeMinor) : "—"}</Text>
+              <Text style={styles.heroAmount}>
+                {summary ? formatMinor(summary.totalBalanceMinor) : "—"}
+              </Text>
               <Text style={styles.heroCurrency}>₽</Text>
             </View>
             <Text style={styles.heroHint}>
@@ -142,15 +158,15 @@ export default function Home() {
 
             <View style={styles.heroFooter}>
               <View>
-                <Text style={styles.heroFooterLabel}>Общий баланс</Text>
+                <Text style={styles.heroFooterLabel}>{leftMetric.label}</Text>
                 <Text style={styles.heroFooterValue}>
-                  {summary ? `${formatMinor(summary.totalBalanceMinor)} ₽` : "—"}
+                  {leftMetric.value !== undefined ? `${formatMinor(leftMetric.value)} ₽` : "—"}
                 </Text>
               </View>
               <View style={styles.heroFooterRight}>
-                <Text style={styles.heroFooterLabel}>Прогноз на конец месяца</Text>
+                <Text style={styles.heroFooterLabel}>{rightMetric.label}</Text>
                 <Text style={styles.heroFooterValue}>
-                  {summary ? `${formatMinor(summary.monthEndForecastMinor)} ₽` : "—"}
+                  {rightMetric.value !== undefined ? `${formatMinor(rightMetric.value)} ₽` : "—"}
                 </Text>
               </View>
             </View>

@@ -8,7 +8,12 @@ import { StyleSheet, View } from "react-native";
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
 import { useTelegram } from "../../src/telegram/TelegramProvider";
-import { useSettingsStore, type ThemeMode } from "../../src/theme/settingsStore";
+import {
+  useSettingsStore,
+  type HomeLeftMetric,
+  type HomeRightMetric,
+  type ThemeMode,
+} from "../../src/theme/settingsStore";
 import { useTheme } from "../../src/theme/useTheme";
 import { GradientBox } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
@@ -20,7 +25,16 @@ import { formatMinor } from "../../src/utils/format";
 export default function Account() {
   const theme = useTheme();
   const { isInsideTelegram, user } = useTelegram();
-  const { themeMode, textScale, setThemeMode, setTextScale } = useSettingsStore();
+  const {
+    themeMode,
+    textScale,
+    homeLeftMetric,
+    homeRightMetric,
+    setThemeMode,
+    setTextScale,
+    setHomeLeftMetric,
+    setHomeRightMetric,
+  } = useSettingsStore();
   const accessToken = useAuthStore((state) => state.accessToken);
   const enabled = Boolean(accessToken);
 
@@ -136,6 +150,37 @@ export default function Account() {
       </FadeIn>
 
       <FadeIn index={4}>
+        <Section title="Главный экран">
+          <View style={styles.settingBlock}>
+            <Text style={[styles.settingLabel, { color: theme.textSecondary }]}>
+              Слева на карточке
+            </Text>
+            <Segmented<HomeLeftMetric>
+              value={homeLeftMetric}
+              onChange={setHomeLeftMetric}
+              options={[
+                { value: "expense", label: "Расход" },
+                { value: "income", label: "Доход" },
+              ]}
+            />
+          </View>
+          <View style={styles.settingBlock}>
+            <Text style={[styles.settingLabel, { color: theme.textSecondary }]}>
+              Справа на карточке
+            </Text>
+            <Segmented<HomeRightMetric>
+              value={homeRightMetric}
+              onChange={setHomeRightMetric}
+              options={[
+                { value: "remaining", label: "Остаток" },
+                { value: "free", label: "Свободные деньги" },
+              ]}
+            />
+          </View>
+        </Section>
+      </FadeIn>
+
+      <FadeIn index={6}>
         <Section title="Внешний вид">
           <View style={styles.settingBlock}>
             <Text style={[styles.settingLabel, { color: theme.textSecondary }]}>Тема</Text>
@@ -166,7 +211,7 @@ export default function Account() {
         </Section>
       </FadeIn>
 
-      <FadeIn index={5}>
+      <FadeIn index={7}>
         <Section title="Тариф">
           <View style={styles.row}>
             <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>
@@ -181,7 +226,7 @@ export default function Account() {
         </Section>
       </FadeIn>
 
-      <FadeIn index={6}>
+      <FadeIn index={8}>
         <Section title="Скоро">
           <Text style={[styles.soon, { color: theme.textSecondary }]}>
             Регулярные платежи, экспорт данных, Telegram-уведомления и подключение банков появятся
