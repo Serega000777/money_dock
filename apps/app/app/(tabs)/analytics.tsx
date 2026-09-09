@@ -2,18 +2,19 @@ import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type { Category, Transaction } from "@money-dock/shared-types";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
 import { useTheme } from "../../src/theme/useTheme";
 import { BarChart, type Bar } from "../../src/ui/BarChart";
 import { Donut, type DonutSlice } from "../../src/ui/Donut";
-import { Icon } from "../../src/ui/Icon";
+import { Icon, type IconName } from "../../src/ui/Icon";
 import { CustomRangeSheet, MonthPickerSheet, YearPickerSheet } from "../../src/ui/PeriodPicker";
 import { Text } from "../../src/ui/Text";
 import { categoryColor, categoryIcon } from "../../src/ui/categoryVisual";
 import {
+  BottomSheet,
   Card,
   FadeIn,
   Pill,
@@ -135,7 +136,10 @@ function buildBars(period: Period, from: Date, to: Date, expenses: Transaction[]
     const totals = new Map<string, number>();
     for (const tx of expenses) {
       const d = new Date(tx.occurredAt);
-      totals.set(`${d.getFullYear()}-${d.getMonth()}`, (totals.get(`${d.getFullYear()}-${d.getMonth()}`) ?? 0) + tx.amountMinor);
+      totals.set(
+        `${d.getFullYear()}-${d.getMonth()}`,
+        (totals.get(`${d.getFullYear()}-${d.getMonth()}`) ?? 0) + tx.amountMinor,
+      );
     }
     const bars: Bar[] = [];
     const cursor = new Date(from.getFullYear(), from.getMonth(), 1);
@@ -161,7 +165,11 @@ function buildBars(period: Period, from: Date, to: Date, expenses: Transaction[]
     }
     return totals.map((value, index) => {
       const date = new Date(from.getTime() + index * 7 * DAY_MS);
-      return { key: `w${index}`, label: `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`, value };
+      return {
+        key: `w${index}`,
+        label: `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`,
+        value,
+      };
     });
   }
 
@@ -185,6 +193,7 @@ export default function Analytics() {
   const [offset, setOffset] = useState(0);
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
   const [picker, setPicker] = useState<"month" | "year" | "custom" | null>(null);
+  const [openCategory, setOpenCategory] = useState<CategoryTotal | null>(null);
   const accessToken = useAuthStore((state) => state.accessToken);
   const enabled = Boolean(accessToken);
 
@@ -212,7 +221,10 @@ export default function Analytics() {
       };
     }
     const calendarPeriod: CalendarPeriod = period === "custom" ? "month" : period;
-    return { current: windowFor(calendarPeriod, offset), previous: windowFor(calendarPeriod, offset + 1) };
+    return {
+      current: windowFor(calendarPeriod, offset),
+      previous: windowFor(calendarPeriod, offset + 1),
+    };
   }, [period, offset, customRange]);
 
   // Everything below is derived on the client from data the app already has — switching
@@ -263,6 +275,7 @@ export default function Analytics() {
       changePercent: spentBefore > 0 ? ((spent - spentBefore) / spentBefore) * 100 : null,
       breakdown,
       bars: buildBars(period, current.from, current.to, expenses),
+      expenses,
     };
   }, [transactions, categories, period, current, previous]);
 
@@ -402,29 +415,48 @@ export default function Analytics() {
       ) : (
         <Card style={styles.listCard}>
           {view.breakdown.map((item, i) => (
-            <FadeIn key={item.id} index={Math.min(i, 6)} style={styles.breakdownRow}>
-              <View style={styles.breakdownHeader}>
-                <View style={[styles.dot, { backgroundColor: `${item.color}1F` }]}>
-                  <Icon name={item.icon} color={item.color} size={16} />
+            <FadeIn key={item.id} index={Math.min(i, 6)}>
+              <Pressable style={styles.breakdownRow} onPress={() => setOpenCategory(item)}>
+                <View style={styles.breakdownHeader}>
+                  <View style={[styles.dot, { backgroundColor: `${item.color}1F` }]}>
+                    <Icon name={item.icon} color={item.color} size={16} />
+                  </View>
+                  <Text
+                    style={[styles.breakdownName, { color: theme.textPrimary }]}
+                    numberOfLines={1}
+                  >
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.breakdownShare, { color: theme.textSecondary }]}>
+                    {Math.round(item.share * 100)}%
+                  </Text>
+                  <Text style={[styles.breakdownAmount, { color: theme.textPrimary }]}>
+                    {formatMinor(item.value)} ₽
+                  </Text>
+                  <Icon name="chevron" color={theme.textTertiary} size={14} />
                 </View>
-                <Text
-                  style={[styles.breakdownName, { color: theme.textPrimary }]}
-                  numberOfLines={1}
-                >
-                  {item.label}
-                </Text>
-                <Text style={[styles.breakdownShare, { color: theme.textSecondary }]}>
-                  {Math.round(item.share * 100)}%
-                </Text>
-                <Text style={[styles.breakdownAmount, { color: theme.textPrimary }]}>
-                  {formatMinor(item.value)} ₽
-                </Text>
-              </View>
-              <ProgressBar share={item.share} color={item.color} />
+                <ProgressBar share={item.share} color={item.color} />
+              </Pressable>
             </FadeIn>
           ))}
         </Card>
       )}
+
+      <BottomSheet
+        visible={openCategory !== null}
+        onClose={() => setOpenCategory(null)}
+        title={openCategory?.label}
+      >
+        {openCategory ? (
+          <CategoryTransactions
+            transactions={view.expenses.filter(
+              (tx) => (tx.categoryId ?? "none") === openCategory.id,
+            )}
+            color={openCategory.color}
+            icon={openCategory.icon}
+          />
+        ) : null}
+      </BottomSheet>
 
       {picker === "month" ? (
         <MonthPickerSheet
@@ -434,7 +466,7 @@ export default function Analytics() {
           initialMonth={current.from.getMonth()}
           maxDate={now}
           onSelect={(year, month) => {
-            setOffset((now.getFullYear() * 12 + now.getMonth()) - (year * 12 + month));
+            setOffset(now.getFullYear() * 12 + now.getMonth() - (year * 12 + month));
             setPeriod("month");
             setPicker(null);
           }}
@@ -473,6 +505,65 @@ export default function Analytics() {
   );
 }
 
+/** The BottomSheet's body for a tapped category — every expense in it for the current
+ * period, newest first, plain rows sharing one scroll (no per-row card). */
+function CategoryTransactions({
+  transactions,
+  color,
+  icon,
+}: {
+  transactions: Transaction[];
+  color: string;
+  icon: IconName;
+}) {
+  const theme = useTheme();
+  const sorted = [...transactions].sort(
+    (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+  );
+
+  if (sorted.length === 0) {
+    return (
+      <Text style={[styles.categoryEmpty, { color: theme.textSecondary }]}>
+        В этой категории пока нет трат за период
+      </Text>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.categoryList} showsVerticalScrollIndicator={false}>
+      {sorted.map((tx, index) => (
+        <View key={tx.id}>
+          {index > 0 ? (
+            <View style={[styles.categoryDivider, { backgroundColor: theme.border }]} />
+          ) : null}
+          <View style={styles.categoryRow}>
+            <View style={[styles.dot, { backgroundColor: `${color}1F` }]}>
+              <Icon name={icon} color={color} size={16} />
+            </View>
+            <View style={styles.categoryRowMain}>
+              <Text
+                style={[styles.categoryMerchant, { color: theme.textPrimary }]}
+                numberOfLines={1}
+              >
+                {tx.merchant ?? "Без описания"}
+              </Text>
+              <Text style={[styles.categoryDate, { color: theme.textSecondary }]}>
+                {new Date(tx.occurredAt).toLocaleDateString("ru-RU", {
+                  day: "numeric",
+                  month: "long",
+                })}
+              </Text>
+            </View>
+            <Text style={[styles.categoryAmount, { color: theme.textPrimary }]}>
+              −{formatMinor(tx.amountMinor)} ₽
+            </Text>
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 const styles = StyleSheet.create({
   stepper: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   stepButton: {
@@ -483,7 +574,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: StyleSheet.hairlineWidth,
   },
-  stepLabelWrap: { flexDirection: "row", alignItems: "center", gap: 6, flex: 1, justifyContent: "center" },
+  stepLabelWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+    justifyContent: "center",
+  },
   stepLabel: typography.headline,
   dropdownHint: { transform: [{ rotate: "90deg" }] },
   row: { flexDirection: "row", gap: spacing.md },
@@ -507,4 +604,18 @@ const styles = StyleSheet.create({
   breakdownShare: { ...typography.caption, fontWeight: "600" },
   breakdownAmount: { ...typography.body, fontWeight: "600" },
   empty: typography.body,
+
+  categoryList: { maxHeight: 420 },
+  categoryEmpty: { ...typography.body, textAlign: "center", paddingVertical: spacing.xl },
+  categoryDivider: { height: StyleSheet.hairlineWidth, marginLeft: 28 + spacing.md },
+  categoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  categoryRowMain: { flex: 1, gap: 2 },
+  categoryMerchant: typography.body,
+  categoryDate: typography.caption,
+  categoryAmount: { ...typography.body, fontWeight: "600" },
 });
