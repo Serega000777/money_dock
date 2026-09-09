@@ -9,9 +9,12 @@ import { Icon, type IconName } from "../../src/ui/Icon";
 import { PressableScale } from "../../src/ui/primitives";
 
 // expo-router types the tint as ColorValue; our themes are always plain strings.
+// Solid silhouette when active, outline otherwise — matches the reference tab bar.
 const icon =
   (name: IconName) =>
-  ({ color }: { color: ColorValue }) => <Icon name={name} color={String(color)} size={25} />;
+  ({ color, focused }: { color: ColorValue; focused: boolean }) => (
+    <Icon name={name} color={String(color)} size={25} filled={focused} />
+  );
 
 const TAB_BAR_HEIGHT = Platform.OS === "web" ? 78 : 84;
 
@@ -53,13 +56,13 @@ export default function TabsLayout() {
         <Tabs.Screen name="account" options={{ title: "Кабинет", tabBarIcon: icon("person") }} />
       </Tabs>
 
-      {/* Pinned above the tab bar on every tab screen (like Telegram's own compose
-          button) — outside the Tabs' scene, so a screen's own scrolling never moves it,
-          and it isn't tied to (or looping through) any one tab's focus effect. */}
+      {/* Bottom-right, straddling the tab bar's top edge — outside the Tabs' scene, so a
+          screen's own scrolling never moves it, and it isn't tied to (or looping
+          through) any one tab's focus effect. */}
       <Link href="/add-transaction" asChild>
         <PressableScale
           accessibilityLabel="Добавить операцию"
-          style={StyleSheet.flatten([styles.fab, { bottom: TAB_BAR_HEIGHT + spacing.md }])}
+          style={StyleSheet.flatten([styles.fab, { bottom: TAB_BAR_HEIGHT - 26 }])}
         >
           <GradientBox
             colors={theme.accentGradient}
@@ -67,7 +70,9 @@ export default function TabsLayout() {
             radius={radii.pill}
             style={StyleSheet.flatten([styles.fabInner, { shadowColor: theme.accent }])}
           >
-            <Icon name="plus" color="#FFFFFF" size={26} strokeWidth={2.2} />
+            <View style={styles.fabIconWrap}>
+              <Icon name="plus" color="#FFFFFF" size={26} strokeWidth={2.4} />
+            </View>
           </GradientBox>
         </PressableScale>
       </Link>
@@ -81,11 +86,10 @@ const styles = StyleSheet.create({
   fabInner: {
     width: 56,
     height: 56,
-    alignItems: "center",
-    justifyContent: "center",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.32,
     shadowRadius: 16,
     elevation: 8,
   },
+  fabIconWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
 });

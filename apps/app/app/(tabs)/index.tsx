@@ -400,12 +400,6 @@ export default function Home() {
         </FadeIn>
       ) : null}
 
-      <FadeIn index={8}>
-        <View style={styles.actions}>
-          <Action href="/add-transaction" icon="plus" label="Вручную" />
-          <Action href="/import" icon="upload" label="Импорт выписки" />
-        </View>
-      </FadeIn>
     </Screen>
   );
 }
@@ -449,35 +443,6 @@ function WaveBars({ color, reverse }: { color: string; reverse?: boolean }) {
         />
       ))}
     </View>
-  );
-}
-
-function Action({
-  href,
-  icon,
-  label,
-}: {
-  href: "/add-transaction" | "/import";
-  icon: IconName;
-  label: string;
-}) {
-  const theme = useTheme();
-  return (
-    <Link href={href} asChild>
-      <PressableScale style={styles.action}>
-        <View
-          style={[
-            styles.actionInner,
-            { backgroundColor: theme.surface, borderColor: theme.border },
-          ]}
-        >
-          <Icon name={icon} color={theme.textPrimary} size={20} />
-          <Text numberOfLines={1} style={[styles.actionText, { color: theme.textPrimary }]}>
-            {label}
-          </Text>
-        </View>
-      </PressableScale>
-    </Link>
   );
 }
 
@@ -631,18 +596,4 @@ const styles = StyleSheet.create({
   tipTitle: typography.headline,
   tipHint: typography.caption,
   tipDismiss: { padding: spacing.xs },
-
-  actions: { flexDirection: "row", gap: spacing.sm },
-  action: { flex: 1 },
-  actionInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-    borderRadius: radii.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  actionText: { ...typography.callout, fontWeight: "600" },
 });

@@ -49,9 +49,13 @@ interface Props {
   color: string;
   size?: number;
   strokeWidth?: number;
+  /** Solid silhouette instead of an outline — the active-tab look (spec: match the
+   * reference's bold-when-selected tab bar). Only defined for the four tab icons; other
+   * names ignore it and keep their outline. */
+  filled?: boolean;
 }
 
-export function Icon({ name, color, size = 24, strokeWidth = 1.7 }: Props) {
+export function Icon({ name, color, size = 24, strokeWidth = 1.7, filled = false }: Props) {
   const s = {
     stroke: color,
     strokeWidth,
@@ -63,26 +67,61 @@ export function Icon({ name, color, size = 24, strokeWidth = 1.7 }: Props) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       {name === "home" ? (
-        <>
-          <Path d="M3.6 10.3 12 3.9l8.4 6.4" {...s} />
-          <Path d="M5.7 9.1v10.2h12.6V9.1" {...s} />
-        </>
+        filled ? (
+          <Path
+            fillRule="evenodd"
+            clipRule="evenodd"
+            d="M12 3.6 3 11h2.4v8.4h5.1v-6h3v6h5.1V11H21z"
+            fill={color}
+          />
+        ) : (
+          <>
+            <Path d="M3.6 10.3 12 3.9l8.4 6.4" {...s} />
+            <Path d="M5.7 9.1v10.2h12.6V9.1" {...s} />
+          </>
+        )
       ) : null}
 
-      {name === "list" ? <Path d="M4 7h16M4 12h16M4 17h10" {...s} /> : null}
+      {name === "list" ? (
+        filled ? (
+          <>
+            <Rect x="4" y="6" width="16" height="2.6" rx="1.3" fill={color} />
+            <Rect x="4" y="10.7" width="16" height="2.6" rx="1.3" fill={color} />
+            <Rect x="4" y="15.4" width="10" height="2.6" rx="1.3" fill={color} />
+          </>
+        ) : (
+          <Path d="M4 7h16M4 12h16M4 17h10" {...s} />
+        )
+      ) : null}
 
       {name === "chart" ? (
-        <>
-          <Path d="M4.5 19.4h15" {...s} />
-          <Path d="M7.6 19.4v-6.2M12 19.4V6.4M16.4 19.4v-8.6" {...s} />
-        </>
+        filled ? (
+          <>
+            <Rect x="4.5" y="18.6" width="15" height="1.4" rx="0.7" fill={color} />
+            <Rect x="6.1" y="12.6" width="3" height="5.6" rx="1" fill={color} />
+            <Rect x="10.5" y="6.4" width="3" height="11.8" rx="1" fill={color} />
+            <Rect x="14.9" y="9.8" width="3" height="8.4" rx="1" fill={color} />
+          </>
+        ) : (
+          <>
+            <Path d="M4.5 19.4h15" {...s} />
+            <Path d="M7.6 19.4v-6.2M12 19.4V6.4M16.4 19.4v-8.6" {...s} />
+          </>
+        )
       ) : null}
 
       {name === "person" ? (
-        <>
-          <Circle cx="12" cy="8.6" r="3.5" {...s} />
-          <Path d="M5.5 19.4c.9-3.3 3.4-5.1 6.5-5.1s5.6 1.8 6.5 5.1" {...s} />
-        </>
+        filled ? (
+          <>
+            <Circle cx="12" cy="8.6" r="3.5" fill={color} />
+            <Path d="M5.5 19.4c.9-3.3 3.4-5.1 6.5-5.1s5.6 1.8 6.5 5.1z" fill={color} />
+          </>
+        ) : (
+          <>
+            <Circle cx="12" cy="8.6" r="3.5" {...s} />
+            <Path d="M5.5 19.4c.9-3.3 3.4-5.1 6.5-5.1s5.6 1.8 6.5 5.1" {...s} />
+          </>
+        )
       ) : null}
 
       {name === "plus" ? <Path d="M12 5.5v13M5.5 12h13" {...s} /> : null}
