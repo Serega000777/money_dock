@@ -47,6 +47,8 @@ function insightMessage(insight: Insight): string {
 export default function Home() {
   const theme = useTheme();
   const { user } = useTelegram();
+  const themeMode = useSettingsStore((state) => state.themeMode);
+  const setThemeMode = useSettingsStore((state) => state.setThemeMode);
   const homeLeftMetric = useSettingsStore((state) => state.homeLeftMetric);
   const homeRightMetric = useSettingsStore((state) => state.homeRightMetric);
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -119,17 +121,25 @@ export default function Home() {
               Давайте сделаем ваши финансы удобнее
             </Text>
           </View>
-          <Link href="/account" asChild>
-            <Pressable
-              accessibilityLabel="Профиль"
-              style={StyleSheet.flatten([
-                styles.avatarButton,
-                { backgroundColor: theme.accentSoft },
-              ])}
-            >
-              <Icon name="person" color={theme.accent} size={20} />
-            </Pressable>
-          </Link>
+          {/* Quick switch only ever picks a concrete theme — "система" stays in Кабинет. */}
+          <Pressable
+            onPress={() => setThemeMode(theme.name === "dark" ? "light" : "dark")}
+            accessibilityLabel={theme.name === "dark" ? "Светлая тема" : "Тёмная тема"}
+            style={StyleSheet.flatten([
+              styles.themeButton,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                borderWidth: StyleSheet.hairlineWidth,
+              },
+            ])}
+          >
+            <Icon
+              name={theme.name === "dark" ? "sun" : "moon"}
+              color={themeMode === "system" ? theme.textTertiary : theme.accent}
+              size={20}
+            />
+          </Pressable>
         </View>
       </FadeIn>
 
@@ -481,7 +491,7 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, gap: 2 },
   greeting: { ...typography.title, letterSpacing: 0.2 },
   subtitle: typography.callout,
-  avatarButton: {
+  themeButton: {
     width: 40,
     height: 40,
     borderRadius: radii.pill,
