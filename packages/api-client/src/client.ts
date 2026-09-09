@@ -113,6 +113,7 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
         name: string;
         parentId?: string;
         icon?: string;
+        color?: string;
       }) => post<Category>("/categories", input),
     },
 

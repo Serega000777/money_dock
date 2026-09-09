@@ -103,7 +103,7 @@ export default function Transactions() {
                   ? theme.textSecondary
                   : income
                     ? theme.positive
-                    : categoryColor(category?.systemCode ?? category?.id ?? null);
+                    : categoryColor(category);
 
                 return (
                   <View key={item.id}>

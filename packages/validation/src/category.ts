@@ -7,5 +7,9 @@ export const createCategorySchema = z.object({
   name: z.string().trim().min(1).max(100),
   parentId: z.string().uuid().optional(),
   icon: z.string().max(50).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/)
+    .optional(),
 });
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;

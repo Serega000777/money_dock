@@ -263,7 +263,7 @@ export default function Analytics() {
           label: category?.name ?? "Без категории",
           value,
           share: spent > 0 ? value / spent : 0,
-          color: categoryColor(category?.systemCode ?? category?.id ?? null),
+          color: categoryColor(category),
           icon: categoryIcon(category),
         };
       })

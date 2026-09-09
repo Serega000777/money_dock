@@ -15,6 +15,7 @@ function toCategory(row: typeof categories.$inferSelect): Category {
     name: row.name,
     parentId: row.parentId,
     icon: row.icon,
+    color: row.color,
     systemCode: row.systemCode,
     isSystem: row.userId === null,
   };

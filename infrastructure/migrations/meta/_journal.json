@@ -57,6 +57,13 @@
       "when": 1788857008663,
       "tag": "0007_nostalgic_the_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788965560865,
+      "tag": "0008_groovy_cyclops",
+      "breakpoints": true
     }
   ]
 }

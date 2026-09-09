@@ -10,8 +10,14 @@ function paletteIndex(seed: string): number {
   return hash % categoryPalette.length;
 }
 
-export function categoryColor(seed: string | null | undefined): string {
-  return categoryPalette[paletteIndex(seed ?? "none")] ?? categoryPalette[0];
+/** Stored `color` wins (user-picked, from the same palette); the seeded system
+ * categories predate that column, so they fall back to the stable hash. */
+export function categoryColor(
+  category?: Pick<Category, "color" | "systemCode" | "id"> | null,
+): string {
+  if (category?.color) return category.color;
+  const seed = category?.systemCode ?? category?.id ?? "none";
+  return categoryPalette[paletteIndex(seed)] ?? categoryPalette[0];
 }
 
 export function categoryIcon(category?: Pick<Category, "systemCode" | "icon"> | null): IconName {

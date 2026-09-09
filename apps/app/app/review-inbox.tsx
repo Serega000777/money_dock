@@ -113,7 +113,7 @@ export default function ReviewInbox() {
                 {(categories ?? [])
                   .filter((c: Category) => c.type === "expense")
                   .map((category: Category) => {
-                    const color = categoryColor(category.systemCode ?? category.id);
+                    const color = categoryColor(category);
                     return (
                       <PressableScale
                         key={category.id}

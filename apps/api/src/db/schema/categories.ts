@@ -17,6 +17,9 @@ export const categories = pgTable(
       onDelete: "set null",
     }),
     icon: text("icon"),
+    // Hex string from the client's fixed palette; null falls back to a hash-of-id colour
+    // (covers the seeded system categories, which predate this column).
+    color: text("color"),
     systemCode: text("system_code"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
