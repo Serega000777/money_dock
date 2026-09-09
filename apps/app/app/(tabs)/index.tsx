@@ -2,7 +2,7 @@ import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type { Account, CategoryGrowthFacts, Insight } from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, router } from "expo-router";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
@@ -13,7 +13,15 @@ import { useTheme } from "../../src/theme/useTheme";
 import { GradientBox } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
 import { Text } from "../../src/ui/Text";
-import { Card, FadeIn, Pill, PressableScale, ProgressBar, Screen } from "../../src/ui/primitives";
+import {
+  BottomSheet,
+  Card,
+  FadeIn,
+  Pill,
+  PressableScale,
+  ProgressBar,
+  Screen,
+} from "../../src/ui/primitives";
 import { formatMinor } from "../../src/utils/format";
 
 function greeting(): string {
@@ -55,6 +63,7 @@ export default function Home() {
   const enabled = Boolean(accessToken);
   const queryClient = useQueryClient();
   const receiptInputRef = useRef<HTMLInputElement | null>(null);
+  const [accountsSheetOpen, setAccountsSheetOpen] = useState(false);
 
   const { data: summary } = useQuery({
     queryKey: ["analytics", "summary"],
@@ -109,298 +118,337 @@ export default function Home() {
       : { label: "Свободные деньги", value: summary ? freeMinor : undefined };
 
   return (
-    <Screen>
-      <FadeIn index={0}>
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <Text style={[styles.greeting, { color: theme.textPrimary }]}>
-              {greeting()}
-              {user?.first_name ? `, ${user.first_name}` : ""} 👋
-            </Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              Давайте сделаем ваши финансы удобнее
-            </Text>
-          </View>
-          {/* Quick switch only ever picks a concrete theme — "система" stays in Кабинет. */}
-          <Pressable
-            onPress={() => setThemeMode(theme.name === "dark" ? "light" : "dark")}
-            accessibilityLabel={theme.name === "dark" ? "Светлая тема" : "Тёмная тема"}
-            style={StyleSheet.flatten([
-              styles.themeButton,
-              {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
-                borderWidth: StyleSheet.hairlineWidth,
-              },
-            ])}
-          >
-            <Icon
-              name={theme.name === "dark" ? "sun" : "moon"}
-              color={themeMode === "system" ? theme.textTertiary : theme.accent}
-              size={20}
-            />
-          </Pressable>
-        </View>
-      </FadeIn>
-
-      {/* The one number the whole screen exists for, with the two configurable figures
-          right beside it — which two is a Кабинет → Главный экран setting. */}
-      <FadeIn index={1}>
-        <GradientBox colors={theme.accentGradient} diagonal radius={radii.xl}>
-          <View style={styles.heroBody}>
-            <Text style={styles.heroLabel}>Общий баланс</Text>
-            <View style={styles.heroAmountRow}>
-              <Text style={styles.heroAmount}>
-                {summary ? formatMinor(summary.totalBalanceMinor) : "—"}
+    <>
+      <Screen>
+        <FadeIn index={0}>
+          <View style={styles.header}>
+            <View style={styles.headerText}>
+              <Text style={[styles.greeting, { color: theme.textPrimary }]}>
+                {greeting()}
+                {user?.first_name ? `, ${user.first_name}` : ""} 👋
               </Text>
-              <Text style={styles.heroCurrency}>₽</Text>
+              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                Давайте сделаем ваши финансы удобнее
+              </Text>
             </View>
-            <Text style={styles.heroHint}>
-              {summary
-                ? `${formatMinor(summary.safeToSpendPerDayMinor)} ₽ в день · осталось ${
-                    summary.daysRemainingInMonth
-                  } ${plural(summary.daysRemainingInMonth, "день", "дня", "дней")}`
-                : "Появится после подключения счетов"}
+            {/* Quick switch only ever picks a concrete theme — "система" stays in Кабинет. */}
+            <Pressable
+              onPress={() => setThemeMode(theme.name === "dark" ? "light" : "dark")}
+              accessibilityLabel={theme.name === "dark" ? "Светлая тема" : "Тёмная тема"}
+              style={StyleSheet.flatten([
+                styles.themeButton,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                  borderWidth: StyleSheet.hairlineWidth,
+                },
+              ])}
+            >
+              <Icon
+                name={theme.name === "dark" ? "sun" : "moon"}
+                color={themeMode === "system" ? theme.textTertiary : theme.accent}
+                size={20}
+              />
+            </Pressable>
+          </View>
+        </FadeIn>
+
+        {/* The one number the whole screen exists for, with the two configurable figures
+          right beside it — which two is a Кабинет → Главный экран setting. */}
+        <FadeIn index={1}>
+          <GradientBox colors={theme.accentGradient} diagonal radius={radii.xl}>
+            <View style={styles.heroBody}>
+              <Text style={styles.heroLabel}>Общий баланс</Text>
+              <View style={styles.heroAmountRow}>
+                <Text style={styles.heroAmount}>
+                  {summary ? formatMinor(summary.totalBalanceMinor) : "—"}
+                </Text>
+                <Text style={styles.heroCurrency}>₽</Text>
+              </View>
+              <Text style={styles.heroHint}>
+                {summary
+                  ? `${formatMinor(summary.safeToSpendPerDayMinor)} ₽ в день · осталось ${
+                      summary.daysRemainingInMonth
+                    } ${plural(summary.daysRemainingInMonth, "день", "дня", "дней")}`
+                  : "Появится после подключения счетов"}
+              </Text>
+
+              <View style={styles.heroDivider} />
+
+              <View style={styles.heroFooter}>
+                <View>
+                  <Text style={styles.heroFooterLabel}>{leftMetric.label}</Text>
+                  <Text style={styles.heroFooterValue}>
+                    {leftMetric.value !== undefined ? `${formatMinor(leftMetric.value)} ₽` : "—"}
+                  </Text>
+                </View>
+                <View style={styles.heroFooterRight}>
+                  <Text style={styles.heroFooterLabel}>{rightMetric.label}</Text>
+                  <Text style={styles.heroFooterValue}>
+                    {rightMetric.value !== undefined ? `${formatMinor(rightMetric.value)} ₽` : "—"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </GradientBox>
+        </FadeIn>
+
+        {/* The big mic is the primary action — one tap from anything else on the screen. */}
+        <FadeIn index={2}>
+          <View style={styles.micBlock}>
+            <View style={styles.micRow}>
+              <WaveBars color={theme.accent} />
+              <Link href="/voice" asChild>
+                <PressableScale accessibilityLabel="Добавить операцию голосом">
+                  <GradientBox
+                    colors={theme.accentGradient}
+                    diagonal
+                    radius={radii.pill}
+                    style={StyleSheet.flatten([styles.mic, { shadowColor: theme.accent }])}
+                  >
+                    <View style={styles.micInner}>
+                      <Icon name="mic" color="#FFFFFF" size={44} strokeWidth={1.8} />
+                    </View>
+                  </GradientBox>
+                </PressableScale>
+              </Link>
+              <WaveBars color={theme.accent} reverse />
+            </View>
+            <Text style={[styles.micTitle, { color: theme.textPrimary }]}>
+              Скажите, что потратили
             </Text>
-
-            <View style={styles.heroDivider} />
-
-            <View style={styles.heroFooter}>
-              <View>
-                <Text style={styles.heroFooterLabel}>{leftMetric.label}</Text>
-                <Text style={styles.heroFooterValue}>
-                  {leftMetric.value !== undefined ? `${formatMinor(leftMetric.value)} ₽` : "—"}
-                </Text>
-              </View>
-              <View style={styles.heroFooterRight}>
-                <Text style={styles.heroFooterLabel}>{rightMetric.label}</Text>
-                <Text style={styles.heroFooterValue}>
-                  {rightMetric.value !== undefined ? `${formatMinor(rightMetric.value)} ₽` : "—"}
-                </Text>
-              </View>
-            </View>
+            <Text style={[styles.micHint, { color: theme.textTertiary }]}>
+              «Потратил 840 рублей в кафе» — разберём и покажем на подтверждение
+            </Text>
           </View>
-        </GradientBox>
-      </FadeIn>
+        </FadeIn>
 
-      {/* The big mic is the primary action — one tap from anything else on the screen. */}
-      <FadeIn index={2}>
-        <View style={styles.micBlock}>
-          <View style={styles.micRow}>
-            <WaveBars color={theme.accent} />
-            <Link href="/voice" asChild>
-              <PressableScale accessibilityLabel="Добавить операцию голосом">
-                <GradientBox
-                  colors={theme.accentGradient}
-                  diagonal
-                  radius={radii.pill}
-                  style={StyleSheet.flatten([styles.mic, { shadowColor: theme.accent }])}
-                >
-                  <View style={styles.micInner}>
-                    <Icon name="mic" color="#FFFFFF" size={44} strokeWidth={1.8} />
-                  </View>
-                </GradientBox>
-              </PressableScale>
-            </Link>
-            <WaveBars color={theme.accent} reverse />
-          </View>
-          <Text style={[styles.micTitle, { color: theme.textPrimary }]}>Скажите, что потратили</Text>
-          <Text style={[styles.micHint, { color: theme.textTertiary }]}>
-            «Потратил 840 рублей в кафе» — разберём и покажем на подтверждение
-          </Text>
-        </View>
-      </FadeIn>
-
-      {/* "Карты и счета" — real accounts, not a mockup number: balance comes straight
+        {/* "Карты и счета" — real accounts, not a mockup number: balance comes straight
           from the same summary the hero card and analytics use. */}
-      {accounts && accounts.length > 0 ? (
-        <FadeIn index={3}>
-          <View style={styles.accountsHeader}>
-            <Text style={[styles.accountsTitle, { color: theme.textPrimary }]}>Карты и счета</Text>
-            <Link href="/account" asChild>
-              <Pressable accessibilityLabel="Все счета" style={styles.accountsAllButton}>
+        {accounts && accounts.length > 0 ? (
+          <FadeIn index={3}>
+            <View style={styles.accountsHeader}>
+              <Text style={[styles.accountsTitle, { color: theme.textPrimary }]}>
+                Карты и счета
+              </Text>
+              <Pressable
+                accessibilityLabel="Все счета"
+                style={styles.accountsAllButton}
+                onPress={() => setAccountsSheetOpen(true)}
+              >
                 <Text style={[styles.accountsAll, { color: theme.accent }]}>Все</Text>
                 <Icon name="chevron" color={theme.accent} size={14} />
               </Pressable>
-            </Link>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.accountsRow}
-          >
-            {accounts.map((account: Account) => (
-              <AccountTile key={account.id} account={account} />
-            ))}
-          </ScrollView>
-        </FadeIn>
-      ) : null}
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.accountsRow}
+            >
+              {accounts.map((account: Account) => (
+                <AccountTile key={account.id} account={account} />
+              ))}
+            </ScrollView>
+          </FadeIn>
+        ) : null}
 
-      {summary ? (
-        <FadeIn index={4}>
-          <Card style={styles.paceCard}>
-            <View style={styles.paceHeader}>
-              <Text style={[styles.paceTitle, { color: theme.textPrimary }]}>Прогресс месяца</Text>
-              <Pill
-                label={`${Math.round(spentShare * 100)}%`}
-                color={theme.accent}
-                background={theme.accentSoft}
+        {summary ? (
+          <FadeIn index={4}>
+            <Card style={styles.paceCard}>
+              <View style={styles.paceHeader}>
+                <Text style={[styles.paceTitle, { color: theme.textPrimary }]}>
+                  Прогресс месяца
+                </Text>
+                <Pill
+                  label={`${Math.round(spentShare * 100)}%`}
+                  color={theme.accent}
+                  background={theme.accentSoft}
+                />
+              </View>
+
+              <View style={styles.paceRow}>
+                <Text style={[styles.paceLabel, { color: theme.textSecondary }]}>
+                  Потрачено от дохода
+                </Text>
+                <Text style={[styles.paceValue, { color: theme.textPrimary }]}>
+                  {formatMinor(summary.currentMonthExpenseMinor)} ₽
+                  {summary.currentMonthIncomeMinor > 0 ? (
+                    <Text style={{ color: theme.textTertiary, fontWeight: "400" }}>
+                      {" "}
+                      из {formatMinor(summary.currentMonthIncomeMinor)} ₽
+                    </Text>
+                  ) : null}
+                </Text>
+              </View>
+              <ProgressBar
+                share={spentShare}
+                color={
+                  spentShare > 0.9
+                    ? theme.negative
+                    : forecastNegative
+                      ? theme.warning
+                      : theme.positive
+                }
               />
-            </View>
 
-            <View style={styles.paceRow}>
-              <Text style={[styles.paceLabel, { color: theme.textSecondary }]}>
-                Потрачено от дохода
-              </Text>
-              <Text style={[styles.paceValue, { color: theme.textPrimary }]}>
-                {formatMinor(summary.currentMonthExpenseMinor)} ₽
-                {summary.currentMonthIncomeMinor > 0 ? (
-                  <Text style={{ color: theme.textTertiary, fontWeight: "400" }}>
-                    {" "}
-                    из {formatMinor(summary.currentMonthIncomeMinor)} ₽
-                  </Text>
-                ) : null}
-              </Text>
-            </View>
-            <ProgressBar
-              share={spentShare}
-              color={spentShare > 0.9 ? theme.negative : forecastNegative ? theme.warning : theme.positive}
-            />
-
-            {/* Same total, split by how it left the wallet — a card/bank swipe vs. cash
+              {/* Same total, split by how it left the wallet — a card/bank swipe vs. cash
                 out of pocket read very differently, so "спент this month" alone isn't enough. */}
-            <View style={styles.paymentSplit}>
-              <View style={styles.paymentSplitItem}>
-                <View style={[styles.paymentIcon, { backgroundColor: theme.accentSoft }]}>
-                  <Icon name="card" color={theme.accent} size={16} />
+              <View style={styles.paymentSplit}>
+                <View style={styles.paymentSplitItem}>
+                  <View style={[styles.paymentIcon, { backgroundColor: theme.accentSoft }]}>
+                    <Icon name="card" color={theme.accent} size={16} />
+                  </View>
+                  <View style={styles.paymentText}>
+                    <Text style={[styles.paymentLabel, { color: theme.textSecondary }]}>
+                      С банка
+                    </Text>
+                    <Text style={[styles.paymentValue, { color: theme.textPrimary }]}>
+                      {formatMinor(summary.currentMonthExpenseBankMinor)} ₽
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.paymentText}>
-                  <Text style={[styles.paymentLabel, { color: theme.textSecondary }]}>С банка</Text>
-                  <Text style={[styles.paymentValue, { color: theme.textPrimary }]}>
-                    {formatMinor(summary.currentMonthExpenseBankMinor)} ₽
-                  </Text>
+                <View style={styles.paymentSplitItem}>
+                  <View style={[styles.paymentIcon, { backgroundColor: theme.positiveSoft }]}>
+                    <Icon name="wallet" color={theme.positive} size={16} />
+                  </View>
+                  <View style={styles.paymentText}>
+                    <Text style={[styles.paymentLabel, { color: theme.textSecondary }]}>
+                      Наличными
+                    </Text>
+                    <Text style={[styles.paymentValue, { color: theme.textPrimary }]}>
+                      {formatMinor(summary.currentMonthExpenseCashMinor)} ₽
+                    </Text>
+                  </View>
                 </View>
               </View>
-              <View style={styles.paymentSplitItem}>
-                <View style={[styles.paymentIcon, { backgroundColor: theme.positiveSoft }]}>
-                  <Icon name="wallet" color={theme.positive} size={16} />
-                </View>
-                <View style={styles.paymentText}>
-                  <Text style={[styles.paymentLabel, { color: theme.textSecondary }]}>
-                    Наличными
-                  </Text>
-                  <Text style={[styles.paymentValue, { color: theme.textPrimary }]}>
-                    {formatMinor(summary.currentMonthExpenseCashMinor)} ₽
-                  </Text>
-                </View>
-              </View>
-            </View>
 
-            {summary.todayExpenseMinor > 0 ? (
-              <Text style={[styles.paceToday, { color: theme.textSecondary }]}>
-                Сегодня потрачено {formatMinor(summary.todayExpenseMinor)} ₽
-              </Text>
+              {summary.todayExpenseMinor > 0 ? (
+                <Text style={[styles.paceToday, { color: theme.textSecondary }]}>
+                  Сегодня потрачено {formatMinor(summary.todayExpenseMinor)} ₽
+                </Text>
+              ) : null}
+            </Card>
+          </FadeIn>
+        ) : null}
+
+        <FadeIn index={5}>
+          <View style={styles.quickRow}>
+            <Link href="/import" asChild>
+              <PressableScale style={styles.quickButtonWrap}>
+                <Card gradient style={styles.quickButton}>
+                  <View style={[styles.quickIcon, { backgroundColor: theme.accentSoft }]}>
+                    <Icon name="upload" color={theme.accent} size={17} />
+                  </View>
+                  <Text style={[styles.quickLabel, { color: theme.textPrimary }]} numberOfLines={1}>
+                    Импорт из банка
+                  </Text>
+                </Card>
+              </PressableScale>
+            </Link>
+            {Platform.OS === "web" ? (
+              // RN has no file input; on web (where the Mini App lives) we drive the
+              // native one directly, same trick as import.tsx's CSV picker.
+              <input
+                ref={receiptInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: "none" }}
+                onChange={(event) => {
+                  // No OCR yet — a photo doesn't fill anything in automatically, so we
+                  // just hand off to manual entry rather than pretend to have read it.
+                  if (event.target.files?.[0]) router.push("/add-transaction");
+                }}
+              />
             ) : null}
-          </Card>
-        </FadeIn>
-      ) : null}
-
-      <FadeIn index={5}>
-        <View style={styles.quickRow}>
-          <Link href="/import" asChild>
-            <PressableScale style={styles.quickButtonWrap}>
+            <PressableScale
+              style={styles.quickButtonWrap}
+              onPress={() => receiptInputRef.current?.click()}
+            >
               <Card gradient style={styles.quickButton}>
-                <View style={[styles.quickIcon, { backgroundColor: theme.accentSoft }]}>
-                  <Icon name="upload" color={theme.accent} size={17} />
+                <View style={[styles.quickIcon, { backgroundColor: theme.positiveSoft }]}>
+                  <Icon name="note" color={theme.positive} size={17} />
                 </View>
                 <Text style={[styles.quickLabel, { color: theme.textPrimary }]} numberOfLines={1}>
-                  Импорт из банка
+                  Скан чека
                 </Text>
               </Card>
             </PressableScale>
-          </Link>
-          {Platform.OS === "web" ? (
-            // RN has no file input; on web (where the Mini App lives) we drive the
-            // native one directly, same trick as import.tsx's CSV picker.
-            <input
-              ref={receiptInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              style={{ display: "none" }}
-              onChange={(event) => {
-                // No OCR yet — a photo doesn't fill anything in automatically, so we
-                // just hand off to manual entry rather than pretend to have read it.
-                if (event.target.files?.[0]) router.push("/add-transaction");
-              }}
-            />
-          ) : null}
-          <PressableScale
-            style={styles.quickButtonWrap}
-            onPress={() => receiptInputRef.current?.click()}
-          >
-            <Card gradient style={styles.quickButton}>
-              <View style={[styles.quickIcon, { backgroundColor: theme.positiveSoft }]}>
-                <Icon name="note" color={theme.positive} size={17} />
+          </View>
+        </FadeIn>
+
+        {pending > 0 ? (
+          <FadeIn index={6}>
+            <Link href="/review-inbox" asChild>
+              <PressableScale>
+                <Card
+                  style={StyleSheet.flatten([styles.reviewCard, { borderColor: theme.accent }])}
+                >
+                  <View style={[styles.reviewIcon, { backgroundColor: theme.accentSoft }]}>
+                    <Icon name="inbox" color={theme.accent} size={20} />
+                  </View>
+                  <View style={styles.reviewLeft}>
+                    <Text style={[styles.reviewTitle, { color: theme.textPrimary }]}>
+                      Нужно проверить
+                    </Text>
+                    <Text style={[styles.reviewHint, { color: theme.textSecondary }]}>
+                      {pending} {plural(pending, "операция ждёт", "операции ждут", "операций ждут")}{" "}
+                      решения
+                    </Text>
+                  </View>
+                  <View style={[styles.reviewBadge, { backgroundColor: theme.accent }]}>
+                    <Text style={[styles.reviewBadgeText, { color: theme.onAccent }]}>
+                      {pending}
+                    </Text>
+                  </View>
+                </Card>
+              </PressableScale>
+            </Link>
+          </FadeIn>
+        ) : null}
+
+        {topInsight ? (
+          <FadeIn index={7}>
+            <Card style={styles.tipCard}>
+              <View style={[styles.tipIcon, { backgroundColor: theme.warningSoft }]}>
+                <Icon name="chart" color={theme.warning} size={20} />
               </View>
-              <Text style={[styles.quickLabel, { color: theme.textPrimary }]} numberOfLines={1}>
-                Скан чека
-              </Text>
+              <View style={styles.tipLeft}>
+                <Text style={[styles.tipTitle, { color: theme.textPrimary }]}>Совет</Text>
+                <Text style={[styles.tipHint, { color: theme.textSecondary }]}>
+                  {insightMessage(topInsight)}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => dismissInsight.mutate(topInsight.id)}
+                accessibilityLabel="Скрыть совет"
+                style={styles.tipDismiss}
+              >
+                <Icon name="close" color={theme.textTertiary} size={18} />
+              </Pressable>
             </Card>
-          </PressableScale>
-        </View>
-      </FadeIn>
+          </FadeIn>
+        ) : null}
+      </Screen>
 
-      {pending > 0 ? (
-        <FadeIn index={6}>
-          <Link href="/review-inbox" asChild>
-            <PressableScale>
-              <Card style={StyleSheet.flatten([styles.reviewCard, { borderColor: theme.accent }])}>
-                <View style={[styles.reviewIcon, { backgroundColor: theme.accentSoft }]}>
-                  <Icon name="inbox" color={theme.accent} size={20} />
-                </View>
-                <View style={styles.reviewLeft}>
-                  <Text style={[styles.reviewTitle, { color: theme.textPrimary }]}>
-                    Нужно проверить
-                  </Text>
-                  <Text style={[styles.reviewHint, { color: theme.textSecondary }]}>
-                    {pending} {plural(pending, "операция ждёт", "операции ждут", "операций ждут")}{" "}
-                    решения
-                  </Text>
-                </View>
-                <View style={[styles.reviewBadge, { backgroundColor: theme.accent }]}>
-                  <Text style={[styles.reviewBadgeText, { color: theme.onAccent }]}>{pending}</Text>
-                </View>
-              </Card>
-            </PressableScale>
-          </Link>
-        </FadeIn>
-      ) : null}
-
-      {topInsight ? (
-        <FadeIn index={7}>
-          <Card style={styles.tipCard}>
-            <View style={[styles.tipIcon, { backgroundColor: theme.warningSoft }]}>
-              <Icon name="chart" color={theme.warning} size={20} />
+      <BottomSheet
+        visible={accountsSheetOpen}
+        onClose={() => setAccountsSheetOpen(false)}
+        title="Все счета"
+      >
+        {(accounts ?? []).map((account) => (
+          <View key={account.id} style={styles.sheetRow}>
+            <View style={[styles.sheetRowIcon, { backgroundColor: theme.accentSoft }]}>
+              <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={theme.accent} size={18} />
             </View>
-            <View style={styles.tipLeft}>
-              <Text style={[styles.tipTitle, { color: theme.textPrimary }]}>Совет</Text>
-              <Text style={[styles.tipHint, { color: theme.textSecondary }]}>
-                {insightMessage(topInsight)}
-              </Text>
-            </View>
-            <Pressable
-              onPress={() => dismissInsight.mutate(topInsight.id)}
-              accessibilityLabel="Скрыть совет"
-              style={styles.tipDismiss}
-            >
-              <Icon name="close" color={theme.textTertiary} size={18} />
-            </Pressable>
-          </Card>
-        </FadeIn>
-      ) : null}
-
-    </Screen>
+            <Text style={[styles.sheetRowLabel, { color: theme.textPrimary }]}>{account.name}</Text>
+            <Text style={[styles.sheetRowValue, { color: theme.textSecondary }]}>
+              {formatMinor(account.currentBalanceMinor)} ₽
+            </Text>
+          </View>
+        ))}
+      </BottomSheet>
+    </>
   );
 }
 
@@ -517,6 +565,21 @@ const styles = StyleSheet.create({
   },
   accountName: typography.caption,
   accountBalance: { ...typography.headline, fontWeight: "700" },
+  sheetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  sheetRowIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sheetRowLabel: { ...typography.body, flex: 1 },
+  sheetRowValue: { ...typography.callout, fontWeight: "600" },
 
   paceCard: { gap: spacing.sm },
   paceHeader: {

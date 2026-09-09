@@ -2,7 +2,7 @@ import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type { Category, Transaction } from "@money-dock/shared-types";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { ActivityIndicator, SectionList, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
@@ -71,26 +71,18 @@ export default function Transactions() {
   }, [transactions]);
 
   return (
-    <Screen scroll={false}>
-      <View style={styles.header}>
-        <ScreenTitle title="Операции" subtitle="История по дням" />
-      </View>
+    <Screen>
+      <ScreenTitle title="Операции" subtitle="История по дням" />
 
       {isLoading ? (
         <ActivityIndicator style={styles.loader} color={theme.accent} />
+      ) : sections.length === 0 ? (
+        <Text style={[styles.empty, { color: theme.textSecondary }]}>
+          Операций пока нет. Добавьте первую — голосом или вручную.
+        </Text>
       ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled={false}
-          ListEmptyComponent={
-            <Text style={[styles.empty, { color: theme.textSecondary }]}>
-              Операций пока нет. Добавьте первую — голосом или вручную.
-            </Text>
-          }
-          renderSectionHeader={({ section }) => (
+        sections.map((section, sectionIndex) => (
+          <FadeIn key={section.title} index={Math.min(sectionIndex, 6)}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
                 {section.title}
@@ -100,72 +92,75 @@ export default function Transactions() {
                 {formatMinor(section.total)} ₽
               </Text>
             </View>
-          )}
-          renderSectionFooter={() => <View style={styles.sectionGap} />}
-          renderItem={({ item, index, section }) => {
-            const category = item.categoryId ? categoryById.get(item.categoryId) : undefined;
-            const transfer = item.type === "transfer";
-            const income = item.type === "income";
-            const tint = transfer
-              ? theme.textSecondary
-              : income
-                ? theme.positive
-                : categoryColor(category?.systemCode ?? category?.id ?? null);
+            {/* One card per day, however many transactions it holds — not one card per
+                transaction, which read as a wall of separately-shadowed boxes. */}
+            <Card style={styles.groupCard}>
+              {section.data.map((item, index) => {
+                const category = item.categoryId ? categoryById.get(item.categoryId) : undefined;
+                const transfer = item.type === "transfer";
+                const income = item.type === "income";
+                const tint = transfer
+                  ? theme.textSecondary
+                  : income
+                    ? theme.positive
+                    : categoryColor(category?.systemCode ?? category?.id ?? null);
 
-            return (
-              <FadeIn index={Math.min(index, 6)}>
-                <Card
-                  style={StyleSheet.flatten([
-                    styles.row,
-                    index === 0 && styles.rowFirst,
-                    index === section.data.length - 1 && styles.rowLast,
-                    index !== section.data.length - 1 && styles.rowMiddle,
-                  ])}
-                >
-                  <View style={[styles.avatar, { backgroundColor: `${tint}1F` }]}>
-                    <Icon
-                      name={transfer ? "card" : income ? "wallet" : categoryIcon(category)}
-                      color={tint}
-                      size={19}
-                    />
+                return (
+                  <View key={item.id}>
+                    {index > 0 ? (
+                      <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                    ) : null}
+                    <View style={styles.row}>
+                      <View style={[styles.avatar, { backgroundColor: `${tint}1F` }]}>
+                        <Icon
+                          name={transfer ? "card" : income ? "wallet" : categoryIcon(category)}
+                          color={tint}
+                          size={19}
+                        />
+                      </View>
+                      <View style={styles.rowMain}>
+                        <Text
+                          style={[styles.merchant, { color: theme.textPrimary }]}
+                          numberOfLines={1}
+                        >
+                          {item.merchant ?? "Без описания"}
+                        </Text>
+                        <Text
+                          style={[styles.meta, { color: theme.textSecondary }]}
+                          numberOfLines={1}
+                        >
+                          {transfer ? "Перевод между счетами" : (category?.name ?? "Без категории")}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.amount,
+                          {
+                            color: income
+                              ? theme.positive
+                              : transfer
+                                ? theme.textSecondary
+                                : theme.textPrimary,
+                          },
+                        ]}
+                      >
+                        {income ? "+" : item.type === "expense" ? "−" : ""}
+                        {formatMinor(item.amountMinor)} ₽
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.rowMain}>
-                    <Text style={[styles.merchant, { color: theme.textPrimary }]} numberOfLines={1}>
-                      {item.merchant ?? "Без описания"}
-                    </Text>
-                    <Text style={[styles.meta, { color: theme.textSecondary }]} numberOfLines={1}>
-                      {transfer ? "Перевод между счетами" : (category?.name ?? "Без категории")}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.amount,
-                      {
-                        color: income
-                          ? theme.positive
-                          : transfer
-                            ? theme.textSecondary
-                            : theme.textPrimary,
-                      },
-                    ]}
-                  >
-                    {income ? "+" : item.type === "expense" ? "−" : ""}
-                    {formatMinor(item.amountMinor)} ₽
-                  </Text>
-                </Card>
-              </FadeIn>
-            );
-          }}
-        />
+                );
+              })}
+            </Card>
+          </FadeIn>
+        ))
       )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   loader: { marginTop: spacing.xxl },
-  list: { paddingHorizontal: spacing.lg, paddingBottom: 120 },
 
   sectionHeader: {
     flexDirection: "row",
@@ -176,13 +171,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { ...typography.overline, textTransform: "uppercase" },
   sectionTotal: typography.caption,
-  sectionGap: { height: spacing.lg },
 
-  // Rows in a day share one continuous card, squared off where they meet.
+  // One card per day; rows inside it are plain, separated by a hairline divider.
+  groupCard: { paddingVertical: spacing.xs, gap: 0 },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 38 + spacing.md },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.md },
-  rowFirst: { borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg },
-  rowMiddle: { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderBottomWidth: 0 },
-  rowLast: { borderBottomLeftRadius: radii.lg, borderBottomRightRadius: radii.lg },
   avatar: {
     width: 38,
     height: 38,
