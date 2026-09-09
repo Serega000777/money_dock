@@ -16,11 +16,13 @@ const icon =
   );
 
 // A shorter, inset, fully-rounded pill — floating above the screen edge with a gap on
-// every side, not a full-width strip flush with the bottom.
+// every side. The "+" is a separate circle beside it at the same height, not stacked on
+// top of it, so the pill only spans the width the four tabs actually need.
 const TAB_BAR_HEIGHT = 60;
 const TAB_BAR_MARGIN_H = spacing.md;
 const TAB_BAR_MARGIN_B = Platform.OS === "web" ? spacing.md : spacing.xl;
-const TAB_BAR_TOP = TAB_BAR_MARGIN_B + TAB_BAR_HEIGHT;
+const FAB_SIZE = 52;
+const FAB_GAP = spacing.sm;
 
 export default function TabsLayout() {
   const theme = useTheme();
@@ -37,7 +39,8 @@ export default function TabsLayout() {
             backgroundColor: theme.surface,
             borderTopWidth: 0,
             borderRadius: radii.xl,
-            marginHorizontal: TAB_BAR_MARGIN_H,
+            marginLeft: TAB_BAR_MARGIN_H,
+            marginRight: TAB_BAR_MARGIN_H + FAB_SIZE + FAB_GAP,
             marginBottom: TAB_BAR_MARGIN_B,
             height: TAB_BAR_HEIGHT,
             paddingBottom: 6,
@@ -50,11 +53,12 @@ export default function TabsLayout() {
           },
           tabBarLabelStyle: {
             ...typography.overline,
+            fontSize: 10,
             letterSpacing: 0.1,
             textTransform: "none",
-            lineHeight: 14,
+            lineHeight: 13,
           },
-          tabBarItemStyle: { gap: 3 },
+          tabBarItemStyle: { gap: 3, paddingHorizontal: 0 },
           // Screens paint their own gradient; a flat colour here would show through on push.
           sceneStyle: { backgroundColor: "transparent" },
         }}
@@ -68,17 +72,16 @@ export default function TabsLayout() {
         <Tabs.Screen name="account" options={{ title: "Кабинет", tabBarIcon: icon("person") }} />
       </Tabs>
 
-      {/* Bottom-right, mostly sitting inside the tab bar's row — flat accent fill, no
-          gradient sheen, light shadow. Matches the reference: a plain round button next
-          to the tabs, not a hovering fintech FAB. Outside the Tabs' scene, so a screen's
-          own scrolling never moves it and it isn't tied to any one tab's focus effect. */}
+      {/* Beside the pill at the same height, not stacked on it — a separate flat-accent
+          circle. Outside the Tabs' scene, so a screen's own scrolling never moves it and
+          it isn't tied to any one tab's focus effect. */}
       <Link href="/add-transaction" asChild>
         <PressableScale
           accessibilityLabel="Добавить операцию"
           style={StyleSheet.flatten([
             styles.fab,
             {
-              bottom: TAB_BAR_TOP - 26,
+              bottom: TAB_BAR_MARGIN_B + (TAB_BAR_HEIGHT - FAB_SIZE) / 2,
               backgroundColor: theme.accent,
               shadowColor: theme.accent,
             },
@@ -96,8 +99,8 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: TAB_BAR_MARGIN_H,
-    width: 52,
-    height: 52,
+    width: FAB_SIZE,
+    height: FAB_SIZE,
     borderRadius: radii.pill,
     alignItems: "center",
     justifyContent: "center",
