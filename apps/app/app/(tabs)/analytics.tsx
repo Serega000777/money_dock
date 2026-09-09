@@ -173,10 +173,8 @@ function buildBars(period: Period, from: Date, to: Date, expenses: Transaction[]
 
   return totals.map((value, index) => {
     const date = new Date(from.getFullYear(), from.getMonth(), from.getDate() + index);
-    // A long window has too many bars to label every one — thin the ticks out.
-    const everyNth = totalDays > 14 ? Math.ceil(totalDays / 8) : 1;
-    const label =
-      period === "week" ? (WEEKDAYS[index] ?? "") : index % everyNth === 0 ? String(date.getDate()) : "";
+    // Daily bars now scroll horizontally at a fixed width, so every one gets its own label.
+    const label = period === "week" ? (WEEKDAYS[index] ?? "") : String(date.getDate());
     return { key: `d${index}`, label, value };
   });
 }

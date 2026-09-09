@@ -4,7 +4,6 @@ import type { ColorValue } from "react-native";
 import { Platform, StyleSheet, View } from "react-native";
 
 import { useTheme } from "../../src/theme/useTheme";
-import { GradientBox } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
 import { PressableScale } from "../../src/ui/primitives";
 
@@ -56,24 +55,23 @@ export default function TabsLayout() {
         <Tabs.Screen name="account" options={{ title: "Кабинет", tabBarIcon: icon("person") }} />
       </Tabs>
 
-      {/* Bottom-right, straddling the tab bar's top edge — outside the Tabs' scene, so a
-          screen's own scrolling never moves it, and it isn't tied to (or looping
-          through) any one tab's focus effect. */}
+      {/* Bottom-right, mostly sitting inside the tab bar's row — flat accent fill, no
+          gradient sheen, light shadow. Matches the reference: a plain round button next
+          to the tabs, not a hovering fintech FAB. Outside the Tabs' scene, so a screen's
+          own scrolling never moves it and it isn't tied to any one tab's focus effect. */}
       <Link href="/add-transaction" asChild>
         <PressableScale
           accessibilityLabel="Добавить операцию"
-          style={StyleSheet.flatten([styles.fab, { bottom: TAB_BAR_HEIGHT - 26 }])}
+          style={StyleSheet.flatten([
+            styles.fab,
+            {
+              bottom: TAB_BAR_HEIGHT - 40,
+              backgroundColor: theme.accent,
+              shadowColor: theme.accent,
+            },
+          ])}
         >
-          <GradientBox
-            colors={theme.accentGradient}
-            diagonal
-            radius={radii.pill}
-            style={StyleSheet.flatten([styles.fabInner, { shadowColor: theme.accent }])}
-          >
-            <View style={styles.fabIconWrap}>
-              <Icon name="plus" color="#FFFFFF" size={26} strokeWidth={2.4} />
-            </View>
-          </GradientBox>
+          <Icon name="plus" color="#FFFFFF" size={24} strokeWidth={2.4} />
         </PressableScale>
       </Link>
     </View>
@@ -82,14 +80,17 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  fab: { position: "absolute", right: spacing.lg },
-  fabInner: {
-    width: 56,
-    height: 56,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.32,
-    shadowRadius: 16,
-    elevation: 8,
+  fab: {
+    position: "absolute",
+    right: spacing.lg,
+    width: 52,
+    height: 52,
+    borderRadius: radii.pill,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  fabIconWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
 });

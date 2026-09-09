@@ -1,6 +1,6 @@
 import { motion, radii, spacing, typography } from "@money-dock/design-tokens";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { useTheme } from "../theme/useTheme";
 import { formatMinor } from "../utils/format";
@@ -14,6 +14,11 @@ export interface Bar {
 }
 
 const HEIGHT = 132;
+// Past this many bars, equal-width flex columns get too thin to read (a month view
+// squeezes to ~8px bars with mostly-empty gaps). Switch to fixed-width scrollable
+// columns instead so every bar keeps a comfortable, consistent width.
+const SCROLL_THRESHOLD = 14;
+const COLUMN_WIDTH = 26;
 
 /**
  * Spending over the period. Bars grow once on mount and on every period change; the
@@ -24,6 +29,8 @@ export function BarChart({ bars, accent }: { bars: Bar[]; accent: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const grow = useRef(new Animated.Value(0)).current;
   const max = Math.max(1, ...bars.map((bar) => bar.value));
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollable = bars.length > SCROLL_THRESHOLD;
 
   useEffect(() => {
     grow.setValue(0);
@@ -33,9 +40,45 @@ export function BarChart({ bars, accent }: { bars: Bar[]; accent: string }) {
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-  }, [grow, bars]);
+    // Land on "today" (the tail of the period) instead of the far-left start of the month.
+    if (scrollable) scrollRef.current?.scrollToEnd({ animated: false });
+  }, [grow, bars, scrollable]);
 
   const active = bars.find((bar) => bar.key === selected);
+
+  const columns = bars.map((bar) => {
+    const share = bar.value / max;
+    const isActive = selected === bar.key;
+    return (
+      <Pressable
+        key={bar.key}
+        onPress={() => setSelected(isActive ? null : bar.key)}
+        style={[styles.column, scrollable && { width: COLUMN_WIDTH }]}
+      >
+        <View style={styles.barSlot}>
+          <View style={[styles.baseline, { backgroundColor: theme.border }]} />
+          <Animated.View
+            style={[
+              styles.bar,
+              {
+                backgroundColor: isActive ? accent : `${accent}80`,
+                height: grow.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [4, Math.max(4, share * HEIGHT)],
+                }),
+              },
+            ]}
+          />
+        </View>
+        <Text
+          style={[styles.tick, { color: isActive ? theme.textPrimary : theme.textTertiary }]}
+          numberOfLines={1}
+        >
+          {bar.label}
+        </Text>
+      </Pressable>
+    );
+  });
 
   return (
     <View style={styles.wrap}>
@@ -48,43 +91,18 @@ export function BarChart({ bars, accent }: { bars: Bar[]; accent: string }) {
         </Text>
       </View>
 
-      <View style={styles.chart}>
-        {bars.map((bar) => {
-          const share = bar.value / max;
-          const isActive = selected === bar.key;
-          return (
-            <Pressable
-              key={bar.key}
-              onPress={() => setSelected(isActive ? null : bar.key)}
-              style={styles.column}
-            >
-              <View style={styles.barSlot}>
-                <Animated.View
-                  style={[
-                    styles.bar,
-                    {
-                      backgroundColor: isActive ? accent : `${accent}59`,
-                      height: grow.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [2, Math.max(3, share * HEIGHT)],
-                      }),
-                    },
-                  ]}
-                />
-              </View>
-              <Text
-                style={[
-                  styles.tick,
-                  { color: isActive ? theme.textPrimary : theme.textTertiary },
-                ]}
-                numberOfLines={1}
-              >
-                {bar.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {scrollable ? (
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollChart}
+        >
+          {columns}
+        </ScrollView>
+      ) : (
+        <View style={styles.chart}>{columns}</View>
+      )}
     </View>
   );
 }
@@ -95,8 +113,10 @@ const styles = StyleSheet.create({
   caption: typography.caption,
   value: { ...typography.callout, fontWeight: "700" },
   chart: { flexDirection: "row", alignItems: "flex-end", gap: 3, height: HEIGHT + 22 },
+  scrollChart: { flexDirection: "row", alignItems: "flex-end", gap: 4, height: HEIGHT + 22 },
   column: { flex: 1, alignItems: "center", gap: 6 },
   barSlot: { height: HEIGHT, justifyContent: "flex-end", alignSelf: "stretch" },
-  bar: { borderRadius: radii.sm, alignSelf: "stretch" },
+  baseline: { position: "absolute", bottom: 0, left: 0, right: 0, height: 1 },
+  bar: { borderRadius: radii.sm, alignSelf: "stretch", minWidth: 10 },
   tick: { ...typography.caption, fontSize: 10 },
 });
