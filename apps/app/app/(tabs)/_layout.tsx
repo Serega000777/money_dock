@@ -8,11 +8,11 @@ import { Icon, type IconName } from "../../src/ui/Icon";
 import { PressableScale } from "../../src/ui/primitives";
 
 // expo-router types the tint as ColorValue; our themes are always plain strings.
-// Solid silhouette when active, outline otherwise — matches the reference tab bar.
+// Solid silhouette when active, bold outline otherwise — matches the reference tab bar.
 const icon =
   (name: IconName) =>
   ({ color, focused }: { color: ColorValue; focused: boolean }) => (
-    <Icon name={name} color={String(color)} size={25} filled={focused} />
+    <Icon name={name} color={String(color)} size={25} strokeWidth={2.1} filled={focused} />
   );
 
 const TAB_BAR_HEIGHT = Platform.OS === "web" ? 78 : 84;
@@ -26,14 +26,21 @@ export default function TabsLayout() {
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: theme.accent,
-          tabBarInactiveTintColor: theme.textTertiary,
+          // Darker than textTertiary — the reference's inactive icons read as bold, not faint.
+          tabBarInactiveTintColor: theme.textSecondary,
           tabBarStyle: {
             backgroundColor: theme.surface,
-            borderTopColor: theme.border,
-            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopWidth: 0,
+            borderTopLeftRadius: radii.xl,
+            borderTopRightRadius: radii.xl,
             height: TAB_BAR_HEIGHT,
             paddingBottom: Platform.OS === "web" ? 12 : 24,
             paddingTop: 8,
+            shadowColor: "#000000",
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 16,
+            elevation: 12,
           },
           tabBarLabelStyle: {
             ...typography.overline,
