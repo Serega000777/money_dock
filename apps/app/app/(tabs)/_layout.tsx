@@ -15,7 +15,12 @@ const icon =
     <Icon name={name} color={String(color)} size={25} strokeWidth={2.1} filled={focused} />
   );
 
-const TAB_BAR_HEIGHT = Platform.OS === "web" ? 78 : 84;
+// A shorter, inset, fully-rounded pill — floating above the screen edge with a gap on
+// every side, not a full-width strip flush with the bottom.
+const TAB_BAR_HEIGHT = 60;
+const TAB_BAR_MARGIN_H = spacing.md;
+const TAB_BAR_MARGIN_B = Platform.OS === "web" ? spacing.md : spacing.xl;
+const TAB_BAR_TOP = TAB_BAR_MARGIN_B + TAB_BAR_HEIGHT;
 
 export default function TabsLayout() {
   const theme = useTheme();
@@ -31,15 +36,16 @@ export default function TabsLayout() {
           tabBarStyle: {
             backgroundColor: theme.surface,
             borderTopWidth: 0,
-            borderTopLeftRadius: radii.xl,
-            borderTopRightRadius: radii.xl,
+            borderRadius: radii.xl,
+            marginHorizontal: TAB_BAR_MARGIN_H,
+            marginBottom: TAB_BAR_MARGIN_B,
             height: TAB_BAR_HEIGHT,
-            paddingBottom: Platform.OS === "web" ? 12 : 24,
-            paddingTop: 8,
+            paddingBottom: 6,
+            paddingTop: 6,
             shadowColor: "#000000",
-            shadowOffset: { width: 0, height: -4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.1,
+            shadowRadius: 14,
             elevation: 12,
           },
           tabBarLabelStyle: {
@@ -72,7 +78,7 @@ export default function TabsLayout() {
           style={StyleSheet.flatten([
             styles.fab,
             {
-              bottom: TAB_BAR_HEIGHT - 40,
+              bottom: TAB_BAR_TOP - 26,
               backgroundColor: theme.accent,
               shadowColor: theme.accent,
             },
@@ -89,7 +95,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   fab: {
     position: "absolute",
-    right: spacing.lg,
+    right: TAB_BAR_MARGIN_H,
     width: 52,
     height: 52,
     borderRadius: radii.pill,
