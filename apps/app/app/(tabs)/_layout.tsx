@@ -20,7 +20,7 @@ const icon =
 // top of it, so the pill only spans the width the four tabs actually need.
 const TAB_BAR_HEIGHT = 60;
 const TAB_BAR_MARGIN_H = spacing.md;
-const TAB_BAR_MARGIN_B = Platform.OS === "web" ? spacing.md : spacing.xl;
+const TAB_BAR_MARGIN_B = Platform.OS === "web" ? spacing.lg : spacing.xxl;
 const FAB_SIZE = 52;
 const FAB_GAP = spacing.sm;
 
@@ -56,7 +56,7 @@ export default function TabsLayout() {
             fontSize: 10,
             letterSpacing: 0.1,
             textTransform: "none",
-            lineHeight: 13,
+            lineHeight: 10,
           },
           tabBarItemStyle: { gap: 3, paddingHorizontal: 0 },
           // Screens paint their own gradient; a flat colour here would show through on push.
