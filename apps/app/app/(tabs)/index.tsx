@@ -10,7 +10,7 @@ import { useAuthStore } from "../../src/auth/authStore";
 import { useTelegram } from "../../src/telegram/TelegramProvider";
 import { useSettingsStore } from "../../src/theme/settingsStore";
 import { useTheme } from "../../src/theme/useTheme";
-import { GradientBox } from "../../src/ui/Gradient";
+import { GlowBlob, GradientBox } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
 import { Text } from "../../src/ui/Text";
 import {
@@ -156,7 +156,7 @@ export default function Home() {
         {/* The one number the whole screen exists for, with the two configurable figures
           right beside it — which two is a Кабинет → Главный экран setting. */}
         <FadeIn index={1}>
-          <GradientBox colors={theme.accentGradient} diagonal radius={radii.xl}>
+          <GradientBox colors={theme.accentGradient} diagonal radius={radii.xl} highlight>
             <View style={styles.heroBody}>
               <Text style={styles.heroLabel}>Общий баланс</Text>
               <View style={styles.heroAmountRow}>
@@ -196,6 +196,12 @@ export default function Home() {
         {/* The big mic is the primary action — one tap from anything else on the screen. */}
         <FadeIn index={2}>
           <View style={styles.micBlock}>
+            {/* A wide, soft bleed behind the whole row — the mic's own shadow reads as a
+                halo on the button itself, this is what makes it feel like a spotlight
+                against the page background too, per the reference. */}
+            <View pointerEvents="none" style={styles.micGlow}>
+              <GlowBlob top="0%" left="15%" size={280} color={theme.accent} />
+            </View>
             <View style={styles.micRow}>
               <WaveBars color={theme.accent} />
               <Link href="/voice" asChild>
@@ -204,6 +210,8 @@ export default function Home() {
                     colors={theme.accentGradient}
                     diagonal
                     radius={radii.pill}
+                    highlight
+                    highlightSize={150}
                     style={StyleSheet.flatten([styles.mic, { shadowColor: theme.accent }])}
                   >
                     <View style={styles.micInner}>
@@ -471,7 +479,7 @@ function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
   return (
     <Card gradient={vivid} style={styles.accountTile}>
       <View style={[styles.accountIcon, { backgroundColor: iconBg }]}>
-        <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={iconColor} size={16} />
+        <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={iconColor} size={18} />
       </View>
       <Text style={[styles.accountName, { color: nameColor }]} numberOfLines={1}>
         {account.name}
@@ -534,7 +542,13 @@ const styles = StyleSheet.create({
   heroFooterLabel: { ...typography.caption, color: "rgba(255,255,255,0.72)" },
   heroFooterValue: { ...typography.headline, color: "#FFFFFF" },
 
-  micBlock: { alignItems: "center", gap: spacing.sm, paddingVertical: spacing.lg },
+  micBlock: {
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    position: "relative",
+  },
+  micGlow: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   micRow: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
   mic: {
     width: 132,
@@ -561,17 +575,17 @@ const styles = StyleSheet.create({
   accountsAllButton: { flexDirection: "row", alignItems: "center", gap: 2 },
   accountsAll: { ...typography.callout, fontWeight: "600" },
   accountsRow: { gap: spacing.sm, paddingRight: spacing.lg },
-  accountTile: { width: 168, gap: spacing.xs },
+  accountTile: { width: 184, gap: 6 },
   accountIcon: {
-    width: 30,
-    height: 30,
+    width: 36,
+    height: 36,
     borderRadius: radii.sm,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.xs,
   },
-  accountName: typography.caption,
-  accountBalance: { ...typography.headline, fontWeight: "700" },
+  accountName: typography.callout,
+  accountBalance: { ...typography.title, fontWeight: "700" },
   sheetRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -70,6 +70,8 @@ export function Card({
         colors={theme.tileGradient}
         diagonal
         radius={radii.lg}
+        highlight
+        highlightSize={140}
         style={StyleSheet.flatten([
           styles.card,
           { shadowColor: theme.shadowColor, borderColor: theme.border },

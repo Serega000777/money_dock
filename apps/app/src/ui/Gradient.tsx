@@ -33,8 +33,10 @@ function GradientRect({
 
 /** A soft, oversized radial smudge — no blur filter needed (uneven react-native-svg
  * support across platforms), the fade-to-transparent gradient reads as a glow on its
- * own. Purely decorative, so it's fine if it bleeds off the edge of the screen. */
-function GlowBlob({
+ * own. Purely decorative, so it's fine if it bleeds off the edge of the screen.
+ * Exported so call sites that want their own glow (the mic button, a highlight inside
+ * a gradient card) don't have to reimplement it. */
+export function GlowBlob({
   top,
   left,
   size,
@@ -61,23 +63,34 @@ function GlowBlob({
   );
 }
 
-/** A gradient-filled box that lays its children on top. */
+/** A gradient-filled box that lays its children on top. `highlight` adds a soft white
+ * glow bleeding in from a corner — the glossy, not-flat look the hero card and mic
+ * button reference has, instead of a plain linear-gradient fill. */
 export function GradientBox({
   colors,
   radius,
   diagonal,
+  highlight,
+  highlightSize = 260,
   style,
   children,
 }: {
   colors: readonly string[];
   radius?: number;
   diagonal?: boolean;
+  highlight?: boolean;
+  /** Diameter of the `highlight` glow — scale it down for small surfaces (a stat tile)
+   * so it reads as a corner sheen, not a wash covering the whole card. */
+  highlightSize?: number;
   style?: ViewStyle;
   children?: ReactNode;
 }) {
   return (
     <View style={[{ overflow: "hidden", borderRadius: radius }, style]}>
       <GradientRect colors={colors} diagonal={diagonal} />
+      {highlight ? (
+        <GlowBlob top="-30%" left="45%" size={highlightSize} color="#FFFFFF" />
+      ) : null}
       {children}
     </View>
   );
