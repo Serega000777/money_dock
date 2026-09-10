@@ -9,6 +9,7 @@ import type {
   ImportPreview,
   Insight,
   Note,
+  RecurringPayment,
   ReviewInboxItem,
   Transaction,
   User,
@@ -155,6 +156,24 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
         input: { title?: string; body?: string; colorIndex?: number; pinned?: boolean },
       ) => request<Note>(`/notes/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
       remove: (id: string) => request<void>(`/notes/${id}`, { method: "DELETE" }),
+    },
+
+    recurringPayments: {
+      list: () => request<RecurringPayment[]>("/recurring-payments"),
+      create: (input: {
+        accountId: string;
+        categoryId?: string;
+        name: string;
+        amountMinor: number;
+        currency: string;
+        dueDay?: number;
+        reminderDaysBefore?: number;
+      }) => post<RecurringPayment>("/recurring-payments", input),
+      pay: (id: string) =>
+        post<{ payment: RecurringPayment; transaction: Transaction }>(
+          `/recurring-payments/${id}/pay`,
+        ),
+      remove: (id: string) => request<void>(`/recurring-payments/${id}`, { method: "DELETE" }),
     },
 
     analytics: {

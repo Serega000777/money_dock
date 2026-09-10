@@ -4,5 +4,6 @@ export * from "./category";
 export * from "./command";
 export * from "./money";
 export * from "./note";
+export * from "./recurring-payment";
 export * from "./review";
 export * from "./transaction";

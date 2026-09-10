@@ -6,6 +6,7 @@ export * from "./import-jobs";
 export * from "./insights";
 export * from "./merchant-aliases";
 export * from "./notes";
+export * from "./recurring-payments";
 export * from "./review-items";
 export * from "./sessions";
 export * from "./subscriptions";

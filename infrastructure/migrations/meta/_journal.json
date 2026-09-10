@@ -64,6 +64,13 @@
       "when": 1788965560865,
       "tag": "0008_groovy_cyclops",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789026244533,
+      "tag": "0009_sleepy_rictor",
+      "breakpoints": true
     }
   ]
 }

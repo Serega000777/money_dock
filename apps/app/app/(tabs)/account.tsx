@@ -1,9 +1,11 @@
 import type { TextScaleName } from "@money-dock/design-tokens";
 import { radii, spacing, typography } from "@money-dock/design-tokens";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import type { Category, RecurringPayment } from "@money-dock/shared-types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, type Href } from "expo-router";
 import type { ReactNode } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { useState } from "react";
+import { Platform, Pressable, StyleSheet, TextInput, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
@@ -18,7 +20,16 @@ import { useTheme } from "../../src/theme/useTheme";
 import { GradientBox } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
 import { Text } from "../../src/ui/Text";
-import { Card, FadeIn, PressableScale, Screen, Segmented } from "../../src/ui/primitives";
+import { categoryColor, categoryIcon } from "../../src/ui/categoryVisual";
+import {
+  BottomSheet,
+  Card,
+  FadeIn,
+  Pill,
+  PressableScale,
+  Screen,
+  Segmented,
+} from "../../src/ui/primitives";
 import { formatMinor } from "../../src/utils/format";
 
 /** Web-only: turns the export payload into a downloaded .json file. The Mini App is a
@@ -50,6 +61,8 @@ export default function Account() {
   } = useSettingsStore();
   const accessToken = useAuthStore((state) => state.accessToken);
   const enabled = Boolean(accessToken);
+  const queryClient = useQueryClient();
+  const [addingPayment, setAddingPayment] = useState(false);
 
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => apiClient.users.me(), enabled });
   const { data: accounts } = useQuery({
@@ -72,9 +85,34 @@ export default function Account() {
     queryFn: () => apiClient.entitlements.get(),
     enabled,
   });
+  const { data: categories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => apiClient.categories.list(),
+    enabled,
+  });
+  const { data: recurringPayments } = useQuery({
+    queryKey: ["recurring-payments"],
+    queryFn: () => apiClient.recurringPayments.list(),
+    enabled,
+  });
   const generateReport = useMutation({
     mutationFn: () => apiClient.exports.generate(),
     onSuccess: (data) => downloadReport(data),
+  });
+  const invalidatePayments = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }),
+      queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+      queryClient.invalidateQueries({ queryKey: ["accounts"] }),
+      queryClient.invalidateQueries({ queryKey: ["analytics"] }),
+    ]);
+  const payRecurring = useMutation({
+    mutationFn: (id: string) => apiClient.recurringPayments.pay(id),
+    onSuccess: invalidatePayments,
+  });
+  const removeRecurring = useMutation({
+    mutationFn: (id: string) => apiClient.recurringPayments.remove(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }),
   });
 
   const pendingCount = reviewItems?.length ?? 0;
@@ -167,6 +205,60 @@ export default function Account() {
       </FadeIn>
 
       <FadeIn index={4}>
+        <Section title="Регулярные платежи">
+          {(recurringPayments ?? []).map((payment) => {
+            const category = payment.categoryId
+              ? (categories ?? []).find((c) => c.id === payment.categoryId)
+              : undefined;
+            const color = categoryColor(category);
+            const status = recurringStatus(payment, theme);
+            return (
+              <View key={payment.id} style={styles.row}>
+                <View style={[styles.rowIcon, { backgroundColor: `${color}1F` }]}>
+                  <Icon name={categoryIcon(category)} color={color} size={18} />
+                </View>
+                <View style={styles.rowMain}>
+                  <Text style={[styles.rowLabel, { color: theme.textPrimary }]} numberOfLines={1}>
+                    {payment.name}
+                  </Text>
+                  <Text style={[styles.rowSub, { color: theme.textSecondary }]}>
+                    {formatMinor(payment.amountMinor)} ₽ · {status.label}
+                  </Text>
+                </View>
+                <Pill label={status.badge} color={status.color} background={status.background} />
+                <Pressable
+                  onPress={() => !payRecurring.isPending && payRecurring.mutate(payment.id)}
+                  accessibilityLabel="Отметить оплаченным"
+                  hitSlop={8}
+                  style={styles.iconButton}
+                >
+                  <Icon name="check" color={theme.positive} size={18} />
+                </Pressable>
+                <Pressable
+                  onPress={() => removeRecurring.mutate(payment.id)}
+                  accessibilityLabel="Удалить платёж"
+                  hitSlop={8}
+                  style={styles.iconButton}
+                >
+                  <Icon name="trash" color={theme.textTertiary} size={18} />
+                </Pressable>
+              </View>
+            );
+          })}
+          {(recurringPayments ?? []).length === 0 ? (
+            <Text style={[styles.rowValue, { color: theme.textSecondary }]}>Платежей пока нет</Text>
+          ) : null}
+
+          <PressableScale style={styles.row} onPress={() => setAddingPayment(true)}>
+            <View style={[styles.rowIcon, { backgroundColor: theme.accentSoft }]}>
+              <Icon name="plus" color={theme.accent} size={18} />
+            </View>
+            <Text style={[styles.rowLabel, { color: theme.accent }]}>Добавить платёж</Text>
+          </PressableScale>
+        </Section>
+      </FadeIn>
+
+      <FadeIn index={5}>
         <Section title="Главный экран">
           <View style={styles.settingBlock}>
             <Text style={[styles.settingLabel, { color: theme.textSecondary }]}>
@@ -263,12 +355,248 @@ export default function Account() {
       <FadeIn index={9}>
         <Section title="Скоро">
           <Text style={[styles.soon, { color: theme.textSecondary }]}>
-            Регулярные платежи, экспорт данных, Telegram-уведомления и подключение банков появятся
-            на следующих этапах.
+            Telegram-уведомления и подключение банков появятся на следующих этапах.
           </Text>
         </Section>
       </FadeIn>
+
+      <CreateRecurringPaymentSheet
+        visible={addingPayment}
+        onClose={() => setAddingPayment(false)}
+        categories={(categories ?? []).filter((c) => c.type === "expense")}
+        accountId={accounts?.[0]?.id}
+        currency={accounts?.[0]?.currency ?? "RUB"}
+        onCreated={() => setAddingPayment(false)}
+      />
     </Screen>
+  );
+}
+
+type RecurringStatus = { label: string; badge: string; color: string; background: string };
+
+/** Purely a display computation — no schedule runs anywhere; this just reads
+ * `dueDay`/`reminderDaysBefore`/`lastPaidAt` against today's date on each render. */
+function recurringStatus(
+  payment: RecurringPayment,
+  theme: ReturnType<typeof useTheme>,
+): RecurringStatus {
+  const now = new Date();
+  if (
+    payment.lastPaidAt &&
+    new Date(payment.lastPaidAt).getFullYear() === now.getFullYear() &&
+    new Date(payment.lastPaidAt).getMonth() === now.getMonth()
+  ) {
+    return {
+      label: "оплачено в этом месяце",
+      badge: "Оплачено",
+      color: theme.positive,
+      background: theme.positiveSoft,
+    };
+  }
+  if (payment.dueDay === null) {
+    return {
+      label: "без даты",
+      badge: "В этом месяце",
+      color: theme.textSecondary,
+      background: theme.surfaceSunken,
+    };
+  }
+  const daysUntil = payment.dueDay - now.getDate();
+  if (daysUntil < 0) {
+    return {
+      label: `просрочено, было ${payment.dueDay} числа`,
+      badge: "Просрочено",
+      color: theme.negative,
+      background: theme.negativeSoft,
+    };
+  }
+  if (payment.reminderDaysBefore !== null && daysUntil <= payment.reminderDaysBefore) {
+    return {
+      label: `${payment.dueDay} числа`,
+      badge: daysUntil === 0 ? "Сегодня" : `Через ${daysUntil} дн.`,
+      color: theme.warning,
+      background: theme.warningSoft,
+    };
+  }
+  return {
+    label: `${payment.dueDay} числа`,
+    badge: `${payment.dueDay} числа`,
+    color: theme.textSecondary,
+    background: theme.surfaceSunken,
+  };
+}
+
+const REMINDER_OPTIONS: { value: string; label: string }[] = [
+  { value: "none", label: "Не напоминать" },
+  { value: "1", label: "За 1 день" },
+  { value: "3", label: "За 3 дня" },
+  { value: "7", label: "За 7 дней" },
+];
+
+/** Name, amount, category, and either a fixed day of the month or "sometime this
+ * month" — exactly the shape asked for, nothing auto-scheduled server-side. */
+function CreateRecurringPaymentSheet({
+  visible,
+  onClose,
+  categories,
+  accountId,
+  currency,
+  onCreated,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  categories: Category[];
+  accountId: string | undefined;
+  currency: string;
+  onCreated: () => void;
+}) {
+  const theme = useTheme();
+  const queryClient = useQueryClient();
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [hasDueDay, setHasDueDay] = useState<"date" | "none">("date");
+  const [dueDay, setDueDay] = useState("1");
+  const [reminder, setReminder] = useState("3");
+
+  const create = useMutation({
+    mutationFn: () => {
+      if (!accountId) throw new Error("No account");
+      return apiClient.recurringPayments.create({
+        accountId,
+        categoryId: categoryId ?? undefined,
+        name: name.trim(),
+        amountMinor: Math.round(Number(amount) * 100),
+        currency,
+        dueDay: hasDueDay === "date" ? Number(dueDay) : undefined,
+        reminderDaysBefore:
+          hasDueDay === "date" && reminder !== "none" ? Number(reminder) : undefined,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["recurring-payments"] });
+      setName("");
+      setAmount("");
+      setCategoryId(null);
+      setHasDueDay("date");
+      setDueDay("1");
+      setReminder("3");
+      onCreated();
+    },
+  });
+
+  const canCreate =
+    Boolean(accountId) &&
+    name.trim().length > 0 &&
+    Number(amount) > 0 &&
+    (hasDueDay === "none" || (Number(dueDay) >= 1 && Number(dueDay) <= 31)) &&
+    !create.isPending;
+
+  return (
+    <BottomSheet visible={visible} onClose={onClose} title="Новый регулярный платёж">
+      <TextInput
+        value={name}
+        onChangeText={setName}
+        placeholder="Например, Окко"
+        placeholderTextColor={theme.textTertiary}
+        style={[
+          styles.sheetInput,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
+      />
+      <TextInput
+        value={amount}
+        onChangeText={setAmount}
+        placeholder="Сумма в месяц, ₽"
+        placeholderTextColor={theme.textTertiary}
+        keyboardType="decimal-pad"
+        style={[
+          styles.sheetInput,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
+      />
+
+      {categories.length > 0 ? (
+        <>
+          <Text style={[styles.sheetLabel, { color: theme.textSecondary }]}>Категория</Text>
+          <View style={styles.sheetCategoryRow}>
+            {categories.map((c) => {
+              const active = categoryId === c.id;
+              const color = categoryColor(c);
+              return (
+                <Pressable key={c.id} onPress={() => setCategoryId(active ? null : c.id)}>
+                  <View
+                    style={[
+                      styles.sheetCategoryCircle,
+                      {
+                        backgroundColor: active ? color : `${color}1F`,
+                        borderColor: active ? color : "transparent",
+                      },
+                    ]}
+                  >
+                    <Icon name={categoryIcon(c)} color={active ? "#FFFFFF" : color} size={18} />
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </>
+      ) : null}
+
+      <Text style={[styles.sheetLabel, { color: theme.textSecondary }]}>Дата платежа</Text>
+      <Segmented
+        value={hasDueDay}
+        onChange={setHasDueDay}
+        options={[
+          { value: "date", label: "Определённого числа" },
+          { value: "none", label: "В течение месяца" },
+        ]}
+      />
+
+      {hasDueDay === "date" ? (
+        <>
+          <View style={styles.sheetDueDayRow}>
+            <Text
+              style={[styles.sheetLabel, styles.sheetDueDayLabel, { color: theme.textSecondary }]}
+            >
+              Число месяца
+            </Text>
+            <TextInput
+              value={dueDay}
+              onChangeText={(text) => setDueDay(text.replace(/[^0-9]/g, "").slice(0, 2))}
+              keyboardType="number-pad"
+              style={[
+                styles.sheetDueDayInput,
+                { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+              ]}
+            />
+          </View>
+
+          <Text style={[styles.sheetLabel, { color: theme.textSecondary }]}>Напоминание</Text>
+          <Segmented value={reminder} onChange={setReminder} options={REMINDER_OPTIONS} />
+        </>
+      ) : null}
+
+      <Pressable
+        disabled={!canCreate}
+        onPress={() => create.mutate()}
+        style={styles.sheetCreateButton}
+      >
+        {canCreate ? (
+          <GradientBox colors={theme.accentGradient} diagonal radius={radii.md}>
+            <View style={styles.saveButton}>
+              <Text style={[styles.saveText, { color: theme.onAccent }]}>
+                {create.isPending ? "Добавляю…" : "Добавить"}
+              </Text>
+            </View>
+          </GradientBox>
+        ) : (
+          <View style={[styles.saveButton, { backgroundColor: theme.surfaceSunken }]}>
+            <Text style={[styles.saveText, { color: theme.textTertiary }]}>Добавить</Text>
+          </View>
+        )}
+      </Pressable>
+    </BottomSheet>
   );
 }
 
@@ -343,7 +671,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rowLabel: { ...typography.body, flex: 1 },
+  rowMain: { flex: 1, gap: 2 },
+  rowSub: typography.caption,
   rowValue: typography.callout,
+  iconButton: { paddingHorizontal: 2 },
   badge: {
     minWidth: 26,
     borderRadius: radii.pill,
@@ -356,4 +687,44 @@ const styles = StyleSheet.create({
   settingLabel: typography.caption,
 
   soon: { ...typography.caption, paddingVertical: spacing.md, lineHeight: 19 },
+
+  sheetInput: {
+    ...typography.body,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+  },
+  sheetLabel: { ...typography.overline, textTransform: "uppercase", marginBottom: spacing.sm },
+  sheetCategoryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  sheetCategoryCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.pill,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sheetDueDayRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: spacing.md,
+  },
+  sheetDueDayLabel: { marginBottom: 0 },
+  sheetDueDayInput: {
+    ...typography.body,
+    width: 64,
+    textAlign: "center",
+    borderRadius: radii.md,
+    paddingVertical: spacing.sm,
+  },
+  sheetCreateButton: { marginTop: spacing.lg },
+  saveButton: { borderRadius: radii.md, paddingVertical: spacing.lg, alignItems: "center" },
+  saveText: { ...typography.headline, fontWeight: "700" },
 });

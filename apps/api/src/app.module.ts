@@ -23,6 +23,7 @@ import { HealthModule } from "./modules/health/health.module";
 import { ImportModule } from "./modules/import/import.module";
 import { InsightsModule } from "./modules/insights/insights.module";
 import { NotesModule } from "./modules/notes/notes.module";
+import { RecurringPaymentsModule } from "./modules/recurring-payments/recurring-payments.module";
 import { ReviewInboxModule } from "./modules/review-inbox/review-inbox.module";
 import { TransactionsModule } from "./modules/transactions/transactions.module";
 import { UsersModule } from "./modules/users/users.module";
@@ -45,6 +46,7 @@ import { UsersModule } from "./modules/users/users.module";
     TransactionsModule,
     ImportModule,
     NotesModule,
+    RecurringPaymentsModule,
     ReviewInboxModule,
     CommandsModule,
     EntitlementsModule,
