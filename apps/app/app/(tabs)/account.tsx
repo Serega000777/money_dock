@@ -353,6 +353,14 @@ export default function Account() {
       </FadeIn>
 
       <FadeIn index={9}>
+        <Section title="Правовая информация">
+          <NavRow href="/legal/privacy" icon="note" label="Политика конфиденциальности" />
+          <NavRow href="/legal/terms" icon="note" label="Условия использования" />
+          <NavRow href="/legal/personal-data" icon="note" label="О персональных данных" />
+        </Section>
+      </FadeIn>
+
+      <FadeIn index={10}>
         <Section title="Скоро">
           <Text style={[styles.soon, { color: theme.textSecondary }]}>
             Telegram-уведомления и подключение банков появятся на следующих этапах.
