@@ -17,7 +17,6 @@ import {
   BottomSheet,
   Card,
   FadeIn,
-  Pill,
   PressableScale,
   ProgressBar,
   Screen,
@@ -166,15 +165,14 @@ export default function Home() {
             />
             <View style={styles.heroBody}>
               <Text style={styles.heroLabel}>Общий баланс</Text>
-              <View style={styles.heroAmountRow}>
-                <Text style={styles.heroAmount}>
-                  {summary ? formatMinor(summary.totalBalanceMinor) : "—"}
-                </Text>
-                <Text style={styles.heroCurrency}>₽</Text>
-              </View>
+              {/* One string, not an amount plus a smaller currency glyph: in the
+                  reference the ₽ is the same size and weight as the digits. */}
+              <Text style={styles.heroAmount} numberOfLines={1} adjustsFontSizeToFit>
+                {summary ? `${formatMinor(summary.totalBalanceMinor)} ₽` : "—"}
+              </Text>
               <Text style={styles.heroHint}>
                 {summary
-                  ? `${formatMinor(summary.safeToSpendPerDayMinor)} ₽ в день · осталось ${
+                  ? `${formatMinor(summary.safeToSpendPerDayMinor)} ₽ в день • осталось ${
                       summary.daysRemainingInMonth
                     } ${plural(summary.daysRemainingInMonth, "день", "дня", "дней")}`
                   : "Появится после подключения счетов"}
@@ -213,8 +211,14 @@ export default function Home() {
             <View style={styles.micRow}>
               <WaveBars color={theme.accent} />
               <View style={styles.micRingWrap}>
-                <View pointerEvents="none" style={[styles.micRing1, { borderColor: "rgba(255,43,199,0.2)" }]} />
-                <View pointerEvents="none" style={[styles.micRing2, { borderColor: "rgba(128,67,255,0.18)" }]} />
+                <View
+                  pointerEvents="none"
+                  style={[styles.micRing1, { borderColor: "rgba(255,43,199,0.2)" }]}
+                />
+                <View
+                  pointerEvents="none"
+                  style={[styles.micRing2, { borderColor: "rgba(128,67,255,0.18)" }]}
+                />
                 <Link href="/voice" asChild>
                   <PressableScale accessibilityLabel="Добавить операцию голосом">
                     <GradientBox
@@ -272,16 +276,28 @@ export default function Home() {
           <FadeIn index={4}>
             <Card style={styles.paceCard}>
               <GlowBlob top="-30%" left="-10%" size={160} color={theme.accent} />
+              {/* Order and weights straight from the reference: title + bare percentage,
+                  then the bar, then the figures under it. */}
               <View style={styles.paceHeader}>
                 <Text style={[styles.paceTitle, { color: theme.textPrimary }]}>
                   Прогресс месяца
                 </Text>
-                <Pill
-                  label={`${Math.round(spentShare * 100)}%`}
-                  color={theme.accent}
-                  background={theme.accentSoft}
-                />
+                <Text style={[styles.pacePercent, { color: theme.textPrimary }]}>
+                  {Math.round(spentShare * 100)}%
+                </Text>
               </View>
+
+              <ProgressBar
+                share={spentShare}
+                // The alarm states stay a flat colour so "over budget" still reads as a
+                // signal; the healthy state gets the reference's pink→violet ramp.
+                color={spentShare > 0.9 ? theme.negative : theme.warning}
+                colors={
+                  spentShare > 0.9 || forecastNegative
+                    ? undefined
+                    : ["#FF1FBF", "#FF4BD8", "#9A43FF"]
+                }
+              />
 
               <View style={styles.paceRow}>
                 <Text style={[styles.paceLabel, { color: theme.textSecondary }]}>
@@ -297,16 +313,6 @@ export default function Home() {
                   ) : null}
                 </Text>
               </View>
-              <ProgressBar
-                share={spentShare}
-                color={
-                  spentShare > 0.9
-                    ? theme.negative
-                    : forecastNegative
-                      ? theme.warning
-                      : theme.positive
-                }
-              />
 
               {/* Same total, split by how it left the wallet — a card/bank swipe vs. cash
                 out of pocket read very differently, so "спент this month" alone isn't enough. */}
@@ -350,27 +356,30 @@ export default function Home() {
 
         <FadeIn index={5}>
           <View style={styles.quickRow}>
-            <Link href="/import" asChild>
-              <PressableScale style={styles.quickButtonWrap}>
-                <GradientBox
-                  colors={theme.chipGradient}
-                  radius={radii.pill}
-                  style={StyleSheet.flatten([styles.quickButton, { borderColor: theme.border }])}
-                >
-                  <View
-                    style={[
-                      styles.quickIconGlow,
-                      { shadowColor: theme.accent, backgroundColor: `${theme.accent}1F` },
-                    ]}
+            {/* The flex sizing has to live on a plain wrapper: PressableScale forwards
+                `style` to an inner Animated.View, so `flex: 1` there never reaches the
+                actual flex item and both pills collapse to their content width. */}
+            <View style={styles.quickButtonWrap}>
+              <Link href="/import" asChild>
+                <PressableScale>
+                  <GradientBox
+                    colors={theme.chipGradient}
+                    radius={radii.pill}
+                    style={StyleSheet.flatten([styles.quickButton, { borderColor: theme.border }])}
                   >
-                    <Icon name="upload" color={theme.accent} size={18} />
-                  </View>
-                  <Text style={[styles.quickLabel, { color: theme.textPrimary }]} numberOfLines={1}>
-                    Импорт из банка
-                  </Text>
-                </GradientBox>
-              </PressableScale>
-            </Link>
+                    <View style={[styles.quickIconGlow, { shadowColor: theme.accent }]}>
+                      <Icon name="upload" color={theme.accent} size={22} strokeWidth={2} />
+                    </View>
+                    <Text
+                      style={[styles.quickLabel, { color: theme.textPrimary }]}
+                      numberOfLines={1}
+                    >
+                      Импорт из банка
+                    </Text>
+                  </GradientBox>
+                </PressableScale>
+              </Link>
+            </View>
             {Platform.OS === "web" ? (
               // RN has no file input; on web (where the Mini App lives) we drive the
               // native one directly, same trick as import.tsx's CSV picker.
@@ -387,28 +396,22 @@ export default function Home() {
                 }}
               />
             ) : null}
-            <PressableScale
-              style={styles.quickButtonWrap}
-              onPress={() => receiptInputRef.current?.click()}
-            >
-              <GradientBox
-                colors={theme.chipGradient}
-                radius={radii.pill}
-                style={StyleSheet.flatten([styles.quickButton, { borderColor: theme.border }])}
-              >
-                <View
-                  style={[
-                    styles.quickIconGlow,
-                    { shadowColor: theme.positive, backgroundColor: `${theme.positive}1F` },
-                  ]}
+            <View style={styles.quickButtonWrap}>
+              <PressableScale onPress={() => receiptInputRef.current?.click()}>
+                <GradientBox
+                  colors={theme.chipGradient}
+                  radius={radii.pill}
+                  style={StyleSheet.flatten([styles.quickButton, { borderColor: theme.border }])}
                 >
-                  <Icon name="note" color={theme.positive} size={18} />
-                </View>
-                <Text style={[styles.quickLabel, { color: theme.textPrimary }]} numberOfLines={1}>
-                  Скан чека
-                </Text>
-              </GradientBox>
-            </PressableScale>
+                  <View style={[styles.quickIconGlow, { shadowColor: theme.accent }]}>
+                    <Icon name="note" color={theme.accent} size={22} strokeWidth={2} />
+                  </View>
+                  <Text style={[styles.quickLabel, { color: theme.textPrimary }]} numberOfLines={1}>
+                    Скан чека
+                  </Text>
+                </GradientBox>
+              </PressableScale>
+            </View>
           </View>
         </FadeIn>
 
@@ -505,13 +508,19 @@ function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
   const iconColor = vivid ? "#FFFFFF" : theme.accent;
   return (
     <Card gradient={vivid} style={styles.accountTile}>
-      {!vivid ? <GlowBlob top="-25%" left="55%" size={140} color={theme.accent} /> : null}
-      <View style={[styles.accountIcon, { backgroundColor: iconBg }]}>
-        <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={iconColor} size={18} />
+      {!vivid ? <GlowBlob top="-25%" left="55%" size={140} color="#913AFF" opacity={0.35} /> : null}
+      {/* Reference layout: badge and name share the top row, the balance sits on its own
+          below with room above it. */}
+      <View style={styles.accountTop}>
+        <View style={[styles.accountIcon, { backgroundColor: iconBg }]}>
+          <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={iconColor} size={18} />
+        </View>
+        {/* Two lines, like the reference's name + card-number block — wrapping reads
+            better than truncating "Основная карта" to "Основная ка…". */}
+        <Text style={[styles.accountName, { color: nameColor }]} numberOfLines={2}>
+          {account.name}
+        </Text>
       </View>
-      <Text style={[styles.accountName, { color: nameColor }]} numberOfLines={1}>
-        {account.name}
-      </Text>
       <Text style={[styles.accountBalance, { color: balanceColor }]} numberOfLines={1}>
         {formatMinor(account.currentBalanceMinor)} ₽
       </Text>
@@ -565,33 +574,34 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  heroBody: { padding: spacing.xl, gap: spacing.xs },
-  heroLabel: { ...typography.body, color: "rgba(255,255,255,0.82)" },
-  heroAmountRow: { flexDirection: "row", alignItems: "baseline", gap: spacing.sm },
+  // The reference is drawn at 430px wide; the numbers below are its values scaled to a
+  // 390px phone, which is what stops the figure reading as oversized.
+  heroBody: { padding: spacing.xl, gap: 8 },
+  heroLabel: { ...typography.body, fontSize: 16, color: "rgba(255,255,255,0.82)" },
   heroAmount: {
     ...typography.hero,
-    fontSize: 52,
-    lineHeight: 56,
-    letterSpacing: -1.6,
+    fontSize: 42,
+    lineHeight: 46,
+    letterSpacing: -1.4,
     fontWeight: "800",
     color: "#FFFFFF",
   },
-  heroCurrency: { ...typography.display, fontWeight: "500", color: "rgba(255,255,255,0.72)" },
-  heroHint: { ...typography.callout, color: "rgba(255,255,255,0.78)" },
+  heroHint: { ...typography.callout, color: "rgba(255,255,255,0.82)" },
   heroDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(255,255,255,0.28)",
-    marginVertical: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
   },
   heroFooter: { flexDirection: "row", justifyContent: "space-between", gap: spacing.md },
   heroFooterRight: {
     alignItems: "flex-end",
     paddingLeft: spacing.md,
     borderLeftWidth: StyleSheet.hairlineWidth,
-    borderLeftColor: "rgba(255,255,255,0.2)",
+    borderLeftColor: "rgba(255,255,255,0.16)",
   },
-  heroFooterLabel: { ...typography.caption, color: "rgba(255,255,255,0.72)" },
-  heroFooterValue: { ...typography.title, fontWeight: "700", color: "#FFFFFF" },
+  heroFooterLabel: { ...typography.caption, fontSize: 13, color: "rgba(255,255,255,0.72)" },
+  heroFooterValue: { ...typography.title, fontSize: 19, fontWeight: "700", color: "#FFFFFF" },
 
   micBlock: {
     alignItems: "center",
@@ -602,8 +612,24 @@ const styles = StyleSheet.create({
   micGlow: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   micRow: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
   micRingWrap: { position: "relative" },
-  micRing1: { position: "absolute", top: -14, left: -14, right: -14, bottom: -14, borderRadius: 999, borderWidth: 1 },
-  micRing2: { position: "absolute", top: -28, left: -28, right: -28, bottom: -28, borderRadius: 999, borderWidth: 1 },
+  micRing1: {
+    position: "absolute",
+    top: -14,
+    left: -14,
+    right: -14,
+    bottom: -14,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  micRing2: {
+    position: "absolute",
+    top: -28,
+    left: -28,
+    right: -28,
+    bottom: -28,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
   mic: {
     width: 132,
     height: 132,
@@ -629,17 +655,23 @@ const styles = StyleSheet.create({
   accountsAllButton: { flexDirection: "row", alignItems: "center", gap: 2 },
   accountsAll: { ...typography.callout, fontWeight: "600" },
   accountsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  accountTile: { width: "48%", minHeight: 128, gap: 6, overflow: "hidden" },
+  accountTile: {
+    width: "48.5%",
+    minHeight: 116,
+    justifyContent: "space-between",
+    padding: spacing.lg,
+    overflow: "hidden",
+  },
+  accountTop: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   accountIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radii.sm,
+    width: 34,
+    height: 34,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.md,
   },
-  accountName: typography.callout,
-  accountBalance: { ...typography.display, fontSize: 26, fontWeight: "800" },
+  accountName: { ...typography.caption, fontSize: 13, fontWeight: "600", flex: 1 },
+  accountBalance: { ...typography.display, fontSize: 23, letterSpacing: -0.8, fontWeight: "800" },
   sheetRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -664,7 +696,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.xs,
   },
-  paceTitle: typography.headline,
+  paceTitle: { ...typography.headline, fontWeight: "700" },
+  pacePercent: { ...typography.callout, fontSize: 15, fontWeight: "700" },
   paceRow: { flexDirection: "row", justifyContent: "space-between", marginTop: spacing.xs },
   paceLabel: typography.caption,
   paceValue: { ...typography.caption, fontWeight: "700" },
@@ -689,22 +722,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.sm,
+    gap: 6,
     height: 56,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     borderWidth: StyleSheet.hairlineWidth,
   },
+  // No filled chip behind the icon — the reference glows the glyph itself.
   quickIconGlow: {
-    width: 30,
-    height: 30,
-    borderRadius: radii.pill,
     alignItems: "center",
     justifyContent: "center",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 8,
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
   },
-  quickLabel: { ...typography.callout, fontWeight: "600", flexShrink: 1 },
+  quickLabel: { ...typography.callout, fontSize: 13, fontWeight: "600", flexShrink: 1 },
 
   reviewCard: { flexDirection: "row", alignItems: "center", gap: spacing.md, borderWidth: 1 },
   reviewIcon: {

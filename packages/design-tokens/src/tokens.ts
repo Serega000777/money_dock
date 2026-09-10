@@ -32,9 +32,9 @@ export interface Theme {
    * button — the one clearly-a-gradient surface in the app. Three stops in dark theme
    * (per the reference), two in light. */
   accentGradient: readonly string[];
-  /** A whisper of the same hue, for secondary "block with a number" surfaces (stat
-   * tiles) — just enough to read as not-flat, nowhere near accentGradient's intensity. */
-  tileGradient: readonly [string, string];
+  /** The primary account card's fill — vivid, but a different ramp from accentGradient
+   * so the hero card stays the loudest thing on the screen. */
+  tileGradient: readonly string[];
   /** A subtle, almost-neutral vertical duo for pill action buttons (quick-action chips)
    * — dark and understated, so the icon's own glow is what reads as the accent, not the
    * button fill itself. */
@@ -46,12 +46,21 @@ export interface Theme {
    * a couple of oversized blurred blobs in dark theme for the "alive", not-flat glow
    * the reference has. `top`/`left` are CSS-style percentages (can go negative/>100 to
    * let a blob bleed off-screen), `size` is a pixel diameter. */
-  backgroundGlow: readonly { top: `${number}%`; left: `${number}%`; size: number; color: string }[];
+  backgroundGlow: readonly {
+    top: `${number}%`;
+    left: `${number}%`;
+    size: number;
+    color: string;
+    opacity: number;
+  }[];
   background: string;
   surface: string;
   /** Bottom sheets sit visibly above the page instead of blending into it. */
   sheet: string;
   surfaceSunken: string;
+  /** The unfilled part of a progress bar — lighter than the card it sits on, per the
+   * reference, rather than a darker sunken well. */
+  barTrack: string;
   border: string;
   borderStrong: string;
 
@@ -72,43 +81,44 @@ export interface Theme {
 export const darkTheme: Theme = {
   name: "dark",
 
-  accent: "#8B5CF6",
-  accentSoft: "#211A3D",
-  accentPressed: "#7A4CE0",
+  // Every value below is the reference's own palette (its `base.css` custom properties),
+  // flattened from rgba-over-background to the solid equivalent RN needs.
+  accent: "#FF2BC7", // --pink
+  accentSoft: "#3A0F33",
+  accentPressed: "#E521B0",
   onAccent: "#FFFFFF",
-  // Pink → magenta → blue-violet, matching the reference's hero/mic gradient exactly.
+  // .balance-card / .mic-button: pink → magenta → blue-violet at 135°.
   accentGradient: ["#FF23B8", "#B626F0", "#5D33FF"],
-  // Indigo → magenta — a second, distinct vivid pair (not just a muted step of
-  // accentGradient) so account tiles and stat cards read as lively, not flat.
-  tileGradient: ["#3654F4", "#9223D6"],
-  // Understated dark-purple duo — quick-action pills stay subdued so the icon's own
-  // glow carries the accent instead of the whole button shouting.
+  // .account-card--gradient at 140° — a distinctly bluer ramp than the hero's.
+  tileGradient: ["#D81EE0", "#7B31FF", "#563DFF"],
+  // .action-btn: understated, so the icon's own glow carries the accent.
   chipGradient: ["#3A1B42", "#26122C"],
 
-  // A glowing magenta-violet wash fading to near-black — per the reference: dark mode
-  // should feel alive, not just a dim version of light mode.
+  // The page background stays as it is — the user likes the glowing wash; only the
+  // blocks sitting on it move to the reference's palette.
   backgroundGradient: ["#33104E", "#180C2E", "#0A0614"],
   backgroundGlow: [
-    { top: "-8%", left: "-20%", size: 420, color: "#E935C1" },
-    { top: "38%", left: "55%", size: 460, color: "#8B5CF6" },
+    { top: "-8%", left: "-20%", size: 420, color: "#E935C1", opacity: 0.55 },
+    { top: "38%", left: "55%", size: 460, color: "#8B5CF6", opacity: 0.55 },
   ],
   background: "#0A0614",
-  surface: "#151220",
-  sheet: "#1C1830",
-  surfaceSunken: "#100D18",
-  border: "#241F33",
-  borderStrong: "#322B48",
+  surface: "#281030", // --card-dark over the page
+  sheet: "#301738",
+  surfaceSunken: "#1B0A21",
+  barTrack: "#422D49",
+  border: "#3A2440", // --card-border over the card
+  borderStrong: "#4C3354",
 
-  textPrimary: "#F4F6FB",
-  textSecondary: "#8E97AB",
-  textTertiary: "#5F6979",
+  textPrimary: "#FFFFFF", // --text-main
+  textSecondary: "#C4B4CB", // --text-soft
+  textTertiary: "#9A8CA0", // --text-muted
 
-  positive: "#34D399",
-  positiveSoft: "#10281F",
-  negative: "#FF6B6B",
-  negativeSoft: "#2B1519",
-  warning: "#F0A93B",
-  warningSoft: "#2A2113",
+  positive: "#1CCB57",
+  positiveSoft: "#0E2E1A",
+  negative: "#FF4D5E",
+  negativeSoft: "#33131A",
+  warning: "#FFB521",
+  warningSoft: "#33260D",
 
   shadowColor: "#000000",
 };
@@ -134,6 +144,7 @@ export const lightTheme: Theme = {
   surface: "#FFFFFF",
   sheet: "#FFFFFF",
   surfaceSunken: "#F0F1F8",
+  barTrack: "#E7E5F2",
   border: "#E7E8F2",
   borderStrong: "#D3D6E6",
 

@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useTheme } from "../theme/useTheme";
 
-import { GradientBackground, GradientBox } from "./Gradient";
+import { GradientBackground, GradientBox, GradientRect } from "./Gradient";
 import { Text } from "./Text";
 
 /** Page shell: gradient ground in both themes, safe area, and a scrolling body. */
@@ -210,8 +210,18 @@ export function Pill({
   );
 }
 
-/** A bar that grows to its share on mount instead of appearing already full. */
-export function ProgressBar({ share, color }: { share: number; color: string }) {
+/** A bar that grows to its share on mount instead of appearing already full. Pass
+ * `colors` for the reference's left-to-right gradient fill; `color` alone still works
+ * (and is what the alarm states use, so "over budget" stays a colour, not a gradient). */
+export function ProgressBar({
+  share,
+  color,
+  colors,
+}: {
+  share: number;
+  color: string;
+  colors?: readonly string[];
+}) {
   const theme = useTheme();
   const grow = useRef(new Animated.Value(0)).current;
 
@@ -226,20 +236,24 @@ export function ProgressBar({ share, color }: { share: number; color: string }) 
   }, [grow, share]);
 
   return (
-    <View style={[styles.barTrack, { backgroundColor: theme.surfaceSunken }]}>
+    <View style={[styles.barTrack, { backgroundColor: theme.barTrack }]}>
       <Animated.View
         style={[
           styles.barFill,
           {
-            backgroundColor: color,
-            shadowColor: color,
+            backgroundColor: colors ? "transparent" : color,
+            shadowColor: colors?.[0] ?? color,
             width: grow.interpolate({
               inputRange: [0, 1],
               outputRange: ["0%", `${Math.max(2, Math.min(100, share * 100))}%`],
             }),
           },
         ]}
-      />
+      >
+        {/* No rx on the rect: SVG clamps a corner radius to half the *width*, which turns
+            a long thin bar into a lens. The parent's borderRadius + overflow clips it. */}
+        {colors ? <GradientRect colors={colors} horizontal /> : null}
+      </Animated.View>
     </View>
   );
 }
@@ -348,6 +362,7 @@ const styles = StyleSheet.create({
   barFill: {
     height: 8,
     borderRadius: radii.pill,
+    overflow: "hidden",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 6,
@@ -372,6 +387,12 @@ const styles = StyleSheet.create({
     maxWidth: 560,
     alignSelf: "center",
   },
-  sheetHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: spacing.md },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: spacing.md,
+  },
   sheetTitle: { ...typography.headline, marginBottom: spacing.md, textAlign: "center" },
 });

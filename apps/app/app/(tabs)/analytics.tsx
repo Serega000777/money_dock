@@ -9,6 +9,7 @@ import { useAuthStore } from "../../src/auth/authStore";
 import { useTheme } from "../../src/theme/useTheme";
 import { BarChart, type Bar } from "../../src/ui/BarChart";
 import { Donut, type DonutSlice } from "../../src/ui/Donut";
+import { GlowBlob } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
 import { CustomRangeSheet, MonthPickerSheet, YearPickerSheet } from "../../src/ui/PeriodPicker";
 import { Text } from "../../src/ui/Text";
@@ -362,11 +363,14 @@ export default function Analytics() {
         </View>
       </FadeIn>
 
+      {/* Same shape as the home screen's account cards, per the reference: label on top,
+          a big bold figure at the bottom, and a soft corner glow instead of a flat fill. */}
       <FadeIn index={3}>
         <View style={styles.row}>
-          <Card gradient style={styles.tile}>
+          <Card style={styles.tile}>
+            <GlowBlob top="-30%" left="50%" size={140} color="#913AFF" opacity={0.35} />
             <Text style={[styles.tileLabel, { color: theme.textSecondary }]}>Расходы</Text>
-            <Text style={[styles.tileValue, { color: theme.textPrimary }]}>
+            <Text style={[styles.tileValue, { color: theme.textPrimary }]} numberOfLines={1}>
               {formatMinor(view.spent)} ₽
             </Text>
             {view.changePercent !== null ? (
@@ -378,13 +382,14 @@ export default function Analytics() {
             ) : null}
           </Card>
 
-          <Card gradient style={styles.tile}>
+          <Card style={styles.tile}>
+            <GlowBlob top="-30%" left="50%" size={140} color="#FF2BC7" opacity={0.3} />
             <Text style={[styles.tileLabel, { color: theme.textSecondary }]}>Доходы</Text>
-            <Text style={[styles.tileValue, { color: theme.textPrimary }]}>
+            <Text style={[styles.tileValue, { color: theme.textPrimary }]} numberOfLines={1}>
               {formatMinor(view.income)} ₽
             </Text>
             <Text style={[styles.tileHint, { color: theme.textTertiary }]}>
-              {perDay > 0 ? `≈ ${formatMinor(perDay)} ₽ в день тратится` : " "}
+              {perDay > 0 ? `≈ ${formatMinor(perDay)} ₽ в день` : " "}
             </Text>
           </Card>
         </View>
@@ -584,9 +589,9 @@ const styles = StyleSheet.create({
   stepLabel: typography.headline,
   dropdownHint: { transform: [{ rotate: "90deg" }] },
   row: { flexDirection: "row", gap: spacing.md },
-  tile: { flex: 1, gap: spacing.xs, paddingVertical: spacing.lg },
-  tileLabel: typography.caption,
-  tileValue: typography.title,
+  tile: { flex: 1, gap: spacing.xs, paddingVertical: spacing.lg, overflow: "hidden" },
+  tileLabel: { ...typography.caption, fontSize: 13 },
+  tileValue: { ...typography.display, fontSize: 23, letterSpacing: -0.8, fontWeight: "800" },
   tileHint: typography.caption,
   donutCard: { paddingVertical: spacing.xl },
   sectionTitle: { ...typography.headline, marginTop: spacing.md },

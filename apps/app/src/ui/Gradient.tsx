@@ -6,21 +6,30 @@ import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from "r
  * Gradients are drawn with react-native-svg, which is already a dependency — one flat
  * <Rect> per gradient, no extra native module and nothing to animate on every frame.
  */
-function GradientRect({
+export function GradientRect({
   colors,
   radius = 0,
   diagonal,
+  horizontal,
 }: {
   colors: readonly string[];
   radius?: number;
   diagonal?: boolean;
+  /** Left-to-right instead of top-down — the progress bar's fill. */
+  horizontal?: boolean;
 }) {
   // useId keeps gradient defs unique when several render at once — SVG ids are global.
   const id = `g${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   return (
     <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
       <Defs>
-        <LinearGradient id={id} x1="0" y1="0" x2={diagonal ? "1" : "0.35"} y2="1">
+        <LinearGradient
+          id={id}
+          x1="0"
+          y1="0"
+          x2={horizontal ? "1" : diagonal ? "1" : "0.35"}
+          y2={horizontal ? "0" : "1"}
+        >
           {colors.map((color, i) => (
             <Stop key={color + i} offset={i / Math.max(1, colors.length - 1)} stopColor={color} />
           ))}
@@ -139,12 +148,20 @@ export function GradientBackground({
   glow,
 }: {
   colors: readonly string[];
-  glow?: readonly { top: `${number}%`; left: `${number}%`; size: number; color: string }[];
+  glow?: readonly {
+    top: `${number}%`;
+    left: `${number}%`;
+    size: number;
+    color: string;
+    opacity?: number;
+  }[];
 }) {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <GradientRect colors={colors} />
-      {glow?.map((blob, i) => <GlowBlob key={i} {...blob} />)}
+      {glow?.map((blob, i) => (
+        <GlowBlob key={i} {...blob} />
+      ))}
     </View>
   );
 }
