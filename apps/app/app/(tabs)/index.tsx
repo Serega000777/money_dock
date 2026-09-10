@@ -245,8 +245,8 @@ export default function Home() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.accountsRow}
             >
-              {accounts.map((account: Account) => (
-                <AccountTile key={account.id} account={account} />
+              {accounts.map((account: Account, index: number) => (
+                <AccountTile key={account.id} account={account} vivid={index === 0} />
               ))}
             </ScrollView>
           </FadeIn>
@@ -459,18 +459,24 @@ const ACCOUNT_TYPE_ICON: Record<Account["type"], IconName> = {
 };
 
 /** One account, styled like a bank card — real balance, no invented card numbers or
- * bank logos, since we don't store either. */
-function AccountTile({ account }: { account: Account }) {
+ * bank logos, since we don't store either. Only the first tile (`vivid`) gets the full
+ * gradient treatment; the rest are flat, so the row reads as "one primary card, plus
+ * others" instead of a wall of equally-loud tiles. */
+function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
   const theme = useTheme();
+  const nameColor = vivid ? "rgba(255,255,255,0.85)" : theme.textSecondary;
+  const balanceColor = vivid ? "#FFFFFF" : theme.textPrimary;
+  const iconBg = vivid ? "rgba(255,255,255,0.18)" : theme.accentSoft;
+  const iconColor = vivid ? "#FFFFFF" : theme.accent;
   return (
-    <Card gradient style={styles.accountTile}>
-      <View style={[styles.accountIcon, { backgroundColor: theme.accentSoft }]}>
-        <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={theme.accent} size={16} />
+    <Card gradient={vivid} style={styles.accountTile}>
+      <View style={[styles.accountIcon, { backgroundColor: iconBg }]}>
+        <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={iconColor} size={16} />
       </View>
-      <Text style={[styles.accountName, { color: theme.textSecondary }]} numberOfLines={1}>
+      <Text style={[styles.accountName, { color: nameColor }]} numberOfLines={1}>
         {account.name}
       </Text>
-      <Text style={[styles.accountBalance, { color: theme.textPrimary }]} numberOfLines={1}>
+      <Text style={[styles.accountBalance, { color: balanceColor }]} numberOfLines={1}>
         {formatMinor(account.currentBalanceMinor)} ₽
       </Text>
     </Card>
@@ -533,9 +539,10 @@ const styles = StyleSheet.create({
   mic: {
     width: 132,
     height: 132,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
+    // A centred halo, not a drop shadow — per the reference's glowing mic button.
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 48,
     elevation: 10,
   },
   micInner: { flex: 1, alignItems: "center", justifyContent: "center" },

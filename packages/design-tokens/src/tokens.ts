@@ -37,6 +37,11 @@ export interface Theme {
 
   /** The page background is a gradient in both themes, never a flat fill. */
   backgroundGradient: readonly [string, string, string];
+  /** Soft radial glows layered over the background gradient — empty in light theme,
+   * a couple of oversized blurred blobs in dark theme for the "alive", not-flat glow
+   * the reference has. `top`/`left` are CSS-style percentages (can go negative/>100 to
+   * let a blob bleed off-screen), `size` is a pixel diameter. */
+  backgroundGlow: readonly { top: `${number}%`; left: `${number}%`; size: number; color: string }[];
   background: string;
   surface: string;
   /** Bottom sheets sit visibly above the page instead of blending into it. */
@@ -74,6 +79,10 @@ export const darkTheme: Theme = {
   // A glowing magenta-violet wash fading to near-black — per the reference: dark mode
   // should feel alive, not just a dim version of light mode.
   backgroundGradient: ["#33104E", "#180C2E", "#0A0614"],
+  backgroundGlow: [
+    { top: "-8%", left: "-20%", size: 420, color: "#E935C1" },
+    { top: "38%", left: "55%", size: 460, color: "#8B5CF6" },
+  ],
   background: "#0A0614",
   surface: "#151220",
   sheet: "#1C1830",
@@ -109,6 +118,8 @@ export const lightTheme: Theme = {
   // Same gradient idea as dark, only barely tinted — it keeps the two themes related
   // instead of making light mode a flat sheet of paper.
   backgroundGradient: ["#FBFAFF", "#F5F5FD", "#EDEFFB"],
+  // No glow blobs — the reference's glowing background is a dark-mode-only look.
+  backgroundGlow: [],
   background: "#F7F7FC",
   surface: "#FFFFFF",
   sheet: "#FFFFFF",

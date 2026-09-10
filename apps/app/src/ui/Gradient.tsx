@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
 
 /**
  * Gradients are drawn with react-native-svg, which is already a dependency — one flat
@@ -31,6 +31,36 @@ function GradientRect({
   );
 }
 
+/** A soft, oversized radial smudge — no blur filter needed (uneven react-native-svg
+ * support across platforms), the fade-to-transparent gradient reads as a glow on its
+ * own. Purely decorative, so it's fine if it bleeds off the edge of the screen. */
+function GlowBlob({
+  top,
+  left,
+  size,
+  color,
+}: {
+  top: `${number}%`;
+  left: `${number}%`;
+  size: number;
+  color: string;
+}) {
+  const id = `glow${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
+  return (
+    <View style={{ position: "absolute", top, left, width: size, height: size }}>
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <Defs>
+          <RadialGradient id={id} cx="50%" cy="50%" r="50%">
+            <Stop offset="0%" stopColor={color} stopOpacity={0.55} />
+            <Stop offset="100%" stopColor={color} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Circle cx={size / 2} cy={size / 2} r={size / 2} fill={`url(#${id})`} />
+      </Svg>
+    </View>
+  );
+}
+
 /** A gradient-filled box that lays its children on top. */
 export function GradientBox({
   colors,
@@ -53,11 +83,20 @@ export function GradientBox({
   );
 }
 
-/** Full-bleed page background; sits behind everything and never intercepts touches. */
-export function GradientBackground({ colors }: { colors: readonly string[] }) {
+/** Full-bleed page background; sits behind everything and never intercepts touches.
+ * `glow` (dark theme only) layers a couple of soft oversized blobs over the base
+ * gradient for the reference's "alive", not-flat look. */
+export function GradientBackground({
+  colors,
+  glow,
+}: {
+  colors: readonly string[];
+  glow?: readonly { top: `${number}%`; left: `${number}%`; size: number; color: string }[];
+}) {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <GradientRect colors={colors} />
+      {glow?.map((blob, i) => <GlowBlob key={i} {...blob} />)}
     </View>
   );
 }

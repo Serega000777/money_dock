@@ -31,7 +31,7 @@ export function Screen({
   const theme = useTheme();
   return (
     <View style={styles.flex}>
-      <GradientBackground colors={theme.backgroundGradient} />
+      <GradientBackground colors={theme.backgroundGradient} glow={theme.backgroundGlow} />
       <SafeAreaView style={styles.flex} edges={["top", "left", "right"]}>
         {scroll ? (
           <ScrollView
