@@ -67,14 +67,14 @@ export const darkTheme: Theme = {
   accentPressed: "#7A4CE0",
   onAccent: "#FFFFFF",
   accentGradient: ["#E935C1", "#8B5CF6"],
-  // A muted step of the same hue — visibly a gradient, well short of accentGradient's
-  // intensity, for stat tiles that shouldn't shout as loud as the hero card/button.
-  tileGradient: ["#251A40", "#191330"],
+  // Indigo → magenta — a second, distinct vivid pair (not just a muted step of
+  // accentGradient) so account tiles and stat cards read as lively, not flat.
+  tileGradient: ["#3654F4", "#9223D6"],
 
-  // Black base with just a trace of the brand hue — "еле видный" per the reference: the
-  // page reads as black, not navy, but isn't a flat fill either.
-  backgroundGradient: ["#0A0810", "#0D0A14", "#100B18"],
-  background: "#0A0810",
+  // A glowing magenta-violet wash fading to near-black — per the reference: dark mode
+  // should feel alive, not just a dim version of light mode.
+  backgroundGradient: ["#33104E", "#180C2E", "#0A0614"],
+  background: "#0A0614",
   surface: "#151220",
   sheet: "#1C1830",
   surfaceSunken: "#100D18",
