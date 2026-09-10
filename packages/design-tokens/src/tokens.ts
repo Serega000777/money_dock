@@ -28,12 +28,17 @@ export interface Theme {
   accentSoft: string;
   accentPressed: string;
   onAccent: string;
-  /** Magenta → violet, used on the hero balance card and the central/mic button — the
-   * one clearly-a-gradient surface in the app. */
-  accentGradient: readonly [string, string];
+  /** Pink → magenta → violet, used on the hero balance card and the central/mic
+   * button — the one clearly-a-gradient surface in the app. Three stops in dark theme
+   * (per the reference), two in light. */
+  accentGradient: readonly string[];
   /** A whisper of the same hue, for secondary "block with a number" surfaces (stat
    * tiles) — just enough to read as not-flat, nowhere near accentGradient's intensity. */
   tileGradient: readonly [string, string];
+  /** A subtle, almost-neutral vertical duo for pill action buttons (quick-action chips)
+   * — dark and understated, so the icon's own glow is what reads as the accent, not the
+   * button fill itself. */
+  chipGradient: readonly [string, string];
 
   /** The page background is a gradient in both themes, never a flat fill. */
   backgroundGradient: readonly [string, string, string];
@@ -71,10 +76,14 @@ export const darkTheme: Theme = {
   accentSoft: "#211A3D",
   accentPressed: "#7A4CE0",
   onAccent: "#FFFFFF",
-  accentGradient: ["#E935C1", "#8B5CF6"],
+  // Pink → magenta → blue-violet, matching the reference's hero/mic gradient exactly.
+  accentGradient: ["#FF23B8", "#B626F0", "#5D33FF"],
   // Indigo → magenta — a second, distinct vivid pair (not just a muted step of
   // accentGradient) so account tiles and stat cards read as lively, not flat.
   tileGradient: ["#3654F4", "#9223D6"],
+  // Understated dark-purple duo — quick-action pills stay subdued so the icon's own
+  // glow carries the accent instead of the whole button shouting.
+  chipGradient: ["#3A1B42", "#26122C"],
 
   // A glowing magenta-violet wash fading to near-black — per the reference: dark mode
   // should feel alive, not just a dim version of light mode.
@@ -114,6 +123,7 @@ export const lightTheme: Theme = {
   accentGradient: ["#E935C1", "#7C4DFF"],
   // A visibly-lavender step, a bit stronger than the page background's barely-there tint.
   tileGradient: ["#FBF6FF", "#ECE1FF"],
+  chipGradient: ["#FFFFFF", "#F7F2FF"],
 
   // Same gradient idea as dark, only barely tinted — it keeps the two themes related
   // instead of making light mode a flat sheet of paper.

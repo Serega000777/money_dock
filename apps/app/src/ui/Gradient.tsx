@@ -41,11 +41,13 @@ export function GlowBlob({
   left,
   size,
   color,
+  opacity = 0.55,
 }: {
   top: `${number}%`;
   left: `${number}%`;
   size: number;
   color: string;
+  opacity?: number;
 }) {
   const id = `glow${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   return (
@@ -53,13 +55,46 @@ export function GlowBlob({
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <Defs>
           <RadialGradient id={id} cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={color} stopOpacity={0.55} />
+            <Stop offset="0%" stopColor={color} stopOpacity={opacity} />
             <Stop offset="100%" stopColor={color} stopOpacity={0} />
           </RadialGradient>
         </Defs>
         <Circle cx={size / 2} cy={size / 2} r={size / 2} fill={`url(#${id})`} />
       </Svg>
     </View>
+  );
+}
+
+/** A faint donut outline — transparent centre, thick low-opacity border — layered
+ * behind a filled `GlowBlob` for the reference's two-ring overlay look on the hero
+ * card. Plain View + border, no SVG needed for a shape this simple. */
+export function GlowRing({
+  top,
+  left,
+  size,
+  color,
+  ringWidth = 32,
+}: {
+  top: `${number}%`;
+  left: `${number}%`;
+  size: number;
+  color: string;
+  ringWidth?: number;
+}) {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top,
+        left,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        borderWidth: ringWidth,
+        borderColor: color,
+      }}
+    />
   );
 }
 
@@ -89,7 +124,7 @@ export function GradientBox({
     <View style={[{ overflow: "hidden", borderRadius: radius }, style]}>
       <GradientRect colors={colors} diagonal={diagonal} />
       {highlight ? (
-        <GlowBlob top="-30%" left="45%" size={highlightSize} color="#FFFFFF" />
+        <GlowBlob top="-30%" left="45%" size={highlightSize} color="#FFFFFF" opacity={0.28} />
       ) : null}
       {children}
     </View>

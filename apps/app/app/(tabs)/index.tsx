@@ -3,14 +3,14 @@ import type { Account, CategoryGrowthFacts, Insight } from "@money-dock/shared-t
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, router } from "expo-router";
 import { useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
 import { useTelegram } from "../../src/telegram/TelegramProvider";
 import { useSettingsStore } from "../../src/theme/settingsStore";
 import { useTheme } from "../../src/theme/useTheme";
-import { GlowBlob, GradientBox } from "../../src/ui/Gradient";
+import { GlowBlob, GlowRing, GradientBox } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
 import { Text } from "../../src/ui/Text";
 import {
@@ -157,6 +157,13 @@ export default function Home() {
           right beside it — which two is a Кабинет → Главный экран setting. */}
         <FadeIn index={1}>
           <GradientBox colors={theme.accentGradient} diagonal radius={radii.xl} highlight>
+            <GlowRing
+              top="-60%"
+              left="25%"
+              size={300}
+              ringWidth={22}
+              color="rgba(255,255,255,0.05)"
+            />
             <View style={styles.heroBody}>
               <Text style={styles.heroLabel}>Общий баланс</Text>
               <View style={styles.heroAmountRow}>
@@ -200,27 +207,32 @@ export default function Home() {
                 halo on the button itself, this is what makes it feel like a spotlight
                 against the page background too, per the reference. */}
             <View pointerEvents="none" style={styles.micGlow}>
-              <GlowBlob top="0%" left="15%" size={280} color={theme.accent} />
+              <GlowBlob top="-10%" left="10%" size={260} color="#E935C1" />
+              <GlowBlob top="5%" left="35%" size={260} color="#5D33FF" />
             </View>
             <View style={styles.micRow}>
               <WaveBars color={theme.accent} />
-              <Link href="/voice" asChild>
-                <PressableScale accessibilityLabel="Добавить операцию голосом">
-                  <GradientBox
-                    colors={theme.accentGradient}
-                    diagonal
-                    radius={radii.pill}
-                    highlight
-                    highlightSize={150}
-                    style={StyleSheet.flatten([styles.mic, { shadowColor: theme.accent }])}
-                  >
-                    <View style={styles.micInner}>
-                      <Icon name="mic" color="#FFFFFF" size={44} strokeWidth={1.8} />
-                    </View>
-                  </GradientBox>
-                </PressableScale>
-              </Link>
-              <WaveBars color={theme.accent} reverse />
+              <View style={styles.micRingWrap}>
+                <View pointerEvents="none" style={[styles.micRing1, { borderColor: "rgba(255,43,199,0.2)" }]} />
+                <View pointerEvents="none" style={[styles.micRing2, { borderColor: "rgba(128,67,255,0.18)" }]} />
+                <Link href="/voice" asChild>
+                  <PressableScale accessibilityLabel="Добавить операцию голосом">
+                    <GradientBox
+                      colors={theme.accentGradient}
+                      diagonal
+                      radius={radii.pill}
+                      highlight
+                      highlightSize={150}
+                      style={StyleSheet.flatten([styles.mic, { shadowColor: theme.accent }])}
+                    >
+                      <View style={styles.micInner}>
+                        <Icon name="mic" color="#FFFFFF" size={44} strokeWidth={1.8} />
+                      </View>
+                    </GradientBox>
+                  </PressableScale>
+                </Link>
+              </View>
+              <WaveBars color={theme.accent} />
             </View>
             <Text style={[styles.micTitle, { color: theme.textPrimary }]}>
               Скажите, что потратили
@@ -248,21 +260,18 @@ export default function Home() {
                 <Icon name="chevron" color={theme.accent} size={14} />
               </Pressable>
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.accountsRow}
-            >
+            <View style={styles.accountsRow}>
               {accounts.map((account: Account, index: number) => (
                 <AccountTile key={account.id} account={account} vivid={index === 0} />
               ))}
-            </ScrollView>
+            </View>
           </FadeIn>
         ) : null}
 
         {summary ? (
           <FadeIn index={4}>
             <Card style={styles.paceCard}>
+              <GlowBlob top="-30%" left="-10%" size={160} color={theme.accent} />
               <View style={styles.paceHeader}>
                 <Text style={[styles.paceTitle, { color: theme.textPrimary }]}>
                   Прогресс месяца
@@ -343,14 +352,23 @@ export default function Home() {
           <View style={styles.quickRow}>
             <Link href="/import" asChild>
               <PressableScale style={styles.quickButtonWrap}>
-                <Card gradient style={styles.quickButton}>
-                  <View style={[styles.quickIcon, { backgroundColor: theme.accentSoft }]}>
-                    <Icon name="upload" color={theme.accent} size={17} />
+                <GradientBox
+                  colors={theme.chipGradient}
+                  radius={radii.pill}
+                  style={StyleSheet.flatten([styles.quickButton, { borderColor: theme.border }])}
+                >
+                  <View
+                    style={[
+                      styles.quickIconGlow,
+                      { shadowColor: theme.accent, backgroundColor: `${theme.accent}1F` },
+                    ]}
+                  >
+                    <Icon name="upload" color={theme.accent} size={18} />
                   </View>
                   <Text style={[styles.quickLabel, { color: theme.textPrimary }]} numberOfLines={1}>
                     Импорт из банка
                   </Text>
-                </Card>
+                </GradientBox>
               </PressableScale>
             </Link>
             {Platform.OS === "web" ? (
@@ -373,14 +391,23 @@ export default function Home() {
               style={styles.quickButtonWrap}
               onPress={() => receiptInputRef.current?.click()}
             >
-              <Card gradient style={styles.quickButton}>
-                <View style={[styles.quickIcon, { backgroundColor: theme.positiveSoft }]}>
-                  <Icon name="note" color={theme.positive} size={17} />
+              <GradientBox
+                colors={theme.chipGradient}
+                radius={radii.pill}
+                style={StyleSheet.flatten([styles.quickButton, { borderColor: theme.border }])}
+              >
+                <View
+                  style={[
+                    styles.quickIconGlow,
+                    { shadowColor: theme.positive, backgroundColor: `${theme.positive}1F` },
+                  ]}
+                >
+                  <Icon name="note" color={theme.positive} size={18} />
                 </View>
                 <Text style={[styles.quickLabel, { color: theme.textPrimary }]} numberOfLines={1}>
                   Скан чека
                 </Text>
-              </Card>
+              </GradientBox>
             </PressableScale>
           </View>
         </FadeIn>
@@ -478,6 +505,7 @@ function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
   const iconColor = vivid ? "#FFFFFF" : theme.accent;
   return (
     <Card gradient={vivid} style={styles.accountTile}>
+      {!vivid ? <GlowBlob top="-25%" left="55%" size={140} color={theme.accent} /> : null}
       <View style={[styles.accountIcon, { backgroundColor: iconBg }]}>
         <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={iconColor} size={18} />
       </View>
@@ -493,15 +521,26 @@ function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
 
 /** Static waveform decoration either side of the mic — `reverse` mirrors the bar
  * heights so the two sides don't look like copy-paste of each other. */
-function WaveBars({ color, reverse }: { color: string; reverse?: boolean }) {
-  const heights = [8, 16, 11, 20, 9];
-  const ordered = reverse ? [...heights].reverse() : heights;
+function WaveBars({ color }: { color: string }) {
+  // A symmetric little mountain, like the reference's equalizer.
+  const heights = [14, 22, 32, 22, 14];
   return (
     <View style={styles.waveBars}>
-      {ordered.map((height, index) => (
+      {heights.map((height, index) => (
         <View
           key={index}
-          style={[styles.waveBar, { height, backgroundColor: color, opacity: 0.35 }]}
+          style={[
+            styles.waveBar,
+            {
+              height,
+              backgroundColor: color,
+              opacity: 0.6,
+              shadowColor: color,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.6,
+              shadowRadius: 6,
+            },
+          ]}
         />
       ))}
     </View>
@@ -527,20 +566,32 @@ const styles = StyleSheet.create({
   },
 
   heroBody: { padding: spacing.xl, gap: spacing.xs },
-  heroLabel: { ...typography.callout, color: "rgba(255,255,255,0.82)" },
+  heroLabel: { ...typography.body, color: "rgba(255,255,255,0.82)" },
   heroAmountRow: { flexDirection: "row", alignItems: "baseline", gap: spacing.sm },
-  heroAmount: { ...typography.hero, color: "#FFFFFF" },
+  heroAmount: {
+    ...typography.hero,
+    fontSize: 52,
+    lineHeight: 56,
+    letterSpacing: -1.6,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
   heroCurrency: { ...typography.display, fontWeight: "500", color: "rgba(255,255,255,0.72)" },
-  heroHint: { ...typography.caption, color: "rgba(255,255,255,0.78)" },
+  heroHint: { ...typography.callout, color: "rgba(255,255,255,0.78)" },
   heroDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: "rgba(255,255,255,0.28)",
     marginVertical: spacing.md,
   },
   heroFooter: { flexDirection: "row", justifyContent: "space-between", gap: spacing.md },
-  heroFooterRight: { alignItems: "flex-end" },
+  heroFooterRight: {
+    alignItems: "flex-end",
+    paddingLeft: spacing.md,
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    borderLeftColor: "rgba(255,255,255,0.2)",
+  },
   heroFooterLabel: { ...typography.caption, color: "rgba(255,255,255,0.72)" },
-  heroFooterValue: { ...typography.headline, color: "#FFFFFF" },
+  heroFooterValue: { ...typography.title, fontWeight: "700", color: "#FFFFFF" },
 
   micBlock: {
     alignItems: "center",
@@ -550,6 +601,9 @@ const styles = StyleSheet.create({
   },
   micGlow: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   micRow: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
+  micRingWrap: { position: "relative" },
+  micRing1: { position: "absolute", top: -14, left: -14, right: -14, bottom: -14, borderRadius: 999, borderWidth: 1 },
+  micRing2: { position: "absolute", top: -28, left: -28, right: -28, bottom: -28, borderRadius: 999, borderWidth: 1 },
   mic: {
     width: 132,
     height: 132,
@@ -562,8 +616,8 @@ const styles = StyleSheet.create({
   micInner: { flex: 1, alignItems: "center", justifyContent: "center" },
   micTitle: { ...typography.headline, marginTop: spacing.sm },
   micHint: { ...typography.caption, textAlign: "center", maxWidth: 300 },
-  waveBars: { flexDirection: "row", alignItems: "center", gap: 4, width: 40 },
-  waveBar: { width: 3, borderRadius: 2 },
+  waveBars: { flexDirection: "row", alignItems: "center", gap: 6, width: 44, height: 48 },
+  waveBar: { width: 4, borderRadius: 2 },
 
   accountsHeader: {
     flexDirection: "row",
@@ -574,18 +628,18 @@ const styles = StyleSheet.create({
   accountsTitle: typography.headline,
   accountsAllButton: { flexDirection: "row", alignItems: "center", gap: 2 },
   accountsAll: { ...typography.callout, fontWeight: "600" },
-  accountsRow: { gap: spacing.sm, paddingRight: spacing.lg },
-  accountTile: { width: 184, gap: 6 },
+  accountsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  accountTile: { width: "48%", minHeight: 128, gap: 6, overflow: "hidden" },
   accountIcon: {
     width: 36,
     height: 36,
     borderRadius: radii.sm,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
   },
   accountName: typography.callout,
-  accountBalance: { ...typography.title, fontWeight: "700" },
+  accountBalance: { ...typography.display, fontSize: 26, fontWeight: "800" },
   sheetRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -602,7 +656,7 @@ const styles = StyleSheet.create({
   sheetRowLabel: { ...typography.body, flex: 1 },
   sheetRowValue: { ...typography.callout, fontWeight: "600" },
 
-  paceCard: { gap: spacing.sm },
+  paceCard: { gap: spacing.sm, overflow: "hidden" },
   paceHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -634,16 +688,21 @@ const styles = StyleSheet.create({
   quickButton: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: spacing.sm,
-    paddingVertical: spacing.md,
+    height: 56,
     paddingHorizontal: spacing.md,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  quickIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.sm,
+  quickIconGlow: {
+    width: 30,
+    height: 30,
+    borderRadius: radii.pill,
     alignItems: "center",
     justifyContent: "center",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
   },
   quickLabel: { ...typography.callout, fontWeight: "600", flexShrink: 1 },
 

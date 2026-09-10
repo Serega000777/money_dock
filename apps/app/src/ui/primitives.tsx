@@ -232,6 +232,7 @@ export function ProgressBar({ share, color }: { share: number; color: string }) 
           styles.barFill,
           {
             backgroundColor: color,
+            shadowColor: color,
             width: grow.interpolate({
               inputRange: [0, 1],
               outputRange: ["0%", `${Math.max(2, Math.min(100, share * 100))}%`],
@@ -344,7 +345,13 @@ const styles = StyleSheet.create({
   },
   pillText: { ...typography.caption, fontWeight: "600" },
   barTrack: { height: 8, borderRadius: radii.pill, overflow: "hidden" },
-  barFill: { height: 8, borderRadius: radii.pill },
+  barFill: {
+    height: 8,
+    borderRadius: radii.pill,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+  },
   segmented: { flexDirection: "row", borderRadius: radii.md, padding: 3, gap: 3 },
   segment: {
     flex: 1,
