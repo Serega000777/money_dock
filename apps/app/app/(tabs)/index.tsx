@@ -260,8 +260,9 @@ export default function Home() {
                 style={styles.accountsAllButton}
                 onPress={() => setAccountsSheetOpen(true)}
               >
-                <Text style={[styles.accountsAll, { color: theme.accent }]}>Все</Text>
-                <Icon name="chevron" color={theme.accent} size={14} />
+                {/* Soft white, not the accent — the reference's "Все ›" is muted. */}
+                <Text style={[styles.accountsAll, { color: theme.textSecondary }]}>Все</Text>
+                <Icon name="chevron" color={theme.textSecondary} size={14} />
               </Pressable>
             </View>
             <View style={styles.accountsRow}>
@@ -496,30 +497,34 @@ const ACCOUNT_TYPE_ICON: Record<Account["type"], IconName> = {
   bank: "card",
 };
 
-/** One account, styled like a bank card — real balance, no invented card numbers or
- * bank logos, since we don't store either. Only the first tile (`vivid`) gets the full
- * gradient treatment; the rest are flat, so the row reads as "one primary card, plus
- * others" instead of a wall of equally-loud tiles. */
+/** One account, laid out like the reference's bank card: badge on the left, a two-line
+ * name block beside it, and the balance pinned to the bottom. The reference's second
+ * line is the last four card digits and its right-hand card carries a Mastercard mark —
+ * we store neither, and inventing them would put false information on a finance screen,
+ * so the currency stands in and the network mark is left out. Only the first tile
+ * (`vivid`) gets the gradient; the rest stay flat, as in the reference. */
 function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
   const theme = useTheme();
-  const nameColor = vivid ? "rgba(255,255,255,0.85)" : theme.textSecondary;
+  const nameColor = vivid ? "#FFFFFF" : theme.textPrimary;
+  const metaColor = vivid ? "rgba(255,255,255,0.72)" : theme.textTertiary;
   const balanceColor = vivid ? "#FFFFFF" : theme.textPrimary;
-  const iconBg = vivid ? "rgba(255,255,255,0.18)" : theme.accentSoft;
+  const iconBg = vivid ? "rgba(255,255,255,0.16)" : theme.accentSoft;
   const iconColor = vivid ? "#FFFFFF" : theme.accent;
   return (
     <Card gradient={vivid} style={styles.accountTile}>
       {!vivid ? <GlowBlob top="-25%" left="55%" size={140} color="#913AFF" opacity={0.35} /> : null}
-      {/* Reference layout: badge and name share the top row, the balance sits on its own
-          below with room above it. */}
       <View style={styles.accountTop}>
         <View style={[styles.accountIcon, { backgroundColor: iconBg }]}>
           <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={iconColor} size={18} />
         </View>
-        {/* Two lines, like the reference's name + card-number block — wrapping reads
-            better than truncating "Основная карта" to "Основная ка…". */}
-        <Text style={[styles.accountName, { color: nameColor }]} numberOfLines={2}>
-          {account.name}
-        </Text>
+        <View style={styles.accountTopText}>
+          <Text style={[styles.accountName, { color: nameColor }]} numberOfLines={1}>
+            {account.name}
+          </Text>
+          <Text style={[styles.accountMeta, { color: metaColor }]} numberOfLines={1}>
+            {account.currency}
+          </Text>
+        </View>
       </View>
       <Text style={[styles.accountBalance, { color: balanceColor }]} numberOfLines={1}>
         {formatMinor(account.currentBalanceMinor)} ₽
@@ -580,9 +585,9 @@ const styles = StyleSheet.create({
   heroLabel: { ...typography.body, fontSize: 16, color: "rgba(255,255,255,0.82)" },
   heroAmount: {
     ...typography.hero,
-    fontSize: 42,
-    lineHeight: 46,
-    letterSpacing: -1.4,
+    fontSize: 37,
+    lineHeight: 42,
+    letterSpacing: -1.1,
     fontWeight: "800",
     color: "#FFFFFF",
   },
@@ -659,19 +664,23 @@ const styles = StyleSheet.create({
     width: "48.5%",
     minHeight: 116,
     justifyContent: "space-between",
-    padding: spacing.lg,
+    // The reference's 16px padding scaled to a 390px phone — also what buys the name
+    // enough room to fit "Основная карта" without an ellipsis.
+    padding: 14,
     overflow: "hidden",
   },
-  accountTop: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  accountTop: { flexDirection: "row", alignItems: "center", gap: 8 },
   accountIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
-  accountName: { ...typography.caption, fontSize: 13, fontWeight: "600", flex: 1 },
-  accountBalance: { ...typography.display, fontSize: 23, letterSpacing: -0.8, fontWeight: "800" },
+  accountTopText: { flex: 1, gap: 2 },
+  accountName: { ...typography.caption, fontSize: 12.5, lineHeight: 15, fontWeight: "600" },
+  accountMeta: { ...typography.caption, fontSize: 11, lineHeight: 13 },
+  accountBalance: { ...typography.display, fontSize: 21, letterSpacing: -0.6, fontWeight: "800" },
   sheetRow: {
     flexDirection: "row",
     alignItems: "center",
