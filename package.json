@@ -24,5 +24,10 @@
     "typescript": "^5.7.2",
     "prettier": "^3.4.2",
     "@money-dock/config": "workspace:*"
+  },
+  "pnpm": {
+    "overrides": {
+      "multer": "^2.3.0"
+    }
   }
 }
