@@ -5,7 +5,7 @@ import { NestFactory } from "@nestjs/core";
 import helmet from "helmet";
 
 import { AppModule } from "./app.module";
-import type { Env } from "./config/env";
+import { parseCorsOrigins, type Env } from "./config/env";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,7 +13,7 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
   app.use(helmet());
-  app.enableCors({ origin: config.get("CORS_ORIGIN", { infer: true }) });
+  app.enableCors({ origin: parseCorsOrigins(config.get("CORS_ORIGIN", { infer: true })) });
   // Correlation-id middleware and the error envelope filter are wired in AppModule
   // (not here) so e2e tests, which compile AppModule directly, get them too.
   // DTO validation is Zod-based at the boundary (ADR 0008), not class-validator —
