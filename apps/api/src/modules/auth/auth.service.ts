@@ -1,5 +1,11 @@
 import type { AuthTokens, User } from "@money-dock/shared-types";
-import { Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import type { OAuthCodeAuthInput } from "@money-dock/validation";
+import {
+  Injectable,
+  NotFoundException,
+  NotImplementedException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 
@@ -34,7 +40,42 @@ export class AuthService {
     }
 
     const user = await this.users.findOrCreateByTelegramIdentity(result.user);
-    const { refreshToken } = await this.sessions.issue(user.id);
+    return this.issueSession(user, "telegram");
+  }
+
+  /**
+   * Scaffolding for the Yandex ID sign-in button (spec: registration screen offers
+   * Telegram / Yandex ID / VK ID). Not wired to a real Yandex OAuth app yet — there is no
+   * client id/secret to exchange `code` for a token with, and no `verify-yandex-id.ts`
+   * helper (the counterpart to `verifyTelegramInitData`) to turn that token into a
+   * verified identity. Wiring it for real is: exchange `code` at
+   * https://oauth.yandex.ru/token, call https://login.yandex.ru/info with the resulting
+   * access token to get the Yandex user id/profile, then
+   * `this.users.findOrCreateByIdentity("yandex", ...)` (generalize
+   * `findOrCreateByTelegramIdentity` — `userIdentities` already has a `"yandex"` enum
+   * value for this) and `this.issueSession(user, "yandex")`.
+   */
+  loginWithYandex(_input: OAuthCodeAuthInput): Promise<{ user: User; tokens: AuthTokens }> {
+    throw new NotImplementedException("Вход через Yandex ID пока недоступен");
+  }
+
+  /**
+   * Scaffolding for the VK ID sign-in button — same shape and same caveats as
+   * {@link loginWithYandex}. Wiring it for real additionally needs a `"vk"` value on
+   * `identityProviderEnum` (added alongside this stub) and VK ID's own token exchange at
+   * https://id.vk.com/oauth2/auth (VK ID uses PKCE, not a plain client secret).
+   */
+  loginWithVk(_input: OAuthCodeAuthInput): Promise<{ user: User; tokens: AuthTokens }> {
+    throw new NotImplementedException("Вход через VK ID пока недоступен");
+  }
+
+  /** Shared tail of every login path: open a session, mint an access token, audit-log. */
+  private async issueSession(
+    user: User,
+    provider: string,
+    deviceId?: string,
+  ): Promise<{ user: User; tokens: AuthTokens }> {
+    const { refreshToken } = await this.sessions.issue(user.id, deviceId);
     const accessToken = await this.jwt.signAsync({ sub: user.id });
 
     await this.auditLog.record({
@@ -42,7 +83,7 @@ export class AuthService {
       action: "auth.login",
       entityType: "user",
       entityId: user.id,
-      metadata: { provider: "telegram" },
+      metadata: { provider },
     });
 
     return { user, tokens: { accessToken, refreshToken } };
@@ -65,9 +106,7 @@ export class AuthService {
     });
     await this.demoData.seedFor(user.id);
 
-    const { refreshToken } = await this.sessions.issue(user.id, "dev-browser");
-    const accessToken = await this.jwt.signAsync({ sub: user.id });
-    return { user, tokens: { accessToken, refreshToken } };
+    return this.issueSession(user, "dev-browser", "dev-browser");
   }
 
   async refresh(refreshToken: string): Promise<AuthTokens> {

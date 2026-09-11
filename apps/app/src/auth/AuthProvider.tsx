@@ -7,9 +7,12 @@ import { useTelegram } from "../telegram/TelegramProvider";
 import { useAuthStore } from "./authStore";
 
 /**
- * Signs in as soon as possible: with Telegram initData inside Telegram, and with the
- * dev/demo user when the app is opened as a plain website (that endpoint 404s in
- * production, so this can't become a backdoor).
+ * Signs in as soon as possible when running inside a real Telegram Mini App — the launch
+ * itself already proves identity via `initData`, so there is nothing for the user to
+ * choose or confirm. Outside Telegram (plain browser, or a future standalone mobile app)
+ * this deliberately does nothing: `apps/app/app/sign-in.tsx` is the entry point there, and
+ * `signInDemo()` below is what it calls for the browser/demo path that used to run here
+ * automatically.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { initData, isInsideTelegram } = useTelegram();
@@ -18,15 +21,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (accessToken) return;
-    if (isInsideTelegram && !initData) return;
+    if (!isInsideTelegram || !initData) return;
 
     let cancelled = false;
-    const login =
-      isInsideTelegram && initData
-        ? apiClient.auth.loginWithTelegram(initData)
-        : apiClient.auth.devLogin();
-
-    login
+    apiClient.auth
+      .loginWithTelegram(initData)
       .then((res) => {
         if (!cancelled) {
           setTokens({
@@ -46,4 +45,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isInsideTelegram, initData, accessToken, setTokens]);
 
   return <>{children}</>;
+}
+
+/** The browser/demo entry point (`/auth/dev-login` — 404s in production) that `AuthProvider`
+ * used to call automatically outside Telegram. Now a conscious action from the sign-in
+ * screen, alongside the Telegram/Yandex ID/VK ID buttons. */
+export async function signInDemo(): Promise<void> {
+  const res = await apiClient.auth.devLogin();
+  useAuthStore.getState().setTokens({
+    accessToken: res.accessToken,
+    refreshToken: res.refreshToken,
+    userId: res.user.id,
+  });
 }

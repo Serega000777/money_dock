@@ -6,6 +6,7 @@ export const identityProviderEnum = pgEnum("identity_provider", [
   "telegram",
   "phone_sms",
   "yandex",
+  "vk",
   "apple",
   "telegram_link",
 ]);

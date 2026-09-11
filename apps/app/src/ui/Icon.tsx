@@ -27,6 +27,7 @@ export type IconName =
   | "sun"
   | "moon"
   | "backspace"
+  | "telegram"
   // categories
   | "cart"
   | "cutlery"
@@ -213,6 +214,14 @@ export function Icon({ name, color, size = 24, strokeWidth = 1.7, filled = false
           <Path d="M9.6 6h9a1.8 1.8 0 0 1 1.8 1.8v8.4A1.8 1.8 0 0 1 18.6 18h-9L3.6 12Z" {...s} />
           <Path d="M10.4 9.6l5 5M15.4 9.6l-5 5" {...s} />
         </>
+      ) : null}
+
+      {name === "telegram" ? (
+        <Path
+          d="m3.4 12.4 16.3-6.9c.8-.3 1.5.4 1.2 1.2L18 19.4c-.3.9-1.4 1.1-2 .4l-4-3.6-2.3 2.2c-.5.5-1.3.2-1.3-.5v-3.6L3 13.6c-.8-.3-.8-1-.4-1.2Z"
+          fill={color}
+          stroke="none"
+        />
       ) : null}
 
       {/* categories */}

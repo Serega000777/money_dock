@@ -95,6 +95,12 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       loginWithTelegram: (initData: string) =>
         post<{ user: User } & AuthTokens>("/auth/telegram", { initData }),
       devLogin: () => post<{ user: User } & AuthTokens>("/auth/dev-login"),
+      /** Scaffold — the server returns 501 until a real Yandex OAuth app is wired. */
+      loginWithYandex: (code: string, redirectUri: string) =>
+        post<{ user: User } & AuthTokens>("/auth/yandex", { code, redirectUri }),
+      /** Scaffold — the server returns 501 until a real VK ID app is wired. */
+      loginWithVk: (code: string, redirectUri: string) =>
+        post<{ user: User } & AuthTokens>("/auth/vk", { code, redirectUri }),
       refresh: (refreshToken: string) => post<AuthTokens>("/auth/refresh", { refreshToken }),
       logout: (refreshToken: string) => post<void>("/auth/logout", { refreshToken }),
     },

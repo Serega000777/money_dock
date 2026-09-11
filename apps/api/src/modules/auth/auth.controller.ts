@@ -1,7 +1,9 @@
 import type { AuthTokens, User } from "@money-dock/shared-types";
 import {
+  oauthCodeAuthSchema,
   refreshSchema,
   telegramAuthSchema,
+  type OAuthCodeAuthInput,
   type RefreshInput,
   type TelegramAuthInput,
 } from "@money-dock/validation";
@@ -25,6 +27,30 @@ export class AuthController {
     @Body(new ZodValidationPipe(telegramAuthSchema)) body: TelegramAuthInput,
   ): Promise<{ user: User } & AuthTokens> {
     const { user, tokens } = await this.auth.loginWithTelegram(body.initData);
+    return { user, ...tokens };
+  }
+
+  /** Scaffold — see AuthService.loginWithYandex. Returns 501 until a real Yandex OAuth
+   * app is registered and wired. */
+  @Throttle(AUTH_THROTTLE)
+  @HttpCode(HttpStatus.OK)
+  @Post("yandex")
+  async yandex(
+    @Body(new ZodValidationPipe(oauthCodeAuthSchema)) body: OAuthCodeAuthInput,
+  ): Promise<{ user: User } & AuthTokens> {
+    const { user, tokens } = await this.auth.loginWithYandex(body);
+    return { user, ...tokens };
+  }
+
+  /** Scaffold — see AuthService.loginWithVk. Returns 501 until a real VK ID app is
+   * registered and wired. */
+  @Throttle(AUTH_THROTTLE)
+  @HttpCode(HttpStatus.OK)
+  @Post("vk")
+  async vk(
+    @Body(new ZodValidationPipe(oauthCodeAuthSchema)) body: OAuthCodeAuthInput,
+  ): Promise<{ user: User } & AuthTokens> {
+    const { user, tokens } = await this.auth.loginWithVk(body);
     return { user, ...tokens };
   }
 
