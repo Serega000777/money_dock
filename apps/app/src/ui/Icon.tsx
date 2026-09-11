@@ -20,6 +20,7 @@ export type IconName =
   | "trash"
   | "note"
   | "pin"
+  | "calendar"
   | "upload"
   | "inbox"
   | "card"
@@ -152,6 +153,13 @@ export function Icon({ name, color, size = 24, strokeWidth = 1.7, filled = false
         <>
           <Path d="M9.4 3.8h5.2l-.8 5 3 2.6v1.4H7.2v-1.4l3-2.6z" {...s} />
           <Path d="M12 12.8v7.4" {...s} />
+        </>
+      ) : null}
+
+      {name === "calendar" ? (
+        <>
+          <Rect x="4" y="5.5" width="16" height="14.5" rx="2.4" {...s} />
+          <Path d="M4.4 9.5h15.2M8 3.6v3.2M16 3.6v3.2" {...s} />
         </>
       ) : null}
 

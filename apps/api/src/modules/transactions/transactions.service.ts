@@ -194,7 +194,11 @@ export class TransactionsService {
       .select()
       .from(transactions)
       .where(
-        and(eq(transactions.id, id), eq(transactions.userId, userId), isNull(transactions.deletedAt)),
+        and(
+          eq(transactions.id, id),
+          eq(transactions.userId, userId),
+          isNull(transactions.deletedAt),
+        ),
       );
     if (!row) throw new NotFoundException("Transaction not found");
 
@@ -215,6 +219,12 @@ export class TransactionsService {
   async update(userId: string, id: string, input: UpdateTransactionInput): Promise<Transaction> {
     const before = await this.getOwned(userId, id);
     if (input.accountId) await this.accountsService.getOwned(userId, input.accountId);
+
+    // Both legs of a transfer have to agree on what they are; flipping one to an expense
+    // would leave the other pointing at a transaction that no longer matches it.
+    if (input.type && input.type !== before.type && before.type === "transfer") {
+      throw new BadRequestException("Перевод нельзя превратить в расход или доход");
+    }
 
     // A manual category correction becomes a personal rule, so the next statement with
     // the same merchant lands in the right place without asking again.

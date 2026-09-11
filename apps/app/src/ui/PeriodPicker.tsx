@@ -162,7 +162,11 @@ function startWeekday(year: number, month: number): number {
   return (new Date(year, month, 1).getDay() + 6) % 7;
 }
 function sameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
 }
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -193,14 +197,17 @@ export function CustomRangeSheet({
     const base = initialTo ?? initialFrom ?? max;
     return new Date(base.getFullYear(), base.getMonth(), 1);
   });
-  const [rangeStart, setRangeStart] = useState<Date | null>(initialFrom ? startOfDay(initialFrom) : null);
+  const [rangeStart, setRangeStart] = useState<Date | null>(
+    initialFrom ? startOfDay(initialFrom) : null,
+  );
   const [rangeEnd, setRangeEnd] = useState<Date | null>(
     initialTo ? startOfDay(new Date(initialTo.getTime() - 1)) : null,
   );
 
   const year = viewMonth.getFullYear();
   const month = viewMonth.getMonth();
-  const canGoNext = year < max.getFullYear() || (year === max.getFullYear() && month < max.getMonth());
+  const canGoNext =
+    year < max.getFullYear() || (year === max.getFullYear() && month < max.getMonth());
   const offset = startWeekday(year, month);
   const total = daysInMonth(year, month);
   const cells: (Date | null)[] = [
@@ -258,7 +265,10 @@ export function CustomRangeSheet({
           const isStart = rangeStart ? sameDay(day, rangeStart) : false;
           const isEnd = rangeEnd ? sameDay(day, rangeEnd) : false;
           const inRange =
-            rangeStart && rangeEnd && day.getTime() > rangeStart.getTime() && day.getTime() < rangeEnd.getTime();
+            rangeStart &&
+            rangeEnd &&
+            day.getTime() > rangeStart.getTime() &&
+            day.getTime() < rangeEnd.getTime();
           const edge = isStart || isEnd;
           return (
             <Pressable
@@ -271,20 +281,33 @@ export function CustomRangeSheet({
                 style={[
                   styles.daySpan,
                   inRange ? { backgroundColor: theme.accentSoft } : null,
-                  isStart ? { backgroundColor: theme.accentSoft, borderTopLeftRadius: radii.pill, borderBottomLeftRadius: radii.pill } : null,
-                  isEnd ? { backgroundColor: theme.accentSoft, borderTopRightRadius: radii.pill, borderBottomRightRadius: radii.pill } : null,
+                  isStart
+                    ? {
+                        backgroundColor: theme.accentSoft,
+                        borderTopLeftRadius: radii.pill,
+                        borderBottomLeftRadius: radii.pill,
+                      }
+                    : null,
+                  isEnd
+                    ? {
+                        backgroundColor: theme.accentSoft,
+                        borderTopRightRadius: radii.pill,
+                        borderBottomRightRadius: radii.pill,
+                      }
+                    : null,
                 ]}
               >
-                <View
-                  style={[
-                    styles.dayInner,
-                    edge && { backgroundColor: theme.accent },
-                  ]}
-                >
+                <View style={[styles.dayInner, edge && { backgroundColor: theme.accent }]}>
                   <Text
                     style={[
                       styles.dayText,
-                      { color: edge ? theme.onAccent : disabled ? theme.textTertiary : theme.textPrimary },
+                      {
+                        color: edge
+                          ? theme.onAccent
+                          : disabled
+                            ? theme.textTertiary
+                            : theme.textPrimary,
+                      },
                     ]}
                   >
                     {day.getDate()}
@@ -320,8 +343,114 @@ export function CustomRangeSheet({
   );
 }
 
+/** Single-day pick, same calendar grid as `CustomRangeSheet` — for editing a
+ * transaction's date rather than choosing an analytics window. */
+export function DatePickerSheet({
+  visible,
+  onClose,
+  initialDate,
+  maxDate,
+  onSelect,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  initialDate: Date;
+  maxDate: Date;
+  onSelect: (day: Date) => void;
+}) {
+  const theme = useTheme();
+  const max = startOfDay(maxDate);
+  const [viewMonth, setViewMonth] = useState(
+    () => new Date(initialDate.getFullYear(), initialDate.getMonth(), 1),
+  );
+  const selected = startOfDay(initialDate);
+
+  const year = viewMonth.getFullYear();
+  const month = viewMonth.getMonth();
+  const canGoNext =
+    year < max.getFullYear() || (year === max.getFullYear() && month < max.getMonth());
+  const offset = startWeekday(year, month);
+  const total = daysInMonth(year, month);
+  const cells: (Date | null)[] = [
+    ...Array.from({ length: offset }, () => null),
+    ...Array.from({ length: total }, (_, i) => new Date(year, month, i + 1)),
+  ];
+
+  return (
+    <BottomSheet visible={visible} onClose={onClose} title="Дата операции">
+      <View style={styles.yearHeader}>
+        <Pressable
+          onPress={() => setViewMonth(new Date(year, month - 1, 1))}
+          accessibilityLabel="Предыдущий месяц"
+          style={[styles.yearButton, { borderColor: theme.border }]}
+        >
+          <Icon name="chevronLeft" color={theme.textPrimary} size={16} />
+        </Pressable>
+        <Text style={[styles.yearLabel, { color: theme.textPrimary }]}>
+          {MONTHS_SHORT[month]} {year}
+        </Text>
+        <Pressable
+          onPress={() => canGoNext && setViewMonth(new Date(year, month + 1, 1))}
+          accessibilityLabel="Следующий месяц"
+          style={[styles.yearButton, { borderColor: theme.border, opacity: canGoNext ? 1 : 0.35 }]}
+        >
+          <Icon name="chevron" color={theme.textPrimary} size={16} />
+        </Pressable>
+      </View>
+
+      <View style={styles.weekdayRow}>
+        {WEEKDAYS.map((w) => (
+          <Text key={w} style={[styles.weekdayLabel, { color: theme.textTertiary }]}>
+            {w}
+          </Text>
+        ))}
+      </View>
+
+      <View style={styles.dayGrid}>
+        {cells.map((day, i) => {
+          if (!day) return <View key={`empty${i}`} style={styles.dayCell} />;
+          const disabled = day.getTime() > max.getTime();
+          const isSelected = sameDay(day, selected);
+          return (
+            <Pressable
+              key={day.toISOString()}
+              disabled={disabled}
+              onPress={() => onSelect(day)}
+              style={styles.dayCell}
+            >
+              <View style={styles.daySpan}>
+                <View style={[styles.dayInner, isSelected && { backgroundColor: theme.accent }]}>
+                  <Text
+                    style={[
+                      styles.dayText,
+                      {
+                        color: isSelected
+                          ? theme.onAccent
+                          : disabled
+                            ? theme.textTertiary
+                            : theme.textPrimary,
+                      },
+                    ]}
+                  >
+                    {day.getDate()}
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </BottomSheet>
+  );
+}
+
 const styles = StyleSheet.create({
-  yearHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md },
+  yearHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+  },
   yearButton: {
     width: 34,
     height: 34,

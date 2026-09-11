@@ -368,7 +368,9 @@ export default function Analytics() {
       <FadeIn index={3}>
         <View style={styles.row}>
           <Card style={styles.tile}>
-            <GlowBlob top="-30%" left="50%" size={140} color="#913AFF" opacity={0.35} />
+            {theme.decorGlow ? (
+              <GlowBlob top="-30%" left="50%" size={140} color={theme.decorGlow} opacity={0.35} />
+            ) : null}
             <Text style={[styles.tileLabel, { color: theme.textSecondary }]}>Расходы</Text>
             <Text style={[styles.tileValue, { color: theme.textPrimary }]} numberOfLines={1}>
               {formatMinor(view.spent)} ₽
@@ -383,7 +385,9 @@ export default function Analytics() {
           </Card>
 
           <Card style={styles.tile}>
-            <GlowBlob top="-30%" left="50%" size={140} color="#FF2BC7" opacity={0.3} />
+            {theme.decorGlow ? (
+              <GlowBlob top="-30%" left="50%" size={140} color={theme.accent} opacity={0.3} />
+            ) : null}
             <Text style={[styles.tileLabel, { color: theme.textSecondary }]}>Доходы</Text>
             <Text style={[styles.tileValue, { color: theme.textPrimary }]} numberOfLines={1}>
               {formatMinor(view.income)} ₽

@@ -145,6 +145,26 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
         currency: string;
         clientId: string;
       }) => post<void>("/transactions/transfer", input),
+      update: (
+        id: string,
+        input: {
+          type?: "expense" | "income";
+          accountId?: string;
+          categoryId?: string;
+          amountMinor?: number;
+          currency?: string;
+          occurredAt?: string;
+          merchant?: string;
+          note?: string;
+        },
+      ) =>
+        request<Transaction>(`/transactions/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify(input),
+        }),
+      /** Soft delete — the server keeps the row so `restore` can bring it back. */
+      remove: (id: string) => request<void>(`/transactions/${id}`, { method: "DELETE" }),
+      restore: (id: string) => post<Transaction>(`/transactions/${id}/restore`),
     },
 
     notes: {

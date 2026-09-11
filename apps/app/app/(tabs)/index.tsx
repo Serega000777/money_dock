@@ -204,10 +204,12 @@ export default function Home() {
             {/* A wide, soft bleed behind the whole row — the mic's own shadow reads as a
                 halo on the button itself, this is what makes it feel like a spotlight
                 against the page background too, per the reference. */}
-            <View pointerEvents="none" style={styles.micGlow}>
-              <GlowBlob top="-10%" left="10%" size={260} color="#E935C1" />
-              <GlowBlob top="5%" left="35%" size={260} color="#5D33FF" />
-            </View>
+            {theme.decorGlow ? (
+              <View pointerEvents="none" style={styles.micGlow}>
+                <GlowBlob top="-10%" left="10%" size={260} color="#E935C1" />
+                <GlowBlob top="5%" left="35%" size={260} color="#5D33FF" />
+              </View>
+            ) : null}
             <View style={styles.micRow}>
               <WaveBars color={theme.accent} />
               <View style={styles.micRingWrap}>
@@ -276,7 +278,9 @@ export default function Home() {
         {summary ? (
           <FadeIn index={4}>
             <Card style={styles.paceCard}>
-              <GlowBlob top="-30%" left="-10%" size={160} color={theme.accent} />
+              {theme.decorGlow ? (
+                <GlowBlob top="-30%" left="-10%" size={160} color={theme.accent} />
+              ) : null}
               {/* Order and weights straight from the reference: title + bare percentage,
                   then the bar, then the figures under it. */}
               <View style={styles.paceHeader}>
@@ -512,7 +516,9 @@ function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
   const iconColor = vivid ? "#FFFFFF" : theme.accent;
   return (
     <Card gradient={vivid} style={styles.accountTile}>
-      {!vivid ? <GlowBlob top="-25%" left="55%" size={140} color="#913AFF" opacity={0.35} /> : null}
+      {!vivid && theme.decorGlow ? (
+        <GlowBlob top="-25%" left="55%" size={140} color={theme.decorGlow} opacity={0.35} />
+      ) : null}
       <View style={styles.accountTop}>
         <View style={[styles.accountIcon, { backgroundColor: iconBg }]}>
           <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={iconColor} size={18} />
@@ -588,7 +594,7 @@ const styles = StyleSheet.create({
     fontSize: 37,
     lineHeight: 42,
     letterSpacing: -1.1,
-    fontWeight: "800",
+    fontWeight: "700",
     color: "#FFFFFF",
   },
   heroHint: { ...typography.callout, color: "rgba(255,255,255,0.82)" },
@@ -662,7 +668,10 @@ const styles = StyleSheet.create({
   accountsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   accountTile: {
     width: "48.5%",
-    minHeight: 116,
+    // The reference's card is ~115px at its 430px width; taller than this and
+    // space-between opens a gap between the name block and the balance that the
+    // reference doesn't have.
+    minHeight: 104,
     justifyContent: "space-between",
     // The reference's 16px padding scaled to a 390px phone — also what buys the name
     // enough room to fit "Основная карта" without an ellipsis.

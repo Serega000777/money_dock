@@ -21,8 +21,11 @@ export const createTransactionSchema = z.object({
 });
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
 
+/** `type` is editable here (an expense logged as income is a common slip) but stays
+ * restricted to the two plain kinds — a transfer leg can't be turned into either without
+ * orphaning its pair, which the service rejects outright. */
 export const updateTransactionSchema = createTransactionSchema
-  .omit({ type: true, clientId: true, splits: true })
+  .omit({ clientId: true, splits: true })
   .partial();
 export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
 

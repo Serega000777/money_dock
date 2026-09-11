@@ -53,6 +53,10 @@ export interface Theme {
     color: string;
     opacity: number;
   }[];
+  /** Colour for the decorative glows — corner washes inside flat cards, the halo behind
+   * the mic — or `null` to draw none at all. The same soft blob reads as depth on a dark
+   * surface and as a stain on a white one, so light theme opts out entirely. */
+  decorGlow: string | null;
   background: string;
   surface: string;
   /** Bottom sheets sit visibly above the page instead of blending into it. */
@@ -101,6 +105,7 @@ export const darkTheme: Theme = {
     { top: "-8%", left: "-20%", size: 420, color: "#E935C1", opacity: 0.55 },
     { top: "38%", left: "55%", size: 460, color: "#8B5CF6", opacity: 0.55 },
   ],
+  decorGlow: "#913AFF",
   background: "#0A0614",
   surface: "#281030", // --card-dark over the page
   sheet: "#301738",
@@ -135,12 +140,14 @@ export const lightTheme: Theme = {
   tileGradient: ["#FBF6FF", "#ECE1FF"],
   chipGradient: ["#FFFFFF", "#F7F2FF"],
 
-  // Same gradient idea as dark, only barely tinted — it keeps the two themes related
-  // instead of making light mode a flat sheet of paper.
-  backgroundGradient: ["#FBFAFF", "#F5F5FD", "#EDEFFB"],
-  // No glow blobs — the reference's glowing background is a dark-mode-only look.
+  // The brand hues washed across the whole page — a faint pink at the top drifting
+  // through lavender into a cool tint at the bottom. Deliberately a full-bleed ramp and
+  // not blobs: a localised glow reads as a stain on white, where the same shape reads as
+  // depth on black.
+  backgroundGradient: ["#FFF6FC", "#F8F2FF", "#EFF0FD"],
   backgroundGlow: [],
-  background: "#F7F7FC",
+  decorGlow: null,
+  background: "#FBF9FE",
   surface: "#FFFFFF",
   sheet: "#FFFFFF",
   surfaceSunken: "#F0F1F8",
