@@ -15,11 +15,11 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
-      POSTGRES_DB: money_dock
+      POSTGRES_DB: amola
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d money_dock"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d amola"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -35,7 +35,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/money_dock
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/amola
       # The app is served from the same origin, so this is just https://DOMAIN.
       CORS_ORIGIN: https://${DOMAIN:?set DOMAIN in .env.production}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env.production}

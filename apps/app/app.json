@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Money Dock",
-    "slug": "money-dock",
-    "scheme": "moneydock",
+    "name": "Amola Finance",
+    "slug": "amola-finance",
+    "scheme": "amola",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
@@ -14,10 +14,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.moneydock.mobile"
+      "bundleIdentifier": "app.amola.finance"
     },
     "android": {
-      "package": "app.moneydock.mobile"
+      "package": "app.amola.finance"
     }
   }
 }

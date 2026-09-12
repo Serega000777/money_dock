@@ -39,7 +39,7 @@ function downloadReport(data: unknown): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `money-dock-report-${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = `amola-report-${new Date().toISOString().slice(0, 10)}.json`;
   link.click();
   URL.revokeObjectURL(url);
 }

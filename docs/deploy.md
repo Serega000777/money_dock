@@ -87,7 +87,7 @@ docker compose --env-file .env.production -f infrastructure/docker/docker-compos
 ```bash
 # дамп базы
 docker compose --env-file .env.production -f infrastructure/docker/docker-compose.prod.yml \
-  exec -T postgres pg_dump -U postgres money_dock | gzip > backup-$(date +%F).sql.gz
+  exec -T postgres pg_dump -U postgres amola | gzip > backup-$(date +%F).sql.gz
 
 # логи API / веба
 docker compose --env-file .env.production -f infrastructure/docker/docker-compose.prod.yml logs -f api

@@ -51,6 +51,7 @@ export default function Root({ children }: PropsWithChildren) {
     <html lang="ru">
       <head>
         <meta charSet="utf-8" />
+        <title>Amola Finance</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         {csp ? <meta httpEquiv="Content-Security-Policy" content={csp} /> : null}
         <meta name="referrer" content="strict-origin-when-cross-origin" />
