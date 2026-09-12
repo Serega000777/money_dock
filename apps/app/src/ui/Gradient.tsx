@@ -114,6 +114,7 @@ export function GradientBox({
   colors,
   radius,
   diagonal,
+  horizontal,
   highlight,
   highlightSize = 260,
   style,
@@ -122,6 +123,8 @@ export function GradientBox({
   colors: readonly string[];
   radius?: number;
   diagonal?: boolean;
+  /** Left-to-right fill — pill buttons and progress bars read as a sweep, not a top-down fade. */
+  horizontal?: boolean;
   highlight?: boolean;
   /** Diameter of the `highlight` glow — scale it down for small surfaces (a stat tile)
    * so it reads as a corner sheen, not a wash covering the whole card. */
@@ -131,7 +134,7 @@ export function GradientBox({
 }) {
   return (
     <View style={[{ overflow: "hidden", borderRadius: radius }, style]}>
-      <GradientRect colors={colors} diagonal={diagonal} />
+      <GradientRect colors={colors} diagonal={diagonal} horizontal={horizontal} />
       {highlight ? (
         <GlowBlob top="-30%" left="45%" size={highlightSize} color="#FFFFFF" opacity={0.28} />
       ) : null}

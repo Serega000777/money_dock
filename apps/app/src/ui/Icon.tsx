@@ -28,6 +28,23 @@ export type IconName =
   | "moon"
   | "backspace"
   | "telegram"
+  // onboarding
+  | "sparkle"
+  | "arrowRight"
+  | "arrowUpRight"
+  | "shield"
+  | "lock"
+  | "eye"
+  | "eyeOff"
+  | "refresh"
+  | "link"
+  | "target"
+  | "pie"
+  | "keyboardOff"
+  | "bolt"
+  | "palm"
+  | "receipt"
+  | "bulb"
   // categories
   | "cart"
   | "cutlery"
@@ -222,6 +239,114 @@ export function Icon({ name, color, size = 24, strokeWidth = 1.7, filled = false
           fill={color}
           stroke="none"
         />
+      ) : null}
+
+      {/* onboarding */}
+      {name === "sparkle" ? (
+        <Path
+          d="M12 2.8c.7 4.8 3.6 7.7 8.4 8.4-4.8.7-7.7 3.6-8.4 8.4-.7-4.8-3.6-7.7-8.4-8.4 4.8-.7 7.7-3.6 8.4-8.4Z"
+          fill={color}
+          stroke="none"
+        />
+      ) : null}
+
+      {name === "arrowRight" ? <Path d="M4.5 12h14M13 6.4 18.6 12 13 17.6" {...s} /> : null}
+      {name === "arrowUpRight" ? <Path d="M7.4 16.6 16.6 7.4M9.2 7.4h7.4v7.4" {...s} /> : null}
+
+      {name === "shield" ? (
+        <>
+          <Path d="M12 3.4 19 6.1v5.2c0 4.2-2.8 7.2-7 9.3-4.2-2.1-7-5.1-7-9.3V6.1z" {...s} />
+          <Path d="M9.2 11.8 11.4 14l3.6-3.8" {...s} />
+        </>
+      ) : null}
+
+      {name === "lock" ? (
+        <>
+          <Rect x="4.8" y="10.4" width="14.4" height="9.6" rx="2.6" {...s} />
+          <Path d="M8.4 10.4V8.2a3.6 3.6 0 0 1 7.2 0v2.2" {...s} />
+        </>
+      ) : null}
+
+      {name === "eye" ? (
+        <>
+          <Path d="M4 12s3.3-5.4 8-5.4S20 12 20 12s-3.3 5.4-8 5.4S4 12 4 12Z" {...s} />
+          <Circle cx="12" cy="12" r="2.8" {...s} />
+        </>
+      ) : null}
+
+      {name === "eyeOff" ? (
+        <>
+          <Path
+            d="M4 12s3.3-5.4 8-5.4c1.3 0 2.5.4 3.6 1M20 12s-3.3 5.4-8 5.4c-1.4 0-2.6-.4-3.7-1.1"
+            {...s}
+          />
+          <Path d="M9.8 9.9a3 3 0 0 0 4.3 4.2M4.2 4.2l15.6 15.6" {...s} />
+        </>
+      ) : null}
+
+      {name === "refresh" ? (
+        <>
+          <Path d="M19.4 12a7.4 7.4 0 0 1-12.7 5.2M4.6 12A7.4 7.4 0 0 1 17.3 6.8" {...s} />
+          <Path d="M17.4 3.8v3.2h-3.2M6.6 20.2V17h3.2" {...s} />
+        </>
+      ) : null}
+
+      {name === "link" ? (
+        <>
+          <Path d="M10.3 13.7a3.6 3.6 0 0 0 5.1 0l2.4-2.4a3.6 3.6 0 1 0-5.1-5.1l-1.2 1.2" {...s} />
+          <Path d="M13.7 10.3a3.6 3.6 0 0 0-5.1 0l-2.4 2.4a3.6 3.6 0 1 0 5.1 5.1l1.2-1.2" {...s} />
+        </>
+      ) : null}
+
+      {name === "target" ? (
+        <>
+          <Circle cx="12" cy="12" r="8.4" {...s} />
+          <Circle cx="12" cy="12" r="4.4" {...s} />
+          <Circle cx="12" cy="12" r="1.5" fill={color} stroke="none" />
+        </>
+      ) : null}
+
+      {name === "pie" ? (
+        <>
+          <Path d="M12.8 3.6a8.4 8.4 0 0 1 7.6 7.6h-7.6z" {...s} />
+          <Path d="M10.8 5.2a8.4 8.4 0 1 0 8 8" {...s} />
+        </>
+      ) : null}
+
+      {name === "keyboardOff" ? (
+        <>
+          <Rect x="3.2" y="7" width="17.6" height="10" rx="2.4" {...s} />
+          <Path d="M7 10.4h.01M10.4 10.4h.01M13.8 10.4h.01M17.2 10.4h.01M8.4 13.6h7.2" {...s} />
+          <Path d="M3.6 3.6 20.4 20.4" {...s} />
+        </>
+      ) : null}
+
+      {name === "bolt" ? (
+        <Path d="M13.6 3.2 6.4 13.6h4.6l-1.2 7.2 7.2-10.4h-4.6z" {...s} />
+      ) : null}
+
+      {name === "palm" ? (
+        <>
+          <Path d="M12.4 20.6c-.2-4.4.3-7.6 1.4-9.8" {...s} />
+          <Path
+            d="M13.8 10.8c-1.9-1.8-4.4-2.3-6.8-1.2M13.8 10.8c.4-2.5 2.2-4.4 4.8-4.9M13.8 10.8c-1.4-2-1.4-4.5.1-6.6M13.8 10.8c2.4.2 4.3 1.6 5.2 3.7"
+            {...s}
+          />
+        </>
+      ) : null}
+
+      {name === "receipt" ? (
+        <>
+          <Path d="M5.6 3.8h12.8v16.4l-2.6-1.6-2.6 1.6-2.6-1.6-2.4 1.6z" {...s} />
+          <Path d="M8.8 8.4h6.4M8.8 12.2h6.4" {...s} />
+        </>
+      ) : null}
+
+      {name === "bulb" ? (
+        <>
+          <Path d="M9.2 15.6a5.6 5.6 0 1 1 5.6 0v1.8H9.2z" {...s} />
+          <Path d="M10 20.2h4" {...s} />
+        </>
       ) : null}
 
       {/* categories */}

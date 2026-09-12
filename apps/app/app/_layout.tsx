@@ -1,44 +1,34 @@
 import { typography } from "@money-dock/design-tokens";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, type ReactNode } from "react";
+import { StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { queryClient } from "../src/api/queryClient";
 import { AuthProvider } from "../src/auth/AuthProvider";
 import { useAuthStore } from "../src/auth/authStore";
-import { useOnboardingStore } from "../src/onboarding/onboardingStore";
+import { OnboardingFlow } from "../src/onboarding/OnboardingFlow";
 import { TelegramProvider, useTelegram } from "../src/telegram/TelegramProvider";
 import { useTheme } from "../src/theme/useTheme";
 
 /**
- * Onboarding + the sign-in screen (Telegram / Yandex ID / VK ID) are for the standalone
- * app — a plain browser today, a future native mobile build eventually. Inside a real
- * Telegram Mini App, `AuthProvider` already signs the user in silently from `initData`
- * before this could ever redirect anywhere, so this gate steps aside entirely there
- * rather than interrupting the one flow that already works end to end.
+ * Onboarding + registration (Telegram / Yandex ID / VK ID) are for the standalone app —
+ * a plain browser today, a future native mobile build eventually. Inside a real Telegram
+ * Mini App, `AuthProvider` signs the user in silently from `initData`, so the gate stays
+ * out of the way there.
+ *
+ * It's an overlay on top of the navigator, not a route: redirecting from the root layout
+ * (whether via router.replace in an effect or a <Redirect> in place of the <Stack>) either
+ * races expo-router's initial-route resolution on web or unmounts the very navigator it
+ * is trying to navigate. Painting over the stack has neither problem, on any platform.
  */
-function AuthGate({ children }: { children: ReactNode }) {
+function OnboardingGate() {
   const { isInsideTelegram } = useTelegram();
-  const hasSeenOnboarding = useOnboardingStore((state) => state.hasSeenOnboarding);
   const accessToken = useAuthStore((state) => state.accessToken);
-  const router = useRouter();
-  const segments = useSegments();
 
-  useEffect(() => {
-    if (isInsideTelegram) return;
-    const onGateRoute = segments[0] === "onboarding" || segments[0] === "sign-in";
-    if (onGateRoute) return;
-
-    if (!hasSeenOnboarding) {
-      router.replace("/onboarding");
-    } else if (!accessToken) {
-      router.replace("/sign-in");
-    }
-  }, [isInsideTelegram, hasSeenOnboarding, accessToken, segments, router]);
-
-  return <>{children}</>;
+  if (isInsideTelegram || accessToken) return null;
+  return <OnboardingFlow />;
 }
 
 function ThemedStack() {
@@ -68,12 +58,17 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <TelegramProvider>
           <AuthProvider>
-            <AuthGate>
+            <View style={styles.flex}>
               <ThemedStack />
-            </AuthGate>
+              <OnboardingGate />
+            </View>
           </AuthProvider>
         </TelegramProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+});
