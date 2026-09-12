@@ -1,5 +1,11 @@
 import { radii, spacing, typography } from "@money-dock/design-tokens";
-import type { Account, CategoryGrowthFacts, Insight } from "@money-dock/shared-types";
+import type {
+  Account,
+  CategoryGrowthFacts,
+  Insight,
+  RecurringPayment,
+  SavingsGoal,
+} from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, router } from "expo-router";
 import { useRef, useState } from "react";
@@ -7,16 +13,21 @@ import { Platform, Pressable, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
+import { ContributeGoalSheet, CreateGoalSheet, goalIcon } from "../../src/features/goals";
+import { CreateRecurringPaymentSheet, recurringStatus } from "../../src/features/recurring";
 import { useTelegram } from "../../src/telegram/TelegramProvider";
 import { useSettingsStore } from "../../src/theme/settingsStore";
 import { useTheme } from "../../src/theme/useTheme";
+import { AmolaLogo } from "../../src/ui/AmolaLogo";
 import { GlowBlob, GlowRing, GradientBox } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
 import { Text } from "../../src/ui/Text";
+import { categoryColor, categoryIcon } from "../../src/ui/categoryVisual";
 import {
   BottomSheet,
   Card,
   FadeIn,
+  Pill,
   PressableScale,
   ProgressBar,
   Screen,
@@ -89,6 +100,40 @@ export default function Home() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["insights"] }),
   });
 
+  // "Обязательные расходы" and "Цели" — the two sections that close the screen.
+  const [addingPayment, setAddingPayment] = useState(false);
+  const [addingGoal, setAddingGoal] = useState(false);
+  const [contributingTo, setContributingTo] = useState<SavingsGoal | null>(null);
+  const { data: categories } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => apiClient.categories.list(),
+    enabled,
+  });
+  const { data: recurringPayments } = useQuery({
+    queryKey: ["recurring-payments"],
+    queryFn: () => apiClient.recurringPayments.list(),
+    enabled,
+  });
+  const { data: goals } = useQuery({
+    queryKey: ["goals"],
+    queryFn: () => apiClient.goals.list(),
+    enabled,
+  });
+  const payRecurring = useMutation({
+    mutationFn: (id: string) => apiClient.recurringPayments.pay(id),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }),
+        queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        queryClient.invalidateQueries({ queryKey: ["accounts"] }),
+        queryClient.invalidateQueries({ queryKey: ["analytics"] }),
+      ]),
+  });
+  const removeGoal = useMutation({
+    mutationFn: (id: string) => apiClient.goals.remove(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["goals"] }),
+  });
+
   const pending = reviewItems?.length ?? 0;
   // Highest-priority insight the user hasn't already dismissed — the home screen shows
   // one "Совет" at a time, not a feed (spec §5: "Диаграммы вторичны").
@@ -122,12 +167,12 @@ export default function Home() {
         <FadeIn index={0}>
           <View style={styles.header}>
             <View style={styles.headerText}>
-              <Text style={[styles.greeting, { color: theme.textPrimary }]}>
+              {/* "finance" is plum on the light wash and lavender on the dark ground —
+                  the two colourways of the brand mark. */}
+              <AmolaLogo width={126} subColor={theme.name === "dark" ? "#E8D6F5" : "#2B0F3A"} />
+              <Text style={[styles.greeting, { color: theme.textSecondary }]}>
                 {greeting()}
                 {user?.first_name ? `, ${user.first_name}` : ""} 👋
-              </Text>
-              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                Давайте сделаем ваши финансы удобнее
               </Text>
             </View>
             {/* Quick switch only ever picks a concrete theme — "система" stays in Кабинет. */}
@@ -472,7 +517,94 @@ export default function Home() {
             </Card>
           </FadeIn>
         ) : null}
+
+        {/* Обязательные расходы — the recurring payments list, same data and same status
+            logic as Кабинет, surfaced where the month is actually planned. */}
+        {enabled ? (
+          <FadeIn index={8}>
+            <SectionHeader
+              title="Обязательные расходы"
+              trailing={
+                recurringPayments && recurringPayments.length > 0
+                  ? `${formatMinor(
+                      recurringPayments.reduce((sum, p) => sum + p.amountMinor, 0),
+                    )} ₽ / мес`
+                  : undefined
+              }
+            />
+            <Card style={styles.listCard}>
+              {(recurringPayments ?? []).map((payment) => (
+                <MandatoryRow
+                  key={payment.id}
+                  payment={payment}
+                  category={
+                    payment.categoryId
+                      ? (categories ?? []).find((c) => c.id === payment.categoryId)
+                      : undefined
+                  }
+                  onPay={() => !payRecurring.isPending && payRecurring.mutate(payment.id)}
+                />
+              ))}
+              {(recurringPayments ?? []).length === 0 ? (
+                <Text style={[styles.listEmpty, { color: theme.textSecondary }]}>
+                  Аренда, подписки, кредит — добавьте, чтобы ничего не забыть и видеть,
+                  сколько уходит каждый месяц.
+                </Text>
+              ) : null}
+              <PressableScale style={styles.listAddRow} onPress={() => setAddingPayment(true)}>
+                <View style={[styles.listIcon, { backgroundColor: theme.accentSoft }]}>
+                  <Icon name="plus" color={theme.accent} size={18} />
+                </View>
+                <Text style={[styles.listAddLabel, { color: theme.accent }]}>Добавить платёж</Text>
+              </PressableScale>
+            </Card>
+          </FadeIn>
+        ) : null}
+
+        {/* Цели — на что копить. */}
+        {enabled ? (
+          <FadeIn index={9}>
+            <SectionHeader title="Цели" subtitle="на что копить" />
+            <Card style={styles.listCard}>
+              {(goals ?? []).map((goal) => (
+                <GoalRow
+                  key={goal.id}
+                  goal={goal}
+                  onContribute={() => setContributingTo(goal)}
+                  onRemove={() => removeGoal.mutate(goal.id)}
+                />
+              ))}
+              {(goals ?? []).length === 0 ? (
+                <Text style={[styles.listEmpty, { color: theme.textSecondary }]}>
+                  Отпуск, подушка безопасности, новый телефон — поставьте цель и
+                  откладывайте на неё понемногу.
+                </Text>
+              ) : null}
+              <PressableScale style={styles.listAddRow} onPress={() => setAddingGoal(true)}>
+                <View style={[styles.listIcon, { backgroundColor: theme.accentSoft }]}>
+                  <Icon name="plus" color={theme.accent} size={18} />
+                </View>
+                <Text style={[styles.listAddLabel, { color: theme.accent }]}>Новая цель</Text>
+              </PressableScale>
+            </Card>
+          </FadeIn>
+        ) : null}
       </Screen>
+
+      <CreateRecurringPaymentSheet
+        visible={addingPayment}
+        onClose={() => setAddingPayment(false)}
+        categories={(categories ?? []).filter((c) => c.type === "expense")}
+        accountId={accounts?.[0]?.id}
+        currency={accounts?.[0]?.currency ?? "RUB"}
+        onCreated={() => setAddingPayment(false)}
+      />
+      <CreateGoalSheet
+        visible={addingGoal}
+        onClose={() => setAddingGoal(false)}
+        currency={accounts?.[0]?.currency ?? "RUB"}
+      />
+      <ContributeGoalSheet goal={contributingTo} onClose={() => setContributingTo(null)} />
 
       <BottomSheet
         visible={accountsSheetOpen}
@@ -539,6 +671,116 @@ function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
   );
 }
 
+/** The "Карты и счета" header rhythm, reused by the two closing sections. */
+function SectionHeader({
+  title,
+  subtitle,
+  trailing,
+}: {
+  title: string;
+  subtitle?: string;
+  trailing?: string;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={styles.accountsHeader}>
+      <View style={styles.sectionTitleRow}>
+        <Text style={[styles.accountsTitle, { color: theme.textPrimary }]}>{title}</Text>
+        {subtitle ? (
+          <Text style={[styles.sectionSubtitle, { color: theme.textTertiary }]}>{subtitle}</Text>
+        ) : null}
+      </View>
+      {trailing ? (
+        <Text style={[styles.accountsAll, { color: theme.textSecondary }]}>{trailing}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+function MandatoryRow({
+  payment,
+  category,
+  onPay,
+}: {
+  payment: RecurringPayment;
+  category: { id: string; color: string | null; systemCode: string | null; icon: string | null } | undefined;
+  onPay: () => void;
+}) {
+  const theme = useTheme();
+  const color = categoryColor(category);
+  const status = recurringStatus(payment, theme);
+  return (
+    <View style={styles.listRow}>
+      <View style={[styles.listIcon, { backgroundColor: `${color}1F` }]}>
+        <Icon name={categoryIcon(category)} color={color} size={18} />
+      </View>
+      <View style={styles.listMain}>
+        <Text style={[styles.listLabel, { color: theme.textPrimary }]} numberOfLines={1}>
+          {payment.name}
+        </Text>
+        <Text style={[styles.listSub, { color: theme.textSecondary }]} numberOfLines={1}>
+          {formatMinor(payment.amountMinor)} ₽ · {status.label}
+        </Text>
+      </View>
+      <Pill label={status.badge} color={status.color} background={status.background} />
+      <Pressable onPress={onPay} accessibilityLabel="Отметить оплаченным" hitSlop={8}>
+        <Icon name="check" color={theme.positive} size={18} />
+      </Pressable>
+    </View>
+  );
+}
+
+function GoalRow({
+  goal,
+  onContribute,
+  onRemove,
+}: {
+  goal: SavingsGoal;
+  onContribute: () => void;
+  onRemove: () => void;
+}) {
+  const theme = useTheme();
+  const share = goal.targetMinor > 0 ? Math.min(1, goal.savedMinor / goal.targetMinor) : 0;
+  const done = goal.savedMinor >= goal.targetMinor;
+  return (
+    <PressableScale onPress={onContribute} style={styles.goalRow}>
+      <View style={styles.listRow}>
+        <View style={[styles.listIcon, { backgroundColor: theme.accentSoft }]}>
+          <Icon name={goalIcon(goal)} color={theme.accent} size={18} />
+        </View>
+        <View style={styles.listMain}>
+          <Text style={[styles.listLabel, { color: theme.textPrimary }]} numberOfLines={1}>
+            {goal.name}
+          </Text>
+          <Text style={[styles.listSub, { color: theme.textSecondary }]} numberOfLines={1}>
+            {formatMinor(goal.savedMinor)} из {formatMinor(goal.targetMinor)} ₽
+          </Text>
+        </View>
+        <Text style={[styles.goalPercent, { color: done ? theme.positive : theme.textPrimary }]}>
+          {Math.round(share * 100)}%
+        </Text>
+        <Pressable
+          onPress={(event) => {
+            event.stopPropagation();
+            onRemove();
+          }}
+          accessibilityLabel="Удалить цель"
+          hitSlop={8}
+        >
+          <Icon name="trash" color={theme.textTertiary} size={18} />
+        </Pressable>
+      </View>
+      <View style={styles.goalBar}>
+        <ProgressBar
+          share={share}
+          color={theme.positive}
+          colors={done ? undefined : ["#FF1FBF", "#FF4BD8", "#9A43FF"]}
+        />
+      </View>
+    </PressableScale>
+  );
+}
+
 /** Static waveform decoration either side of the mic — `reverse` mirrors the bar
  * heights so the two sides don't look like copy-paste of each other. */
 function WaveBars({ color }: { color: string }) {
@@ -574,9 +816,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: spacing.xs,
   },
-  headerText: { flex: 1, gap: 2 },
-  greeting: { ...typography.title, letterSpacing: 0.2 },
-  subtitle: typography.callout,
+  headerText: { flex: 1, gap: 4, alignItems: "flex-start" },
+  greeting: typography.callout,
   themeButton: {
     width: 40,
     height: 40,
@@ -788,4 +1029,35 @@ const styles = StyleSheet.create({
   tipTitle: typography.headline,
   tipHint: typography.caption,
   tipDismiss: { padding: spacing.xs },
+
+  sectionTitleRow: { flexDirection: "row", alignItems: "baseline", gap: spacing.sm },
+  sectionSubtitle: typography.caption,
+  listCard: { paddingVertical: spacing.xs, gap: 0 },
+  listRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+  },
+  listIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  listMain: { flex: 1, gap: 2 },
+  listLabel: typography.body,
+  listSub: typography.caption,
+  listEmpty: { ...typography.caption, paddingVertical: spacing.md, lineHeight: 19 },
+  listAddRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+  },
+  listAddLabel: typography.body,
+  goalRow: { paddingBottom: spacing.sm },
+  goalPercent: { ...typography.callout, fontWeight: "700", minWidth: 40, textAlign: "right" },
+  goalBar: { paddingLeft: 34 + spacing.md },
 });

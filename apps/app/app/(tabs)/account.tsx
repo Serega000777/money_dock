@@ -1,14 +1,14 @@
 import type { TextScaleName } from "@money-dock/design-tokens";
 import { radii, spacing, typography } from "@money-dock/design-tokens";
-import type { Category, RecurringPayment } from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, type Href } from "expo-router";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { Platform, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
+import { CreateRecurringPaymentSheet, recurringStatus } from "../../src/features/recurring";
 import { useTelegram } from "../../src/telegram/TelegramProvider";
 import {
   useSettingsStore,
@@ -22,7 +22,6 @@ import { Icon, type IconName } from "../../src/ui/Icon";
 import { Text } from "../../src/ui/Text";
 import { categoryColor, categoryIcon } from "../../src/ui/categoryVisual";
 import {
-  BottomSheet,
   Card,
   FadeIn,
   Pill,
@@ -380,234 +379,6 @@ export default function Account() {
   );
 }
 
-type RecurringStatus = { label: string; badge: string; color: string; background: string };
-
-/** Purely a display computation — no schedule runs anywhere; this just reads
- * `dueDay`/`reminderDaysBefore`/`lastPaidAt` against today's date on each render. */
-function recurringStatus(
-  payment: RecurringPayment,
-  theme: ReturnType<typeof useTheme>,
-): RecurringStatus {
-  const now = new Date();
-  if (
-    payment.lastPaidAt &&
-    new Date(payment.lastPaidAt).getFullYear() === now.getFullYear() &&
-    new Date(payment.lastPaidAt).getMonth() === now.getMonth()
-  ) {
-    return {
-      label: "оплачено в этом месяце",
-      badge: "Оплачено",
-      color: theme.positive,
-      background: theme.positiveSoft,
-    };
-  }
-  if (payment.dueDay === null) {
-    return {
-      label: "без даты",
-      badge: "В этом месяце",
-      color: theme.textSecondary,
-      background: theme.surfaceSunken,
-    };
-  }
-  const daysUntil = payment.dueDay - now.getDate();
-  if (daysUntil < 0) {
-    return {
-      label: `просрочено, было ${payment.dueDay} числа`,
-      badge: "Просрочено",
-      color: theme.negative,
-      background: theme.negativeSoft,
-    };
-  }
-  if (payment.reminderDaysBefore !== null && daysUntil <= payment.reminderDaysBefore) {
-    return {
-      label: `${payment.dueDay} числа`,
-      badge: daysUntil === 0 ? "Сегодня" : `Через ${daysUntil} дн.`,
-      color: theme.warning,
-      background: theme.warningSoft,
-    };
-  }
-  return {
-    label: `${payment.dueDay} числа`,
-    badge: `${payment.dueDay} числа`,
-    color: theme.textSecondary,
-    background: theme.surfaceSunken,
-  };
-}
-
-const REMINDER_OPTIONS: { value: string; label: string }[] = [
-  { value: "none", label: "Не напоминать" },
-  { value: "1", label: "За 1 день" },
-  { value: "3", label: "За 3 дня" },
-  { value: "7", label: "За 7 дней" },
-];
-
-/** Name, amount, category, and either a fixed day of the month or "sometime this
- * month" — exactly the shape asked for, nothing auto-scheduled server-side. */
-function CreateRecurringPaymentSheet({
-  visible,
-  onClose,
-  categories,
-  accountId,
-  currency,
-  onCreated,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  categories: Category[];
-  accountId: string | undefined;
-  currency: string;
-  onCreated: () => void;
-}) {
-  const theme = useTheme();
-  const queryClient = useQueryClient();
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [hasDueDay, setHasDueDay] = useState<"date" | "none">("date");
-  const [dueDay, setDueDay] = useState("1");
-  const [reminder, setReminder] = useState("3");
-
-  const create = useMutation({
-    mutationFn: () => {
-      if (!accountId) throw new Error("No account");
-      return apiClient.recurringPayments.create({
-        accountId,
-        categoryId: categoryId ?? undefined,
-        name: name.trim(),
-        amountMinor: Math.round(Number(amount) * 100),
-        currency,
-        dueDay: hasDueDay === "date" ? Number(dueDay) : undefined,
-        reminderDaysBefore:
-          hasDueDay === "date" && reminder !== "none" ? Number(reminder) : undefined,
-      });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["recurring-payments"] });
-      setName("");
-      setAmount("");
-      setCategoryId(null);
-      setHasDueDay("date");
-      setDueDay("1");
-      setReminder("3");
-      onCreated();
-    },
-  });
-
-  const canCreate =
-    Boolean(accountId) &&
-    name.trim().length > 0 &&
-    Number(amount) > 0 &&
-    (hasDueDay === "none" || (Number(dueDay) >= 1 && Number(dueDay) <= 31)) &&
-    !create.isPending;
-
-  return (
-    <BottomSheet visible={visible} onClose={onClose} title="Новый регулярный платёж">
-      <TextInput
-        value={name}
-        onChangeText={setName}
-        placeholder="Например, Окко"
-        placeholderTextColor={theme.textTertiary}
-        style={[
-          styles.sheetInput,
-          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
-        ]}
-      />
-      <TextInput
-        value={amount}
-        onChangeText={setAmount}
-        placeholder="Сумма в месяц, ₽"
-        placeholderTextColor={theme.textTertiary}
-        keyboardType="decimal-pad"
-        style={[
-          styles.sheetInput,
-          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
-        ]}
-      />
-
-      {categories.length > 0 ? (
-        <>
-          <Text style={[styles.sheetLabel, { color: theme.textSecondary }]}>Категория</Text>
-          <View style={styles.sheetCategoryRow}>
-            {categories.map((c) => {
-              const active = categoryId === c.id;
-              const color = categoryColor(c);
-              return (
-                <Pressable key={c.id} onPress={() => setCategoryId(active ? null : c.id)}>
-                  <View
-                    style={[
-                      styles.sheetCategoryCircle,
-                      {
-                        backgroundColor: active ? color : `${color}1F`,
-                        borderColor: active ? color : "transparent",
-                      },
-                    ]}
-                  >
-                    <Icon name={categoryIcon(c)} color={active ? "#FFFFFF" : color} size={18} />
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-        </>
-      ) : null}
-
-      <Text style={[styles.sheetLabel, { color: theme.textSecondary }]}>Дата платежа</Text>
-      <Segmented
-        value={hasDueDay}
-        onChange={setHasDueDay}
-        options={[
-          { value: "date", label: "Определённого числа" },
-          { value: "none", label: "В течение месяца" },
-        ]}
-      />
-
-      {hasDueDay === "date" ? (
-        <>
-          <View style={styles.sheetDueDayRow}>
-            <Text
-              style={[styles.sheetLabel, styles.sheetDueDayLabel, { color: theme.textSecondary }]}
-            >
-              Число месяца
-            </Text>
-            <TextInput
-              value={dueDay}
-              onChangeText={(text) => setDueDay(text.replace(/[^0-9]/g, "").slice(0, 2))}
-              keyboardType="number-pad"
-              style={[
-                styles.sheetDueDayInput,
-                { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
-              ]}
-            />
-          </View>
-
-          <Text style={[styles.sheetLabel, { color: theme.textSecondary }]}>Напоминание</Text>
-          <Segmented value={reminder} onChange={setReminder} options={REMINDER_OPTIONS} />
-        </>
-      ) : null}
-
-      <Pressable
-        disabled={!canCreate}
-        onPress={() => create.mutate()}
-        style={styles.sheetCreateButton}
-      >
-        {canCreate ? (
-          <GradientBox colors={theme.accentGradient} diagonal radius={radii.md}>
-            <View style={styles.saveButton}>
-              <Text style={[styles.saveText, { color: theme.onAccent }]}>
-                {create.isPending ? "Добавляю…" : "Добавить"}
-              </Text>
-            </View>
-          </GradientBox>
-        ) : (
-          <View style={[styles.saveButton, { backgroundColor: theme.surfaceSunken }]}>
-            <Text style={[styles.saveText, { color: theme.textTertiary }]}>Добавить</Text>
-          </View>
-        )}
-      </Pressable>
-    </BottomSheet>
-  );
-}
-
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const theme = useTheme();
   return (
@@ -696,43 +467,4 @@ const styles = StyleSheet.create({
 
   soon: { ...typography.caption, paddingVertical: spacing.md, lineHeight: 19 },
 
-  sheetInput: {
-    ...typography.body,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.md,
-  },
-  sheetLabel: { ...typography.overline, textTransform: "uppercase", marginBottom: spacing.sm },
-  sheetCategoryRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  sheetCategoryCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.pill,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sheetDueDayRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: spacing.md,
-  },
-  sheetDueDayLabel: { marginBottom: 0 },
-  sheetDueDayInput: {
-    ...typography.body,
-    width: 64,
-    textAlign: "center",
-    borderRadius: radii.md,
-    paddingVertical: spacing.sm,
-  },
-  sheetCreateButton: { marginTop: spacing.lg },
-  saveButton: { borderRadius: radii.md, paddingVertical: spacing.lg, alignItems: "center" },
-  saveText: { ...typography.headline, fontWeight: "700" },
 });

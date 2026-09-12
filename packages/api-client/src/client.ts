@@ -11,6 +11,7 @@ import type {
   Note,
   RecurringPayment,
   ReviewInboxItem,
+  SavingsGoal,
   Transaction,
   User,
 } from "@money-dock/shared-types";
@@ -200,6 +201,21 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
           `/recurring-payments/${id}/pay`,
         ),
       remove: (id: string) => request<void>(`/recurring-payments/${id}`, { method: "DELETE" }),
+    },
+
+    goals: {
+      list: () => request<SavingsGoal[]>("/goals"),
+      create: (input: {
+        name: string;
+        icon?: string;
+        targetMinor: number;
+        currency: string;
+        deadline?: string;
+      }) => post<SavingsGoal>("/goals", input),
+      /** Positive puts money aside, negative takes it back; never below zero. */
+      contribute: (id: string, amountMinor: number) =>
+        post<SavingsGoal>(`/goals/${id}/contribute`, { amountMinor }),
+      remove: (id: string) => request<void>(`/goals/${id}`, { method: "DELETE" }),
     },
 
     analytics: {

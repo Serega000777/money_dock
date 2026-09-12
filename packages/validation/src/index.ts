@@ -2,6 +2,7 @@ export * from "./account";
 export * from "./auth";
 export * from "./category";
 export * from "./command";
+export * from "./goal";
 export * from "./money";
 export * from "./note";
 export * from "./recurring-payment";

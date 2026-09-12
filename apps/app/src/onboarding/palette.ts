@@ -8,7 +8,6 @@ export const ob = {
   primaryGradient: ["#FF27C9", "#C72CFF", "#6B36FF"] as const,
   secondaryGradient: ["#FF42D7", "#853CFF"] as const,
   buttonGradient: ["#FF27C9", "#B72CFF", "#6537FF"] as const,
-  logoGradient: ["#FF41D2", "#D94FFF"] as const,
 
   textPrimary: "#FFFFFF",
   textSecondary: "#C9AECA",

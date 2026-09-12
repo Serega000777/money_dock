@@ -1,7 +1,7 @@
-import { useId, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Platform, StyleSheet, View, type ViewStyle } from "react-native";
-import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from "react-native-svg";
 
+import { AmolaLogo } from "../ui/AmolaLogo";
 import { GlowBlob, GradientBox } from "../ui/Gradient";
 import { Icon, type IconName } from "../ui/Icon";
 import { Text } from "../ui/Text";
@@ -9,31 +9,10 @@ import { PressableScale } from "../ui/primitives";
 
 import { ob } from "./palette";
 
-/** The wordmark. `amola` needs a gradient fill, which only SVG text can do here. */
 export function OnboardingLogo() {
-  const id = `logo${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   return (
     <View style={styles.logo}>
-      <Svg width={190} height={52} viewBox="0 0 190 52">
-        <Defs>
-          <LinearGradient id={id} x1="0" y1="0" x2="1" y2="0.8">
-            <Stop offset="0" stopColor={ob.logoGradient[0]} />
-            <Stop offset="1" stopColor={ob.logoGradient[1]} />
-          </LinearGradient>
-        </Defs>
-        <SvgText
-          x="95"
-          y="40"
-          textAnchor="middle"
-          fontSize="46"
-          fontWeight="800"
-          letterSpacing="-1.5"
-          fill={`url(#${id})`}
-        >
-          amola
-        </SvgText>
-      </Svg>
-      <Text style={styles.logoSub}>finance</Text>
+      <AmolaLogo width={172} subColor="#E8D6F5" />
     </View>
   );
 }
@@ -218,13 +197,6 @@ const cursive = Platform.select({
 
 const styles = StyleSheet.create({
   logo: { alignItems: "center" },
-  logoSub: {
-    color: "#F2E4FA",
-    fontSize: 13,
-    letterSpacing: 6,
-    marginTop: -6,
-    textTransform: "lowercase",
-  },
 
   scriptWrap: { maxWidth: 130 },
   script: {

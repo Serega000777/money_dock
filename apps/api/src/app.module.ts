@@ -19,6 +19,7 @@ import { CommandsModule } from "./modules/commands/commands.module";
 import { DemoModule } from "./modules/demo/demo.module";
 import { EntitlementsModule } from "./modules/entitlements/entitlements.module";
 import { ExportModule } from "./modules/export/export.module";
+import { GoalsModule } from "./modules/goals/goals.module";
 import { HealthModule } from "./modules/health/health.module";
 import { ImportModule } from "./modules/import/import.module";
 import { InsightsModule } from "./modules/insights/insights.module";
@@ -47,6 +48,7 @@ import { UsersModule } from "./modules/users/users.module";
     ImportModule,
     NotesModule,
     RecurringPaymentsModule,
+    GoalsModule,
     ReviewInboxModule,
     CommandsModule,
     EntitlementsModule,

@@ -8,6 +8,7 @@ export * from "./merchant-aliases";
 export * from "./notes";
 export * from "./recurring-payments";
 export * from "./review-items";
+export * from "./savings-goals";
 export * from "./sessions";
 export * from "./subscriptions";
 export * from "./transaction-splits";
