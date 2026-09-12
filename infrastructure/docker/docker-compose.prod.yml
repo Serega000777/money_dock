@@ -1,0 +1,67 @@
+# Production stack for one VPS: Postgres (private), the API (private), and Caddy, which
+# serves the Mini App's static export and terminates HTTPS. Usage — from the repo root:
+#
+#   cp .env.production.example .env.production   # fill in every value
+#   docker compose --env-file .env.production -f infrastructure/docker/docker-compose.prod.yml up -d --build
+#
+# Only Caddy publishes ports. The API applies migrations and seeds system categories on
+# every boot (both idempotent), so a fresh server needs nothing but this file and the env.
+name: amola
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+      POSTGRES_DB: money_dock
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d money_dock"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/money_dock
+      # The app is served from the same origin, so this is just https://DOMAIN.
+      CORS_ORIGIN: https://${DOMAIN:?set DOMAIN in .env.production}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env.production}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET in .env.production}
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/app/Dockerfile
+      args:
+        # Baked into the JS bundle at build time; the app calls this for every request.
+        EXPO_PUBLIC_API_URL: https://${DOMAIN}/api
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

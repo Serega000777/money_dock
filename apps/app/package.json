@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "dotenv -e ../../.env -- expo start",
     "web": "dotenv -e ../../.env -- expo start --web",
-    "build": "dotenv -e ../../.env -- expo export --platform web",
+    "build": "dotenv -e ../../.env -- expo export --platform web --clear",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },

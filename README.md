@@ -69,11 +69,16 @@ packages/
   design-tokens/            spacing/typography/цвета, light/dark
   config/                     общие tsconfig/eslint/prettier
 infrastructure/
-  docker/                       docker-compose (postgres + api)
+  docker/                       docker-compose.yml (локальный Postgres), docker-compose.prod.yml + Caddyfile (боевой стек)
   migrations/                     SQL-миграции (drizzle-kit)
 docs/
-  architecture/ · api/ · database/ · security/ · decisions/
+  deploy.md · architecture/ · api/ · database/ · security/ · decisions/
 ```
+
+## Деплой (Telegram Mini App)
+
+Один VPS, три контейнера (Postgres, API, Caddy с автоматическим HTTPS), одна команда —
+см. [`docs/deploy.md`](docs/deploy.md): от покупки домена до кнопки в @BotFather.
 
 ## Правила разработки (не переносим в код без причины)
 
@@ -87,13 +92,12 @@ docs/
 
 ## Roadmap
 
-См. таблицу этапов в `docs/architecture/overview.md`. Текущий статус: **Stage 5**
-(voice/text-команды, тарифы и лимиты) готов; в работе **Stage 6** — заметки, безопасный
-захват операций через Siri/виджет (`POST /commands/capture`, см.
-`docs/siri-and-widget.md`), soft-delete транзакций с undo, единый error envelope
-(`{code, message, correlationId}`), audit-логи login/logout/delete/export, `POST /exports`,
-`DELETE /users/me`, категоризация через глобальные алиасы мерчантов/MCC/keyword-классификатор
-(`docs/api/README.md#категоризация-stage-6`), Insights/«Финансовый директор»
-(`GET /insights`, `GET /insights/daily-summary`) и контракт `BankProvider`
-(`apps/api/src/modules/banking`). Admin-панель, Notifications и LLM fallback для
-категоризации — ещё впереди.
+См. таблицу этапов в `docs/architecture/overview.md`. Готово: Stage 1–6 — учёт, импорт
+выписок, voice/text-команды, тарифы, заметки, захват через Siri/виджет
+(`docs/siri-and-widget.md`), soft-delete с undo, error envelope, audit-логи, экспорт,
+категоризация (алиасы/MCC/keyword), Insights, контракт `BankProvider`, редактирование
+операций, регулярные платежи («Обязательные расходы») и цели накоплений (`/goals`),
+онбординг и экран регистрации для отдельного приложения, юридические документы (152-ФЗ).
+Впереди: Yandex ID / VK ID (серверные заглушки уже есть), регистрация по телефону,
+Telegram-уведомления, подключение банков по API, admin-панель, LLM fallback для
+категоризации (ADR 0009).

@@ -1,0 +1,27 @@
+# One public origin for the Mini App: the static export at /, the API under /api/.
+# Caddy obtains and renews the Let's Encrypt certificate for {$DOMAIN} on its own —
+# ports 80 and 443 just have to reach this container.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Telegram opens the Mini App inside its own frame on web.telegram.org; anyone else
+	# framing it is clickjacking. This has to be a real header — browsers ignore
+	# frame-ancestors in the <meta> CSP the export ships.
+	header Content-Security-Policy "frame-ancestors 'self' https://web.telegram.org https://telegram.org"
+	header X-Content-Type-Options nosniff
+	header Referrer-Policy strict-origin-when-cross-origin
+	header -Server
+
+	# /api/* → the API container, prefix stripped (the API mounts routes at /).
+	handle_path /api/* {
+		reverse_proxy api:3000
+	}
+
+	# Everything else is the static export. Unknown paths fall back to index.html so a
+	# deep link (or a reload inside Telegram) still boots the router.
+	handle {
+		root * /srv
+		try_files {path} {path}.html /index.html
+		file_server
+	}
+}
