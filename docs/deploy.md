@@ -62,7 +62,7 @@ nano .env.production
 | `JWT_ACCESS_SECRET`        | `openssl rand -hex 48`                                                  |
 | `ADMIN_TELEGRAM_IDS`       | ваш числовой Telegram id (узнать у [@userinfobot](https://t.me/userinfobot)), через запятую — даёт доступ в `/admin` при следующем входе |
 | `TELEGRAM_WEBHOOK_SECRET`  | `openssl rand -hex 24` — без него не заработает `/start` бота (см. ниже) |
-| `TELEGRAM_BANNER_URL`      | необязательно — публичная HTTPS-картинка для приветствия бота          |
+| `TELEGRAM_BANNER_URL`      | `https://amola-finance.ru/telegram-banner.png` — картинка уже в репозитории (`apps/app/public/telegram-banner.png`), эта ссылка отдаст её после сборки |
 
 ```bash
 # 4. Сборка и запуск (первая сборка ~5–10 минут: ставятся зависимости, собирается веб)
