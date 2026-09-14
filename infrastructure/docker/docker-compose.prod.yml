@@ -68,6 +68,16 @@ services:
     volumes:
       - caddy_data:/data
       - caddy_config:/config
+    networks:
+      default: {}
+      # Shares this VPS with another project (Codex) that reaches `web` by container name
+      # over this network — created outside this compose file (`external: true`), so it
+      # must already exist on the host before `up` runs here.
+      public_proxy: {}
+
+networks:
+  public_proxy:
+    external: true
 
 volumes:
   pgdata:
