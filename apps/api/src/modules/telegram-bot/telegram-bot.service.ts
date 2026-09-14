@@ -38,7 +38,12 @@ export class TelegramBotService {
     private readonly users: UsersService,
   ) {
     this.apiUrl = `https://api.telegram.org/bot${config.get("TELEGRAM_BOT_TOKEN", { infer: true })}`;
-    this.bannerUrl = config.get("TELEGRAM_BANNER_URL", { infer: true });
+
+    // Telegram caches a photo by its exact URL and never re-fetches it, so a replaced
+    // banner file kept showing the old picture after a deploy. A per-boot query string
+    // makes every restart a fresh URL for Telegram; the web container ignores it.
+    const banner = config.get("TELEGRAM_BANNER_URL", { infer: true });
+    this.bannerUrl = banner ? `${banner}${banner.includes("?") ? "&" : "?"}v=${Date.now()}` : undefined;
 
     const origins = parseCorsOrigins(config.get("CORS_ORIGIN", { infer: true }));
     this.miniAppUrl = Array.isArray(origins) ? origins[0] : undefined;
