@@ -1,4 +1,5 @@
 import type { User } from "@money-dock/shared-types";
+import type { UpdateMeInput } from "@money-dock/validation";
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { and, eq } from "drizzle-orm";
 
@@ -16,6 +17,7 @@ function toUser(row: typeof users.$inferSelect): User {
     baseCurrency: row.baseCurrency as User["baseCurrency"],
     timezone: row.timezone,
     locale: row.locale,
+    avatarUrl: row.avatarUrl,
     status: row.status,
   };
 }
@@ -75,6 +77,16 @@ export class UsersService {
     const [row] = await this.db.select().from(users).where(eq(users.id, id));
     if (!row) throw new NotFoundException("User not found");
     return toUser(row);
+  }
+
+  async updateProfile(userId: string, input: UpdateMeInput): Promise<User> {
+    await this.getById(userId);
+    const rows = await this.db
+      .update(users)
+      .set({ ...input, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return toUser(firstOrThrow(rows));
   }
 
   /**

@@ -24,7 +24,7 @@ export function NumericKeypad({ onKey }: { onKey: (key: (typeof KEYS)[number]) =
           <PressableScale
             onPress={() => onKey(key)}
             accessibilityLabel={key === "back" ? "Стереть" : key}
-            style={StyleSheet.flatten([styles.key, { backgroundColor: theme.surface }])}
+            style={StyleSheet.flatten([styles.key, { borderColor: theme.border }])}
           >
             {key === "back" ? (
               <Icon name="backspace" color={theme.textSecondary} size={22} />
@@ -41,11 +41,15 @@ export function NumericKeypad({ onKey }: { onKey: (key: (typeof KEYS)[number]) =
 const styles = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   keySlot: { width: "31%", aspectRatio: 1.6 },
+  // Transparent keys — the digit sits straight on the screen's gradient, with only a
+  // hairline outline to keep the grid legible; press feedback is the scale, not a fill.
   key: {
     flex: 1,
     borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
   },
-  keyText: { ...typography.title, fontWeight: "600" },
+  keyText: { ...typography.title, fontSize: 24, fontWeight: "600" },
 });

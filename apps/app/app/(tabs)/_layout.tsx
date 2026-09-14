@@ -67,12 +67,18 @@ export default function TabsLayout() {
           // Darker than textTertiary — the reference's inactive icons read as bold, not faint.
           tabBarInactiveTintColor: theme.textSecondary,
           tabBarStyle: {
+            // Floating over the scene, not stacked under it: with margins alone the
+            // navigator painted its own flat background in the strip the bar left
+            // uncovered, which showed as a band under the pill on both themes. Absolute
+            // positioning lets each screen's gradient run to the bottom edge instead
+            // (Screen already pads its content for a floating bar).
+            position: "absolute",
+            left: TAB_BAR_MARGIN_H,
+            right: TAB_BAR_MARGIN_H + FAB_SIZE + FAB_GAP,
+            bottom: TAB_BAR_MARGIN_B,
             backgroundColor: theme.surface,
             borderTopWidth: 0,
             borderRadius: radii.xl,
-            marginLeft: TAB_BAR_MARGIN_H,
-            marginRight: TAB_BAR_MARGIN_H + FAB_SIZE + FAB_GAP,
-            marginBottom: TAB_BAR_MARGIN_B,
             height: TAB_BAR_HEIGHT,
             paddingBottom: 6,
             paddingTop: 6,

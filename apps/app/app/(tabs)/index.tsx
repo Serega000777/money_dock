@@ -2,6 +2,7 @@ import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type {
   Account,
   CategoryGrowthFacts,
+  CommandDraft,
   Insight,
   RecurringPayment,
   SavingsGoal,
@@ -13,14 +14,17 @@ import { Platform, Pressable, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
+import { CreateAccountSheet } from "../../src/features/accounts";
 import { ContributeGoalSheet, CreateGoalSheet, goalIcon } from "../../src/features/goals";
 import { CreateRecurringPaymentSheet, recurringStatus } from "../../src/features/recurring";
+import { DraftSummary, useVoiceCapture } from "../../src/features/voiceCapture";
 import { useTelegram } from "../../src/telegram/TelegramProvider";
 import { useSettingsStore } from "../../src/theme/settingsStore";
 import { useTheme } from "../../src/theme/useTheme";
 import { AmolaLogo } from "../../src/ui/AmolaLogo";
 import { GlowBlob, GlowRing, GradientBox } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
+import { PulseRing } from "../../src/ui/PulseRing";
 import { Text } from "../../src/ui/Text";
 import { categoryColor, categoryIcon } from "../../src/ui/categoryVisual";
 import {
@@ -33,6 +37,9 @@ import {
   Screen,
 } from "../../src/ui/primitives";
 import { formatMinor } from "../../src/utils/format";
+import { useSpeechRecognition } from "../../src/voice/useSpeechRecognition";
+
+const MIC_SIZE = 132;
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -103,7 +110,24 @@ export default function Home() {
   // "Обязательные расходы" and "Цели" — the two sections that close the screen.
   const [addingPayment, setAddingPayment] = useState(false);
   const [addingGoal, setAddingGoal] = useState(false);
+  const [addingAccount, setAddingAccount] = useState(false);
   const [contributingTo, setContributingTo] = useState<SavingsGoal | null>(null);
+
+  // Press-and-hold voice capture, right on the hero mic — see src/features/voiceCapture
+  // for why this shares its parse/save logic with the /voice screen's typed fallback.
+  const [voiceDraft, setVoiceDraft] = useState<CommandDraft | null>(null);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const voice = useVoiceCapture();
+  const speech = useSpeechRecognition((transcript) => {
+    setVoiceError(null);
+    voice.parse.mutate(
+      { value: transcript, source: "voice" },
+      {
+        onSuccess: (result) => setVoiceDraft(result),
+        onError: (e: Error) => setVoiceError(e.message.replace(/^\d+\s*/, "")),
+      },
+    );
+  });
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: () => apiClient.categories.list(),
@@ -149,6 +173,16 @@ export default function Home() {
       ? Math.min(1, summary.currentMonthExpenseMinor / summary.currentMonthIncomeMinor)
       : 0;
   const forecastNegative = (summary?.monthEndForecastMinor ?? 0) < 0;
+
+  // "Можно себе позволить" — the cheapest unfinished goal that this month's safe-to-spend
+  // surplus alone would close, oldest first (same order the list below renders them in).
+  // Purely a comparison of numbers already on this screen — no separate insight, nothing
+  // server-computed, so it appears and disappears the moment the underlying figures do.
+  const affordableGoal = summary
+    ? (goals ?? [])
+        .filter((goal) => goal.savedMinor < goal.targetMinor)
+        .find((goal) => goal.targetMinor - goal.savedMinor <= freeMinor)
+    : undefined;
 
   // Configurable in Кабинет → Главный экран (settingsStore): the hero card's two footer
   // slots each show one of two related figures, picked per user rather than fixed.
@@ -243,7 +277,9 @@ export default function Home() {
           </GradientBox>
         </FadeIn>
 
-        {/* The big mic is the primary action — one tap from anything else on the screen. */}
+        {/* The big mic is the primary action — press and hold to record right here;
+            nothing is saved until the recognized draft is confirmed below. Browsers with
+            no speech API fall back to /voice, where the same command can be typed. */}
         <FadeIn index={2}>
           <View style={styles.micBlock}>
             {/* A wide, soft bleed behind the whole row — the mic's own shadow reads as a
@@ -266,10 +302,17 @@ export default function Home() {
                   pointerEvents="none"
                   style={[styles.micRing2, { borderColor: "rgba(128,67,255,0.18)" }]}
                 />
-                <Link href="/voice" asChild>
-                  <PressableScale accessibilityLabel="Добавить операцию голосом">
+                <PulseRing active={speech.listening} color={theme.accent} size={MIC_SIZE} />
+                {speech.supported ? (
+                  <PressableScale
+                    accessibilityLabel="Добавить операцию голосом"
+                    onPressIn={speech.start}
+                    onPressOut={speech.stop}
+                  >
                     <GradientBox
-                      colors={theme.accentGradient}
+                      colors={
+                        speech.listening ? [theme.negative, theme.accent] : theme.accentGradient
+                      }
                       diagonal
                       radius={radii.pill}
                       highlight
@@ -281,15 +324,38 @@ export default function Home() {
                       </View>
                     </GradientBox>
                   </PressableScale>
-                </Link>
+                ) : (
+                  <Link href="/voice" asChild>
+                    <PressableScale accessibilityLabel="Добавить операцию голосом (текстом)">
+                      <GradientBox
+                        colors={theme.accentGradient}
+                        diagonal
+                        radius={radii.pill}
+                        highlight
+                        highlightSize={150}
+                        style={StyleSheet.flatten([styles.mic, { shadowColor: theme.accent }])}
+                      >
+                        <View style={styles.micInner}>
+                          <Icon name="mic" color="#FFFFFF" size={44} strokeWidth={1.8} />
+                        </View>
+                      </GradientBox>
+                    </PressableScale>
+                  </Link>
+                )}
               </View>
               <WaveBars color={theme.accent} />
             </View>
             <Text style={[styles.micTitle, { color: theme.textPrimary }]}>
-              Скажите, что потратили
+              {speech.listening
+                ? "Говорите…"
+                : speech.supported
+                  ? "Скажите, что потратили"
+                  : "Скажите, что потратили (текстом)"}
             </Text>
             <Text style={[styles.micHint, { color: theme.textTertiary }]}>
-              «Потратил 840 рублей в кафе» — разберём и покажем на подтверждение
+              {speech.error ??
+                voiceError ??
+                "«Потратил 840 рублей в кафе» — разберём и покажем на подтверждение"}
             </Text>
           </View>
         </FadeIn>
@@ -317,6 +383,27 @@ export default function Home() {
                 <AccountTile key={account.id} account={account} vivid={index === 0} />
               ))}
             </View>
+          </FadeIn>
+        ) : enabled && accounts ? (
+          // A brand-new user: nothing can be recorded until there is an account, so this
+          // is the one call to action on the screen, not a quiet empty state.
+          <FadeIn index={3}>
+            <PressableScale onPress={() => setAddingAccount(true)}>
+              <Card style={StyleSheet.flatten([styles.reviewCard, { borderColor: theme.accent }])}>
+                <View style={[styles.reviewIcon, { backgroundColor: theme.accentSoft }]}>
+                  <Icon name="card" color={theme.accent} size={20} />
+                </View>
+                <View style={styles.reviewLeft}>
+                  <Text style={[styles.reviewTitle, { color: theme.textPrimary }]}>
+                    Добавьте первый счёт
+                  </Text>
+                  <Text style={[styles.reviewHint, { color: theme.textSecondary }]}>
+                    Карта, наличные или накопительный — и можно записывать траты
+                  </Text>
+                </View>
+                <Icon name="plus" color={theme.accent} size={22} strokeWidth={2.2} />
+              </Card>
+            </PressableScale>
           </FadeIn>
         ) : null}
 
@@ -495,6 +582,34 @@ export default function Home() {
           </FadeIn>
         ) : null}
 
+        {affordableGoal ? (
+          <FadeIn index={7}>
+            <PressableScale onPress={() => setContributingTo(affordableGoal)}>
+              <Card
+                style={StyleSheet.flatten([
+                  styles.tipCard,
+                  { borderWidth: 1, borderColor: theme.positive },
+                ])}
+              >
+                <View style={[styles.tipIcon, { backgroundColor: theme.positiveSoft }]}>
+                  <Icon name={goalIcon(affordableGoal)} color={theme.positive} size={20} />
+                </View>
+                <View style={styles.tipLeft}>
+                  <Text style={[styles.tipTitle, { color: theme.textPrimary }]}>
+                    Можно себе позволить
+                  </Text>
+                  <Text style={[styles.tipHint, { color: theme.textSecondary }]}>
+                    До цели «{affordableGoal.name}» осталось{" "}
+                    {formatMinor(affordableGoal.targetMinor - affordableGoal.savedMinor)} ₽ — в
+                    этом месяце свободно {formatMinor(freeMinor)} ₽, бюджет позволяет закрыть её
+                    полностью.
+                  </Text>
+                </View>
+              </Card>
+            </PressableScale>
+          </FadeIn>
+        ) : null}
+
         {topInsight ? (
           <FadeIn index={7}>
             <Card style={styles.tipCard}>
@@ -604,7 +719,25 @@ export default function Home() {
         onClose={() => setAddingGoal(false)}
         currency={accounts?.[0]?.currency ?? "RUB"}
       />
+      <CreateAccountSheet visible={addingAccount} onClose={() => setAddingAccount(false)} />
       <ContributeGoalSheet goal={contributingTo} onClose={() => setContributingTo(null)} />
+
+      <BottomSheet
+        visible={voiceDraft !== null}
+        onClose={() => setVoiceDraft(null)}
+        title="Новая операция"
+      >
+        {voiceDraft ? (
+          <DraftSummary
+            draft={voiceDraft}
+            saving={voice.save.isPending}
+            onDiscard={() => setVoiceDraft(null)}
+            onSave={() =>
+              voice.save.mutate(voiceDraft, { onSuccess: () => setVoiceDraft(null) })
+            }
+          />
+        ) : null}
+      </BottomSheet>
 
       <BottomSheet
         visible={accountsSheetOpen}
@@ -883,8 +1016,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   mic: {
-    width: 132,
-    height: 132,
+    width: MIC_SIZE,
+    height: MIC_SIZE,
     // A centred halo, not a drop shadow — per the reference's glowing mic button.
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.55,

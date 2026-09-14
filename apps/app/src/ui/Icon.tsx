@@ -45,6 +45,7 @@ export type IconName =
   | "palm"
   | "receipt"
   | "bulb"
+  | "camera"
   // categories
   | "cart"
   | "cutlery"
@@ -346,6 +347,13 @@ export function Icon({ name, color, size = 24, strokeWidth = 1.7, filled = false
         <>
           <Path d="M9.2 15.6a5.6 5.6 0 1 1 5.6 0v1.8H9.2z" {...s} />
           <Path d="M10 20.2h4" {...s} />
+        </>
+      ) : null}
+
+      {name === "camera" ? (
+        <>
+          <Path d="M9 4.6h6l1.2 2.2h2.4a1.6 1.6 0 0 1 1.6 1.6v9a1.6 1.6 0 0 1-1.6 1.6H5.4a1.6 1.6 0 0 1-1.6-1.6v-9a1.6 1.6 0 0 1 1.6-1.6h2.4z" {...s} />
+          <Circle cx="12" cy="13" r="3.4" {...s} />
         </>
       ) : null}
 

@@ -2,13 +2,19 @@ import "reflect-metadata";
 
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
+import { json } from "express";
 import helmet from "helmet";
 
 import { AppModule } from "./app.module";
 import { parseCorsOrigins, type Env } from "./config/env";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // Nest's default JSON body parser caps requests at 100kb, which a profile-photo upload
+  // (avatarUrl, a data: URI up to ~300KB — see updateMeSchema) blows straight through,
+  // failing closed as an unhandled 500 rather than the schema's own 400. `bodyParser:
+  // false` skips Nest's auto-registered parser so this replacement is the only one.
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.use(json({ limit: "1mb" }));
   const config = app.get(ConfigService<Env, true>);
 
   app.enableShutdownHooks();

@@ -8,3 +8,4 @@ export * from "./note";
 export * from "./recurring-payment";
 export * from "./review";
 export * from "./transaction";
+export * from "./user";

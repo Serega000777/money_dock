@@ -8,6 +8,9 @@ export interface User {
   baseCurrency: CurrencyCode;
   timezone: string;
   locale: string;
+  /** A small data: URI (client resizes before upload), or null for the initial-letter
+   * fallback avatar. */
+  avatarUrl: string | null;
   status: UserStatus;
 }
 

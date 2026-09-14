@@ -108,10 +108,22 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
 
     users: {
       me: () => request<User>("/users/me"),
+      /** `avatarUrl` is a small data: URI — see the schema comment on `users.avatarUrl` for
+       * why (no object storage yet). Pass `null` to remove a photo. */
+      updateMe: (input: { avatarUrl?: string | null }) =>
+        request<User>("/users/me", { method: "PATCH", body: JSON.stringify(input) }),
     },
 
     accounts: {
       list: () => request<Account[]>("/accounts"),
+      create: (input: {
+        type: "cash" | "card" | "bank";
+        name: string;
+        currency: string;
+        initialBalanceMinor?: number;
+      }) => post<Account>("/accounts", input),
+      /** Soft delete — the account is archived, not dropped, so history stays intact. */
+      remove: (id: string) => request<void>(`/accounts/${id}`, { method: "DELETE" }),
     },
 
     categories: {

@@ -3,11 +3,12 @@ import { radii, spacing, typography } from "@money-dock/design-tokens";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, type Href } from "expo-router";
 import type { ReactNode } from "react";
-import { useState } from "react";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { useRef, useState } from "react";
+import { Image, Platform, Pressable, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
+import { CreateAccountSheet } from "../../src/features/accounts";
 import { CreateRecurringPaymentSheet, recurringStatus } from "../../src/features/recurring";
 import { useTelegram } from "../../src/telegram/TelegramProvider";
 import {
@@ -29,6 +30,7 @@ import {
   Screen,
   Segmented,
 } from "../../src/ui/primitives";
+import { fileToAvatarDataUrl } from "../../src/utils/avatar";
 import { formatMinor } from "../../src/utils/format";
 
 /** Web-only: turns the export payload into a downloaded .json file. The Mini App is a
@@ -62,6 +64,9 @@ export default function Account() {
   const enabled = Boolean(accessToken);
   const queryClient = useQueryClient();
   const [addingPayment, setAddingPayment] = useState(false);
+  const [addingAccount, setAddingAccount] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => apiClient.users.me(), enabled });
   const { data: accounts } = useQuery({
@@ -98,6 +103,14 @@ export default function Account() {
     mutationFn: () => apiClient.exports.generate(),
     onSuccess: (data) => downloadReport(data),
   });
+  const updateAvatar = useMutation({
+    mutationFn: (avatarUrl: string | null) => apiClient.users.updateMe({ avatarUrl }),
+    onSuccess: (updated) => {
+      setAvatarError(null);
+      queryClient.setQueryData(["me"], updated);
+    },
+    onError: (e: Error) => setAvatarError(e.message),
+  });
   const invalidatePayments = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }),
@@ -122,16 +135,47 @@ export default function Account() {
     <Screen>
       <FadeIn index={0}>
         <Card style={styles.profile}>
-          <GradientBox
-            colors={theme.accentGradient}
-            diagonal
-            radius={radii.pill}
-            style={styles.avatar}
+          <PressableScale
+            accessibilityLabel="Изменить фото профиля"
+            onPress={() => Platform.OS === "web" && avatarInputRef.current?.click()}
           >
-            <View style={styles.avatarInner}>
-              <Text style={styles.avatarText}>{initial}</Text>
+            {me?.avatarUrl ? (
+              <Image source={{ uri: me.avatarUrl }} style={styles.avatar} />
+            ) : (
+              <GradientBox
+                colors={theme.accentGradient}
+                diagonal
+                radius={radii.pill}
+                style={styles.avatar}
+              >
+                <View style={styles.avatarInner}>
+                  <Text style={styles.avatarText}>{initial}</Text>
+                </View>
+              </GradientBox>
+            )}
+            <View style={[styles.avatarBadge, { backgroundColor: theme.surface, borderColor: theme.background }]}>
+              <Icon name="camera" color={theme.textSecondary} size={13} strokeWidth={1.8} />
             </View>
-          </GradientBox>
+          </PressableScale>
+          {Platform.OS === "web" ? (
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              style={{ display: "none" }}
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                try {
+                  const dataUrl = await fileToAvatarDataUrl(file);
+                  updateAvatar.mutate(dataUrl);
+                } catch {
+                  setAvatarError("Не удалось обработать изображение");
+                }
+              }}
+            />
+          ) : null}
           <View style={styles.profileText}>
             <Text style={[styles.name, { color: theme.textPrimary }]} numberOfLines={1}>
               {name}
@@ -159,6 +203,9 @@ export default function Account() {
             </Text>
           </View>
         </Card>
+        {avatarError ? (
+          <Text style={[styles.avatarError, { color: theme.negative }]}>{avatarError}</Text>
+        ) : null}
       </FadeIn>
 
       <FadeIn index={1}>
@@ -200,6 +247,12 @@ export default function Account() {
           {accounts?.length === 0 ? (
             <Text style={[styles.rowValue, { color: theme.textSecondary }]}>Счетов пока нет</Text>
           ) : null}
+          <PressableScale style={styles.row} onPress={() => setAddingAccount(true)}>
+            <View style={[styles.rowIcon, { backgroundColor: theme.accentSoft }]}>
+              <Icon name="plus" color={theme.accent} size={18} />
+            </View>
+            <Text style={[styles.rowLabel, { color: theme.accent }]}>Добавить счёт</Text>
+          </PressableScale>
         </Section>
       </FadeIn>
 
@@ -367,6 +420,7 @@ export default function Account() {
         </Section>
       </FadeIn>
 
+      <CreateAccountSheet visible={addingAccount} onClose={() => setAddingAccount(false)} />
       <CreateRecurringPaymentSheet
         visible={addingPayment}
         onClose={() => setAddingPayment(false)}
@@ -424,9 +478,21 @@ function NavRow({
 
 const styles = StyleSheet.create({
   profile: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  avatar: { width: 48, height: 48 },
+  avatar: { width: 48, height: 48, borderRadius: 24 },
   avatarInner: { flex: 1, alignItems: "center", justifyContent: "center" },
   avatarText: { ...typography.title, color: "#FFFFFF", fontWeight: "700" },
+  avatarBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarError: { ...typography.caption, marginTop: -spacing.xs },
   profileText: { flex: 1, gap: 2 },
   name: typography.headline,
   subtitle: typography.caption,

@@ -95,10 +95,14 @@ export default function AddTransaction() {
           behaves the same in the Telegram web view, a browser, and native. */}
       <FadeIn index={1}>
         <View style={styles.amountRow}>
-          <Text style={[styles.amountText, { color: theme.textPrimary }]} numberOfLines={1}>
+          <Text
+            style={[styles.amountText, { color: theme.textPrimary }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
             {amount || "0"}
+            <Text style={[styles.currency, { color: theme.textTertiary }]}> ₽</Text>
           </Text>
-          <Text style={[styles.currency, { color: theme.textTertiary }]}>₽</Text>
         </View>
       </FadeIn>
 
@@ -307,8 +311,10 @@ function CreateCategorySheet({
 
 const styles = StyleSheet.create({
   screen: { padding: spacing.lg, gap: spacing.md, paddingBottom: 120 },
-  amountRow: { flexDirection: "row", alignItems: "baseline", gap: spacing.sm },
-  amountText: { ...typography.hero, fontSize: 52, lineHeight: 60, flex: 1 },
+  // Centred, with the currency riding along inside the same text so the pair stays
+  // together however long the figure gets.
+  amountRow: { alignItems: "center", paddingVertical: spacing.sm },
+  amountText: { ...typography.hero, fontSize: 52, lineHeight: 60, textAlign: "center" },
   currency: { ...typography.display, fontWeight: "500" },
   merchantInput: {
     ...typography.body,

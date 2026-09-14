@@ -288,6 +288,8 @@ export function Segmented<T extends string>({
                 styles.segmentText,
                 { color: active ? theme.textPrimary : theme.textSecondary },
               ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
             >
               {option.label}
             </Text>
@@ -372,6 +374,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     paddingVertical: spacing.sm,
+    paddingHorizontal: 4,
     borderRadius: radii.sm,
   },
   segmentText: { ...typography.callout, fontWeight: "600" },

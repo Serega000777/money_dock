@@ -72,3 +72,57 @@ describe("Account deletion (e2e)", () => {
     await request(app.getHttpServer()).delete("/users/me").expect(401);
   });
 });
+
+describe("Profile update (e2e)", () => {
+  let app: INestApplication;
+  let token: string;
+
+  beforeAll(async () => {
+    if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN must be set to run this suite");
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
+
+    const login = await request(app.getHttpServer())
+      .post("/auth/telegram")
+      .send({ initData: signInitData(runPrefix * 1_000_000 + 2) })
+      .expect(200);
+    token = login.body.accessToken as string;
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  const TINY_PNG =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+  it("sets and clears the avatar", async () => {
+    const set = await request(app.getHttpServer())
+      .patch("/users/me")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ avatarUrl: TINY_PNG })
+      .expect(200);
+    expect(set.body.avatarUrl).toBe(TINY_PNG);
+
+    const cleared = await request(app.getHttpServer())
+      .patch("/users/me")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ avatarUrl: null })
+      .expect(200);
+    expect(cleared.body.avatarUrl).toBeNull();
+  });
+
+  // The oversized branch of updateMeSchema (>300,000 chars) isn't exercised here: this
+  // suite builds its Nest app straight from AppModule, without main.ts's raised JSON body
+  // limit, so a payload that size never reaches the schema — Express's own default 100kb
+  // parser limit rejects it first. That default is what main.ts's `bodyParser: false` +
+  // `json({ limit: "1mb" })` replaces for the real server.
+  it("rejects a non-image value", async () => {
+    await request(app.getHttpServer())
+      .patch("/users/me")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ avatarUrl: "not-a-data-uri" })
+      .expect(400);
+  });
+});

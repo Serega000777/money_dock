@@ -306,7 +306,7 @@ export default function Analytics() {
             { value: "week", label: "Неделя" },
             { value: "month", label: "Месяц" },
             { value: "year", label: "Год" },
-            { value: "custom", label: "Свой период" },
+            { value: "custom", label: "Период" },
           ]}
         />
       </FadeIn>
