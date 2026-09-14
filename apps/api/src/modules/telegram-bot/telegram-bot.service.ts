@@ -6,7 +6,6 @@ import { UsersService } from "../users/users.service";
 
 import type { TelegramMessage, TelegramUpdate } from "./telegram-update";
 
-const SKIP_TEXT = "Пропустить";
 const SHARE_CONTACT_TEXT = "📱 Поделиться номером";
 const START_TEXT = "🚀 Начать";
 
@@ -19,12 +18,13 @@ const WELCOME_TEXT =
   "Готовы начать?";
 
 /**
- * The bot side of onboarding: a /start welcome, an optional phone number (Telegram's own
- * "share contact" button — never a typed field, so the number always comes from Telegram
- * itself, not a spoofable text message), then a button into the Mini App. Registration
- * itself doesn't wait on any of this — `findOrCreateByTelegramIdentity` runs the moment
- * /start arrives, the same call the Mini App's own silent login makes, so chatting with
- * the bot first and opening the app first land on the exact same account either way.
+ * The bot side of onboarding: a /start welcome, then a second message asking for the
+ * phone number (Telegram's own "share contact" button — never a typed field, so the
+ * number always comes from Telegram itself, not a spoofable text message), then a button
+ * into the Mini App. Registration itself doesn't wait on any of this —
+ * `findOrCreateByTelegramIdentity` runs the moment /start arrives, the same call the Mini
+ * App's own silent login makes, so chatting with the bot first and opening the app first
+ * land on the exact same account either way.
  */
 @Injectable()
 export class TelegramBotService {
@@ -56,11 +56,7 @@ export class TelegramBotService {
 
     if (message.text === "/start") return this.handleStart(message);
     if (message.contact) return this.handleContact(message);
-    if (message.text === SKIP_TEXT) {
-      this.sendStartButton(message.chat.id);
-      return;
-    }
-    // Anything else — no command grammar to teach, just re-offer the one real action.
+    // Anything else — no command grammar to teach; the share-number keyboard is still up.
   }
 
   private async handleStart(message: TelegramMessage): Promise<void> {
@@ -73,22 +69,35 @@ export class TelegramBotService {
       language_code: from.language_code,
     });
 
-    const replyMarkup = {
-      keyboard: [[{ text: SHARE_CONTACT_TEXT, request_contact: true }], [{ text: SKIP_TEXT }]],
-      resize_keyboard: true,
-      one_time_keyboard: true,
-    };
+    const chatId = message.chat.id;
+    const welcome = this.bannerUrl
+      ? this.callApi("sendPhoto", { chat_id: chatId, photo: this.bannerUrl, caption: WELCOME_TEXT })
+      : this.callApi("sendMessage", { chat_id: chatId, text: WELCOME_TEXT });
 
-    if (this.bannerUrl) {
-      this.callApi("sendPhoto", {
-        chat_id: message.chat.id,
-        photo: this.bannerUrl,
-        caption: WELCOME_TEXT,
-        reply_markup: replyMarkup,
-      });
-    } else {
-      this.callApi("sendMessage", { chat_id: message.chat.id, text: WELCOME_TEXT, reply_markup: replyMarkup });
-    }
+    // Chained, not parallel: two independent fetches could land in either order, and the
+    // ask must come after the welcome. Still nothing here is awaited by the webhook.
+    void welcome.then(() =>
+      this.callApi("sendMessage", {
+        chat_id: chatId,
+        text:
+          "Чтобы начать, поделитесь номером телефона.\n\n" +
+          `<i>Продолжая, вы соглашаетесь с <a href="${this.legalUrl("terms")}">условиями использования</a> ` +
+          `и <a href="${this.legalUrl("privacy")}">политикой обработки персональных данных</a> (152-ФЗ).</i>`,
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: true },
+        reply_markup: {
+          keyboard: [[{ text: SHARE_CONTACT_TEXT, request_contact: true }]],
+          resize_keyboard: true,
+          one_time_keyboard: true,
+        },
+      }),
+    );
+  }
+
+  /** The same pages the Mini App's "Правовая информация" rows open — served by the web
+   * container as plain pages, so they read fine in Telegram's in-app browser too. */
+  private legalUrl(slug: "terms" | "privacy" | "personal-data"): string {
+    return `${this.miniAppUrl ?? "https://amola-finance.ru"}/legal/${slug}`;
   }
 
   private async handleContact(message: TelegramMessage): Promise<void> {
@@ -129,9 +138,10 @@ export class TelegramBotService {
     });
   }
 
-  /** Deliberately not `async`/awaited by its callers — see `handleUpdate`. */
-  private callApi(method: string, body: Record<string, unknown>): void {
-    fetch(`${this.apiUrl}/${method}`, {
+  /** Never rejects and is deliberately not awaited by the webhook path — see
+   * `handleUpdate`. Returns the promise only so a caller can *order* two sends. */
+  private callApi(method: string, body: Record<string, unknown>): Promise<void> {
+    return fetch(`${this.apiUrl}/${method}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
