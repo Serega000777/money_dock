@@ -18,6 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { initData, isInsideTelegram } = useTelegram();
   const accessToken = useAuthStore((state) => state.accessToken);
   const setTokens = useAuthStore((state) => state.setTokens);
+  const setLoginFailed = useAuthStore((state) => state.setLoginFailed);
 
   useEffect(() => {
     if (accessToken) return;
@@ -36,13 +37,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
-        // Home screen falls back to demo-mode copy when there's no access token.
+        // Home screen falls back to demo-mode copy when there's no access token; the
+        // boot screen (see BootGate in the root layout) needs to know to get out of the way.
+        if (!cancelled) setLoginFailed();
       });
 
     return () => {
       cancelled = true;
     };
-  }, [isInsideTelegram, initData, accessToken, setTokens]);
+  }, [isInsideTelegram, initData, accessToken, setTokens, setLoginFailed]);
 
   return <>{children}</>;
 }

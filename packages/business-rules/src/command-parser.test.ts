@@ -44,6 +44,17 @@ describe("parseCommand — type", () => {
     expect(parseCommand("пришла зарплата 120000").type).toBe("income");
   });
 
+  it.each([
+    "мне перевели 5000",
+    "получила премию 30 тысяч",
+    "кэшбэк 350 рублей",
+    "вернули 1200 за возврат",
+    "аванс 40000",
+    "продал ноутбук за 25000",
+  ])("hears everyday income phrasing: %s", (phrase) => {
+    expect(parseCommand(phrase).type).toBe("income");
+  });
+
   it("defaults to expense when nothing indicates direction", () => {
     expect(parseCommand("840 в кафе").type).toBe("expense");
   });
@@ -68,6 +79,14 @@ describe("parseCommand — category", () => {
 
   it("leaves the category empty when nothing matches", () => {
     expect(parseCommand("потратил 700 рублей").categoryCode).toBeNull();
+  });
+
+  it("only offers income categories to income, and expense ones to expenses", () => {
+    // "заказ" is a Подработка hint — irrelevant to an expense.
+    expect(parseCommand("заказал пиццу за 900").categoryCode).toBe("restaurants");
+    // "интернет" is an expense hint — irrelevant to income.
+    expect(parseCommand("получил 5000 за проект через интернет").categoryCode).toBe("freelance");
+    expect(parseCommand("перевели 3000 за подписку").categoryCode).toBeNull();
   });
 });
 

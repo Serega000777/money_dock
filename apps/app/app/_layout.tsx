@@ -2,6 +2,7 @@ import { typography } from "@money-dock/design-tokens";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -11,24 +12,40 @@ import { useAuthStore } from "../src/auth/authStore";
 import { OnboardingFlow } from "../src/onboarding/OnboardingFlow";
 import { TelegramProvider, useTelegram } from "../src/telegram/TelegramProvider";
 import { useTheme } from "../src/theme/useTheme";
+import { BootScreen } from "../src/ui/BootScreen";
 
 /**
- * Onboarding + registration (Telegram / Yandex ID / VK ID) are for the standalone app —
- * a plain browser today, a future native mobile build eventually. Inside a real Telegram
- * Mini App, `AuthProvider` signs the user in silently from `initData`, so the gate stays
- * out of the way there.
+ * Two overlays share the top of the tree, painted over the navigator rather than routed
+ * to (redirecting from the root layout — router.replace in an effect, or a <Redirect> in
+ * place of the <Stack> — either races expo-router's initial-route resolution on web or
+ * unmounts the very navigator it is trying to navigate):
  *
- * It's an overlay on top of the navigator, not a route: redirecting from the root layout
- * (whether via router.replace in an effect or a <Redirect> in place of the <Stack>) either
- * races expo-router's initial-route resolution on web or unmounts the very navigator it
- * is trying to navigate. Painting over the stack has neither problem, on any platform.
+ * - The boot screen, from the very first paint until the app knows who you are. The
+ *   static export pre-renders the tree with no Telegram bridge and no token, which used
+ *   to mean the onboarding tour flashed on every Mini App launch until the JS bundle
+ *   booted and `isInsideTelegram` flipped. Nothing decides "not in Telegram" before the
+ *   client has actually run (`booted`), and inside Telegram the screen stays up through
+ *   the silent sign-in so the home screen never shows in demo mode first.
+ * - Onboarding + registration (Telegram / Yandex ID / VK ID), for the standalone app — a
+ *   plain browser today, a future native build eventually.
  */
-function OnboardingGate() {
+function BootGate() {
   const { isInsideTelegram } = useTelegram();
   const accessToken = useAuthStore((state) => state.accessToken);
+  const loginFailed = useAuthStore((state) => state.loginFailed);
+  const [booted, setBooted] = useState(false);
+  useEffect(() => setBooted(true), []);
 
-  if (isInsideTelegram || accessToken) return null;
-  return <OnboardingFlow />;
+  const signedIn = Boolean(accessToken);
+  const booting = !booted || (isInsideTelegram && !signedIn && !loginFailed);
+  const showOnboarding = booted && !isInsideTelegram && !signedIn;
+
+  return (
+    <>
+      {showOnboarding ? <OnboardingFlow /> : null}
+      <BootScreen visible={booting} />
+    </>
+  );
 }
 
 function ThemedStack() {
@@ -60,7 +77,7 @@ export default function RootLayout() {
           <AuthProvider>
             <View style={styles.flex}>
               <ThemedStack />
-              <OnboardingGate />
+              <BootGate />
             </View>
           </AuthProvider>
         </TelegramProvider>

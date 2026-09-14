@@ -349,13 +349,13 @@ export default function Home() {
               {speech.listening
                 ? "Говорите…"
                 : speech.supported
-                  ? "Скажите, что потратили"
-                  : "Скажите, что потратили (текстом)"}
+                  ? "Скажите, что потратили или получили"
+                  : "Скажите, что потратили или получили (текстом)"}
             </Text>
             <Text style={[styles.micHint, { color: theme.textTertiary }]}>
               {speech.error ??
                 voiceError ??
-                "«Потратил 840 рублей в кафе» — разберём и покажем на подтверждение"}
+                "«Потратил 840 в кафе» или «Пришла зарплата 80 тысяч» — разберём и покажем на подтверждение"}
             </Text>
           </View>
         </FadeIn>
@@ -730,6 +730,7 @@ export default function Home() {
         {voiceDraft ? (
           <DraftSummary
             draft={voiceDraft}
+            onChange={setVoiceDraft}
             saving={voice.save.isPending}
             onDiscard={() => setVoiceDraft(null)}
             onSave={() =>

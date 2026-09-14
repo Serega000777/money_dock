@@ -6,6 +6,7 @@ import { and, eq, isNull, or } from "drizzle-orm";
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
 import { accounts, categories, reviewItems } from "../../db/schema";
+import { CategorizationService } from "../categorization/categorization.service";
 import { EntitlementsService } from "../entitlements/entitlements.service";
 import { TransactionsService } from "../transactions/transactions.service";
 
@@ -42,6 +43,7 @@ export class CommandsService {
     @Inject(DATABASE) private readonly db: Database,
     private readonly entitlements: EntitlementsService,
     private readonly transactions: TransactionsService,
+    private readonly categorization: CategorizationService,
   ) {}
 
   /**
@@ -108,19 +110,29 @@ export class CommandsService {
       userAccounts[0] ||
       null;
 
-    let category: { id: string; name: string } | null = null;
-    if (parsed.categoryCode) {
-      const [row] = await this.db
-        .select({ id: categories.id, name: categories.name })
-        .from(categories)
-        .where(
-          and(
-            eq(categories.systemCode, parsed.categoryCode),
-            or(isNull(categories.userId), eq(categories.userId, userId)),
-          ),
-        );
-      category = row ?? null;
+    const matched = [...parsed.matched];
+    let confidence = parsed.confidence;
+
+    // The parser's own keyword hints first; then, for expenses, the same pipeline a bank
+    // statement goes through (the user's own rules and history, brand aliases, the local
+    // classifier) run over the whole phrase — "яндекс такси" or "вкусвилл" are brands
+    // the parser deliberately doesn't know; and finally "Другое", so the draft always
+    // proposes *some* category for the user to accept or swap in the confirmation card.
+    let category = parsed.categoryCode ? await this.systemCategory(userId, parsed.categoryCode) : null;
+    if (!category && parsed.type === "expense") {
+      const guessed = await this.categorization.categorize(userId, text);
+      if (guessed.categoryId) {
+        category = await this.categoryById(userId, guessed.categoryId);
+        if (category) {
+          matched.push("category");
+          confidence = Math.min(0.98, confidence + 0.08);
+        }
+      }
     }
+    category ??= await this.systemCategory(
+      userId,
+      parsed.type === "income" ? "other_income" : "other_expense",
+    );
 
     const occurredAt = new Date(Date.now() - parsed.daysAgo * 86_400_000);
 
@@ -133,8 +145,35 @@ export class CommandsService {
       categoryId: category?.id ?? null,
       categoryName: category?.name ?? null,
       occurredAt: occurredAt.toISOString(),
-      confidence: parsed.confidence,
-      explanation: parsed.matched.map((key) => EXPLANATIONS[key] ?? key),
+      confidence: Number(confidence.toFixed(2)),
+      explanation: matched.map((key) => EXPLANATIONS[key] ?? key),
     };
+  }
+
+  private async systemCategory(
+    userId: string,
+    systemCode: string,
+  ): Promise<{ id: string; name: string } | null> {
+    const [row] = await this.db
+      .select({ id: categories.id, name: categories.name })
+      .from(categories)
+      .where(
+        and(
+          eq(categories.systemCode, systemCode),
+          or(isNull(categories.userId), eq(categories.userId, userId)),
+        ),
+      );
+    return row ?? null;
+  }
+
+  private async categoryById(
+    userId: string,
+    id: string,
+  ): Promise<{ id: string; name: string } | null> {
+    const [row] = await this.db
+      .select({ id: categories.id, name: categories.name })
+      .from(categories)
+      .where(and(eq(categories.id, id), or(isNull(categories.userId), eq(categories.userId, userId))));
+    return row ?? null;
   }
 }

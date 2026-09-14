@@ -24,14 +24,45 @@ export interface ParsedCommand {
   matched: string[];
 }
 
-const INCOME_WORDS = ["доход", "получил", "зарплат", "поступил", "пришл", "заработал", "оплата от"];
+const INCOME_WORDS = [
+  "доход",
+  "получил",
+  "получила",
+  "зарплат",
+  "поступил",
+  "пришл",
+  "заработал",
+  "оплата от",
+  "перевели",
+  "перевод от",
+  "зачисл",
+  "начисл",
+  "выплат",
+  "преми",
+  "аванс",
+  "гонорар",
+  "кэшбэк",
+  "кешбэк",
+  "кэшбек",
+  "cashback",
+  "вернули",
+  "возврат",
+  "дивиденд",
+  "подарили",
+  "продал",
+];
 const EXPENSE_WORDS = ["потрат", "расход", "купил", "заплатил", "оплатил", "потратил"];
 
-/** Category hints keyed by the system_code seeded in the categories table. */
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
+/**
+ * Category hints keyed by the system_code seeded in the categories table, split by
+ * operation type so "заказал пиццу" can never land in the income-only "Подработка"
+ * (whose "заказ" hint used to win over every expense category).
+ */
+const EXPENSE_CATEGORY_KEYWORDS: Record<string, string[]> = {
   groceries: [
     "продукт",
     "магазин",
+    "супермаркет",
     "пятёрочк",
     "пятерочк",
     "магнит",
@@ -39,6 +70,8 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "перекресток",
     "ашан",
     "лент",
+    "вкусвилл",
+    "дикси",
   ],
   restaurants: [
     "кафе",
@@ -49,13 +82,46 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "завтрак",
     "бар",
     "столов",
-    "доставка еды",
+    "доставк",
+    "пицц",
+    "суши",
+    "бургер",
+    "шаурм",
+    "фастфуд",
+    "макдон",
+    "вкусно и точка",
+    "kfc",
+    "кфс",
   ],
-  transport: ["такси", "метро", "автобус", "трамвай", "транспорт", "каршеринг", "самокат"],
+  transport: [
+    "такси",
+    "метро",
+    "автобус",
+    "трамвай",
+    "транспорт",
+    "каршеринг",
+    "самокат",
+    "проезд",
+    "парковк",
+    "поезд",
+    "электричк",
+    "убер",
+    "uber",
+  ],
   fuel: ["бензин", "заправк", "топлив", "азс", "солярк", "дизел"],
-  housing: ["жкх", "квартплат", "аренд", "квартир", "коммуналк", "электричеств"],
-  health: ["аптек", "врач", "лекарств", "больниц", "стоматолог", "анализ"],
-  entertainment: ["кино", "театр", "развлеч", "концерт", "подписк", "игр"],
+  housing: ["жкх", "квартплат", "аренд", "квартир", "коммуналк", "электричеств", "ипотек"],
+  health: ["аптек", "врач", "лекарств", "больниц", "стоматолог", "анализ", "витамин", "клиник"],
+  entertainment: [
+    "кино",
+    "театр",
+    "развлеч",
+    "концерт",
+    "подписк",
+    "игр",
+    "боулинг",
+    "netflix",
+    "нетфликс",
+  ],
   shopping: [
     "одежд",
     "покупк",
@@ -66,10 +132,15 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
     "вайлдберриз",
     "wildberries",
     "ozon",
+    "мебел",
+    "подар",
   ],
-  communication: ["связь", "интернет", "мобильн", "телефон", "тариф"],
-  salary: ["зарплат", "оклад", "аванс"],
-  freelance: ["фриланс", "подработк", "заказ", "клиент"],
+  communication: ["связь", "интернет", "мобильн", "телефон", "тариф", "мтс", "билайн", "мегафон"],
+};
+
+const INCOME_CATEGORY_KEYWORDS: Record<string, string[]> = {
+  salary: ["зарплат", "оклад", "аванс", "преми", "зп"],
+  freelance: ["фриланс", "подработк", "заказ", "клиент", "гонорар", "проект"],
 };
 
 const ACCOUNT_KEYWORDS: Record<"cash" | "card" | "bank", string[]> = {
@@ -219,7 +290,10 @@ export function parseCommand(input: string): ParsedCommand {
   const type: ParsedCommandType = isIncome && !isExpense ? "income" : "expense";
   if (isIncome || isExpense) matched.push("type");
 
-  const categoryCode = firstKeywordMatch(text, CATEGORY_KEYWORDS);
+  const categoryCode = firstKeywordMatch(
+    text,
+    type === "income" ? INCOME_CATEGORY_KEYWORDS : EXPENSE_CATEGORY_KEYWORDS,
+  );
   if (categoryCode) matched.push("category");
 
   const accountType = firstKeywordMatch(text, ACCOUNT_KEYWORDS);

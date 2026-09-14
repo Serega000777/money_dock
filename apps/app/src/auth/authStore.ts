@@ -5,7 +5,11 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   userId: string | null;
+  /** The silent Telegram login gave up — the boot screen steps aside for the demo-mode
+   * home instead of spinning forever. */
+  loginFailed: boolean;
   setTokens: (tokens: { accessToken: string; refreshToken: string; userId: string }) => void;
+  setLoginFailed: () => void;
   clear: () => void;
 }
 
@@ -38,6 +42,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   refreshToken: null,
   userId: null,
-  setTokens: (tokens) => set(tokens),
-  clear: () => set({ accessToken: null, refreshToken: null, userId: null }),
+  loginFailed: false,
+  setTokens: (tokens) => set({ ...tokens, loginFailed: false }),
+  setLoginFailed: () => set({ loginFailed: true }),
+  clear: () => set({ accessToken: null, refreshToken: null, userId: null, loginFailed: false }),
 }));

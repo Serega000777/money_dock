@@ -154,6 +154,7 @@ export default function Voice() {
           <Card>
             <DraftSummary
               draft={draft}
+              onChange={setDraft}
               saving={voice.save.isPending}
               onDiscard={() => setDraft(null)}
               onSave={() => voice.save.mutate(draft, { onSuccess: () => router.back() })}

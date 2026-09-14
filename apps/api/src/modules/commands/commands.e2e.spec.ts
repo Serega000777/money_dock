@@ -83,6 +83,36 @@ describe("Voice/text commands + entitlements (e2e)", () => {
     );
   });
 
+  it("falls back to the brand-alias pipeline when the parser has no keyword for it", async () => {
+    const res = await authed("post", "/commands/parse")
+      .send({ text: "потратил 3000 в лукойле", source: "text" })
+      .expect(200);
+    expect(res.body.categoryName).toBe("Топливо");
+    expect(res.body.explanation).toContain("категория");
+  });
+
+  it("always proposes a category — «Другое» when nothing else fits", async () => {
+    const expense = await authed("post", "/commands/parse")
+      .send({ text: "потратил 700 рублей", source: "text" })
+      .expect(200);
+    expect(expense.body.categoryName).toBe("Другое");
+    expect(expense.body.explanation).not.toContain("категория");
+
+    const income = await authed("post", "/commands/parse")
+      .send({ text: "мне перевели 5000", source: "text" })
+      .expect(200);
+    expect(income.body.type).toBe("income");
+    expect(income.body.categoryName).toBe("Другое");
+  });
+
+  it("resolves income to an income category", async () => {
+    const res = await authed("post", "/commands/parse")
+      .send({ text: "получил 15000 за проект от клиента", source: "text" })
+      .expect(200);
+    expect(res.body).toMatchObject({ type: "income", amountMinor: 1_500_000 });
+    expect(res.body.categoryName).toBe("Подработка");
+  });
+
   it("never creates a transaction — parsing only returns a draft", async () => {
     const before = await authed("get", "/transactions").expect(200);
     await authed("post", "/commands/parse")
