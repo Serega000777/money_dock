@@ -10,7 +10,7 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 
 import { AuditLogService } from "../../common/audit-log.service";
-import type { Env } from "../../config/env";
+import { parseAdminTelegramIds, type Env } from "../../config/env";
 import { DemoDataService } from "../demo/demo-data.service";
 import { UsersService } from "../users/users.service";
 
@@ -39,8 +39,23 @@ export class AuthService {
       throw new UnauthorizedException(`Telegram initData rejected: ${result.reason}`);
     }
 
-    const user = await this.users.findOrCreateByTelegramIdentity(result.user);
+    const user = await this.promoteIfAdmin(
+      await this.users.findOrCreateByTelegramIdentity(result.user),
+      result.user.id,
+    );
     return this.issueSession(user, "telegram");
+  }
+
+  /** Grants `admin` on first login from a Telegram id listed in ADMIN_TELEGRAM_IDS — see
+   * the schema comment on `users.role`. Cheap no-op for everyone else and for every login
+   * after the first (already admin, or never will be). */
+  private async promoteIfAdmin(user: User, telegramId: number): Promise<User> {
+    if (user.role === "admin") return user;
+    if (!parseAdminTelegramIds(this.config.get("ADMIN_TELEGRAM_IDS", { infer: true })).has(telegramId)) {
+      return user;
+    }
+    await this.users.promoteToAdmin(user.id);
+    return this.users.getById(user.id);
   }
 
   /**

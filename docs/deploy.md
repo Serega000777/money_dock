@@ -52,14 +52,17 @@ cp .env.production.example .env.production
 nano .env.production
 ```
 
-В `.env.production` четыре значения:
+В `.env.production`:
 
-| Переменная           | Что вписать                                             |
-| -------------------- | ------------------------------------------------------- |
-| `DOMAIN`             | `amola-finance.ru` — без `https://`                     |
-| `POSTGRES_PASSWORD`  | любая длинная случайная строка (`openssl rand -hex 24`) |
-| `TELEGRAM_BOT_TOKEN` | токен из BotFather                                      |
-| `JWT_ACCESS_SECRET`  | `openssl rand -hex 48`                                  |
+| Переменная                | Что вписать                                                            |
+| -------------------------- | ----------------------------------------------------------------------- |
+| `DOMAIN`                   | `amola-finance.ru` — без `https://`                                    |
+| `POSTGRES_PASSWORD`        | любая длинная случайная строка (`openssl rand -hex 24`)                |
+| `TELEGRAM_BOT_TOKEN`       | токен из BotFather                                                      |
+| `JWT_ACCESS_SECRET`        | `openssl rand -hex 48`                                                  |
+| `ADMIN_TELEGRAM_IDS`       | ваш числовой Telegram id (узнать у [@userinfobot](https://t.me/userinfobot)), через запятую — даёт доступ в `/admin` при следующем входе |
+| `TELEGRAM_WEBHOOK_SECRET`  | `openssl rand -hex 24` — без него не заработает `/start` бота (см. ниже) |
+| `TELEGRAM_BANNER_URL`      | необязательно — публичная HTTPS-картинка для приветствия бота          |
 
 ```bash
 # 4. Сборка и запуск (первая сборка ~5–10 минут: ставятся зависимости, собирается веб)
@@ -86,6 +89,31 @@ API при старте сам накатывает миграции и сиди
 
 Откройте бота в Telegram, нажмите кнопку — приложение должно открыться уже с вашим именем
 из Telegram и пустыми счетами. Это боевой тест.
+
+### Вебхук бота (/start, приветствие, номер телефона)
+
+Без этого шага бот не ответит на `/start` — регистрация через саму Mini App при этом всё
+равно работает, это только про сам чат с ботом.
+
+```bash
+# С сервера или локально — с теми же TELEGRAM_BOT_TOKEN/TELEGRAM_WEBHOOK_SECRET, что в
+# .env.production:
+cd money_dock/apps/api
+TELEGRAM_BOT_TOKEN=... TELEGRAM_WEBHOOK_SECRET=... PUBLIC_URL=https://amola-finance.ru \
+  pnpm telegram:set-webhook
+```
+
+Безопасно перезапускать (setWebhook идемпотентен) — например, после смены секрета или
+ротации токена бота.
+
+### Права администратора
+
+`ADMIN_TELEGRAM_IDS` в `.env.production` — единственный способ получить доступ к
+`/admin`: права выдаются автоматически при следующем входе (через Mini App или `/start`)
+пользователю с этим Telegram id, ничего вручную в базе делать не нужно. Узнать свой id —
+написать [@userinfobot](https://t.me/userinfobot). Отозвать права нельзя тем же способом
+(удаление id из списка не разжалует уже назначенного админа) — это осознанно, пока
+операторов ровно один.
 
 **После боевого теста — перевыпустить токен бота.** Токен один раз пересылался в
 переписке, а это не приватное место: в @BotFather → `/revoke` → @amola_finance_bot → новый

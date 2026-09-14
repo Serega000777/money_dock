@@ -1,15 +1,17 @@
 import type { MiddlewareConsumer, NestModule } from "@nestjs/common";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { APP_FILTER, APP_GUARD } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 
 import { correlationIdMiddleware } from "./common/correlation-id.middleware";
 import { httpAccessLogMiddleware } from "./common/http-access-log.middleware";
 import { HttpExceptionFilter } from "./common/http-exception.filter";
+import { LastActiveInterceptor } from "./common/last-active.interceptor";
 import { validateEnv } from "./config/env";
 import { DbModule } from "./db/db.module";
 import { AccountsModule } from "./modules/accounts/accounts.module";
+import { AdminModule } from "./modules/admin/admin.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { BankingModule } from "./modules/banking/banking.module";
@@ -26,6 +28,7 @@ import { InsightsModule } from "./modules/insights/insights.module";
 import { NotesModule } from "./modules/notes/notes.module";
 import { RecurringPaymentsModule } from "./modules/recurring-payments/recurring-payments.module";
 import { ReviewInboxModule } from "./modules/review-inbox/review-inbox.module";
+import { TelegramBotModule } from "./modules/telegram-bot/telegram-bot.module";
 import { TransactionsModule } from "./modules/transactions/transactions.module";
 import { UsersModule } from "./modules/users/users.module";
 
@@ -42,9 +45,11 @@ import { UsersModule } from "./modules/users/users.module";
     BankingModule,
     UsersModule,
     AccountsModule,
+    AdminModule,
     CategoriesModule,
     CategorizationModule,
     TransactionsModule,
+    TelegramBotModule,
     ImportModule,
     NotesModule,
     RecurringPaymentsModule,
@@ -61,6 +66,7 @@ import { UsersModule } from "./modules/users/users.module";
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
+    { provide: APP_INTERCEPTOR, useClass: LastActiveInterceptor },
   ],
 })
 export class AppModule implements NestModule {

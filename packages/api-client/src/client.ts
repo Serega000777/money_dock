@@ -1,5 +1,7 @@
 import type {
   Account,
+  AdminStats,
+  AdminUserSummary,
   AnalyticsSummary,
   AuthTokens,
   Category,
@@ -9,6 +11,7 @@ import type {
   ImportPreview,
   Insight,
   Note,
+  Plan,
   RecurringPayment,
   ReviewInboxItem,
   SavingsGoal,
@@ -228,6 +231,21 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       contribute: (id: string, amountMinor: number) =>
         post<SavingsGoal>(`/goals/${id}/contribute`, { amountMinor }),
       remove: (id: string) => request<void>(`/goals/${id}`, { method: "DELETE" }),
+    },
+
+    admin: {
+      stats: () => request<AdminStats>("/admin/stats"),
+      searchUsers: (query?: string, limit = 20) => {
+        const params = new URLSearchParams({ limit: String(limit) });
+        if (query) params.set("query", query);
+        return request<AdminUserSummary[]>(`/admin/users?${params.toString()}`);
+      },
+      /** The "gift a subscription" action — `days` omitted means perpetual. */
+      grantSubscription: (userId: string, plan: Plan, days?: number) =>
+        request<void>(`/admin/users/${userId}/subscription`, {
+          method: "POST",
+          body: JSON.stringify({ plan, days }),
+        }),
     },
 
     analytics: {

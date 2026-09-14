@@ -1,7 +1,7 @@
 import type { User } from "@money-dock/shared-types";
 import type { UpdateMeInput } from "@money-dock/validation";
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 import { AuditLogService } from "../../common/audit-log.service";
 import type { Database } from "../../db/client";
@@ -18,6 +18,7 @@ function toUser(row: typeof users.$inferSelect): User {
     timezone: row.timezone,
     locale: row.locale,
     avatarUrl: row.avatarUrl,
+    role: row.role,
     status: row.status,
   };
 }
@@ -73,6 +74,21 @@ export class UsersService {
     });
   }
 
+  /** The bot's /start flow asks for a phone number via Telegram's own "share contact"
+   * button (see TelegramBotService), which itself calls `findOrCreateByTelegramIdentity`
+   * first — chatting with the bot is a valid registration path on its own, same as
+   * opening the Mini App, and both resolve to the same identity row since both key on the
+   * Telegram user id. This just attaches the phone to that row; it never signs anyone in
+   * by itself. */
+  async setPhoneForTelegramIdentity(providerUserId: string, phone: string): Promise<void> {
+    await this.db
+      .update(userIdentities)
+      .set({ phone })
+      .where(
+        and(eq(userIdentities.provider, "telegram"), eq(userIdentities.providerUserId, providerUserId)),
+      );
+  }
+
   async getById(id: string): Promise<User> {
     const [row] = await this.db.select().from(users).where(eq(users.id, id));
     if (!row) throw new NotFoundException("User not found");
@@ -87,6 +103,34 @@ export class UsersService {
       .where(eq(users.id, userId))
       .returning();
     return toUser(firstOrThrow(rows));
+  }
+
+  /** Called once per login with the just-verified Telegram id (see AuthService) — grants
+   * `admin`, never revokes it, so removing an id from ADMIN_TELEGRAM_IDS doesn't silently
+   * demote someone mid-session; that's a deliberate separate action, not implemented yet
+   * since there's only ever been one operator. */
+  async promoteToAdmin(userId: string): Promise<void> {
+    await this.db
+      .update(users)
+      .set({ role: "admin", updatedAt: new Date() })
+      .where(and(eq(users.id, userId), eq(users.role, "user")));
+  }
+
+  /** Best-effort "last seen": throttled to one write per 5 minutes per user so a busy
+   * session doesn't turn every request into a users-row UPDATE. Never awaited by its
+   * caller (JwtAuthGuard) — a missed touch just makes one user look slightly less
+   * recently active, not worth failing or slowing a request over. */
+  async touchLastActive(userId: string): Promise<void> {
+    const staleBefore = new Date(Date.now() - 5 * 60_000);
+    await this.db
+      .update(users)
+      .set({ lastActiveAt: new Date() })
+      .where(
+        and(
+          eq(users.id, userId),
+          or(isNull(users.lastActiveAt), lt(users.lastActiveAt, staleBefore)),
+        ),
+      );
   }
 
   /**

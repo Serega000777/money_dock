@@ -9,6 +9,16 @@ import { JwtService } from "@nestjs/jwt";
 import type { AuthenticatedRequest } from "./authenticated-request";
 import type { AccessTokenPayload } from "./token.types";
 
+/**
+ * Deliberately depends on nothing but JwtService. Every protected controller in the app
+ * references this class directly via `@UseGuards(JwtAuthGuard)`, which makes Nest resolve
+ * its constructor from *each consuming module's* own DI context, not just AuthModule's —
+ * even though AuthModule is `@Global()`. Giving it a dependency (UsersService, to touch
+ * last-active) broke every module that doesn't happen to import UsersModule itself
+ * (AccountsModule, first to surface it). See LastActiveInterceptor for where that side
+ * effect actually lives instead: a global `APP_INTERCEPTOR`, constructed once in
+ * AppModule's own context, which already imports UsersModule.
+ */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(private readonly jwt: JwtService) {}

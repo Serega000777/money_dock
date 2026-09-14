@@ -16,7 +16,8 @@
     "test": "jest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "telegram:set-webhook": "tsx src/scripts/set-telegram-webhook.ts"
   },
   "dependencies": {
     "@money-dock/business-rules": "workspace:*",

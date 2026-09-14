@@ -420,6 +420,14 @@ export default function Account() {
         </Section>
       </FadeIn>
 
+      {me?.role === "admin" ? (
+        <FadeIn index={11}>
+          <Section title="Админ">
+            <NavRow href="/admin" icon="shield" label="Админ-панель" />
+          </Section>
+        </FadeIn>
+      ) : null}
+
       <CreateAccountSheet visible={addingAccount} onClose={() => setAddingAccount(false)} />
       <CreateRecurringPaymentSheet
         visible={addingPayment}

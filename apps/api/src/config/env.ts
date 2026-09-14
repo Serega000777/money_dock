@@ -18,6 +18,23 @@ const envSchema = z
      */
     CORS_ORIGIN: z.string().min(1),
     TELEGRAM_BOT_TOKEN: z.string().min(1),
+    // Validates the `X-Telegram-Bot-Api-Secret-Token` header on incoming webhook calls
+    // (set via setWebhook's secret_token) — without this, anyone who finds the webhook
+    // URL could post fake Telegram updates. Optional: the bot's /start flow (welcome
+    // message, phone capture) simply doesn't run until both this and a registered
+    // webhook exist; nothing else in the app depends on it.
+    TELEGRAM_WEBHOOK_SECRET: z.string().min(16).optional(),
+    // Comma-separated Telegram numeric user ids (from @userinfobot or similar) promoted
+    // to the `admin` role on their next login — see AuthService.loginWithTelegram. Empty
+    // by default: a deployment with no admin configured just has no admin panel access,
+    // never an open one.
+    ADMIN_TELEGRAM_IDS: z.string().default(""),
+    // A plain public HTTPS image URL sent with the /start welcome message. Optional on
+    // purpose: there is no house banner asset to ship a default for, and inventing a
+    // placeholder would just be something to notice and replace later. Unset = a
+    // text-only welcome, same message otherwise. The bot's own profile photo (set once,
+    // in @BotFather) is what shows everywhere else — chat list, profile, Mini App header.
+    TELEGRAM_BANNER_URL: z.string().url().optional(),
     // Signs short-lived access JWTs. Refresh tokens are opaque random strings, hashed at
     // rest (see SessionsService) — they need no signing secret of their own.
     JWT_ACCESS_SECRET: z.string().min(32),
@@ -46,6 +63,19 @@ export function parseCorsOrigins(value: string): string[] | "*" {
     .map((origin) => origin.trim())
     .filter(Boolean);
   return origins.includes("*") ? "*" : origins;
+}
+
+/** Parses `ADMIN_TELEGRAM_IDS` into a set of numeric Telegram user ids, ignoring blanks
+ * and anything that isn't a plain integer (a typo here should never silently promote the
+ * wrong account — it just won't match anyone). */
+export function parseAdminTelegramIds(value: string): Set<number> {
+  return new Set(
+    value
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => /^\d+$/.test(id))
+      .map(Number),
+  );
 }
 
 /** Fails fast on boot if required configuration is missing or malformed. */

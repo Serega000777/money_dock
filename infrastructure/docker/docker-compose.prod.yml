@@ -40,6 +40,14 @@ services:
       CORS_ORIGIN: https://${DOMAIN:?set DOMAIN in .env.production}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env.production}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET in .env.production}
+      # Telegram numeric user ids promoted to `admin` on next login — see AuthService.
+      # Empty/unset = no admin panel access for anyone.
+      ADMIN_TELEGRAM_IDS: ${ADMIN_TELEGRAM_IDS:-}
+      # Verifies incoming webhook calls (set via `pnpm telegram:set-webhook`) — without it
+      # the bot's /start flow (welcome message, phone capture) never runs.
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      # Optional public HTTPS image sent with the /start welcome message.
+      TELEGRAM_BANNER_URL: ${TELEGRAM_BANNER_URL:-}
 
   web:
     build:
