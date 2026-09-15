@@ -1,6 +1,7 @@
 import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type {
   Account,
+  Bank,
   CategoryGrowthFacts,
   CommandDraft,
   Insight,
@@ -22,6 +23,8 @@ import { useTelegram } from "../../src/telegram/TelegramProvider";
 import { useSettingsStore } from "../../src/theme/settingsStore";
 import { useTheme } from "../../src/theme/useTheme";
 import { AmolaLogo } from "../../src/ui/AmolaLogo";
+import { BankCardArt } from "../../src/ui/BankCardArt";
+import { GoalIconBadge } from "../../src/ui/GoalIconBadge";
 import { GlowBlob, GlowRing, GradientBox } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
 import { PulseRing } from "../../src/ui/PulseRing";
@@ -775,14 +778,27 @@ const ACCOUNT_TYPE_ICON: Record<Account["type"], IconName> = {
  * (`vivid`) gets the gradient; the rest stay flat, as in the reference. */
 function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
   const theme = useTheme();
-  const nameColor = vivid ? "#FFFFFF" : theme.textPrimary;
-  const metaColor = vivid ? "rgba(255,255,255,0.72)" : theme.textTertiary;
-  const balanceColor = vivid ? "#FFFFFF" : theme.textPrimary;
-  const iconBg = vivid ? "rgba(255,255,255,0.16)" : theme.accentSoft;
-  const iconColor = vivid ? "#FFFFFF" : theme.accent;
+  // A picked bank draws its own art and owns the tile's whole colour story — Card's
+  // usual gradient/plain split doesn't apply once there's a card design underneath.
+  const bankArt = account.type === "card" && account.bank;
+  const light = vivid || Boolean(bankArt);
+  const nameColor = light ? "#FFFFFF" : theme.textPrimary;
+  const metaColor = light ? "rgba(255,255,255,0.72)" : theme.textTertiary;
+  const balanceColor = light ? "#FFFFFF" : theme.textPrimary;
+  const iconBg = light ? "rgba(255,255,255,0.16)" : theme.accentSoft;
+  const iconColor = light ? "#FFFFFF" : theme.accent;
   return (
-    <Card gradient={vivid} style={styles.accountTile}>
-      {!vivid && theme.decorGlow ? (
+    <Card gradient={vivid && !bankArt} style={styles.accountTile}>
+      {bankArt ? (
+        // The tile's own padding (14) would otherwise leave a ring of the plain Card
+        // background showing around the art — pull it back out to the real corners.
+        <BankCardArt
+          bank={account.bank as Bank}
+          last4={account.cardLast4}
+          compact
+          fillStyle={{ top: -14, right: -14, bottom: -14, left: -14 }}
+        />
+      ) : !vivid && theme.decorGlow ? (
         <GlowBlob top="-25%" left="55%" size={140} color={theme.decorGlow} opacity={0.35} />
       ) : null}
       <View style={styles.accountTop}>
@@ -879,9 +895,7 @@ function GoalRow({
   return (
     <PressableScale onPress={onContribute} style={styles.goalRow}>
       <View style={styles.listRow}>
-        <View style={[styles.listIcon, { backgroundColor: theme.accentSoft }]}>
-          <Icon name={goalIcon(goal)} color={theme.accent} size={18} />
-        </View>
+        <GoalIconBadge name={goalIcon(goal)} size={38} />
         <View style={styles.listMain}>
           <Text style={[styles.listLabel, { color: theme.textPrimary }]} numberOfLines={1}>
             {goal.name}

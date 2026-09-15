@@ -6,7 +6,8 @@ import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
 import { apiClient } from "../api/client";
 import { useTheme } from "../theme/useTheme";
-import { Icon, type IconName } from "../ui/Icon";
+import { GoalIconBadge } from "../ui/GoalIconBadge";
+import type { IconName } from "../ui/Icon";
 import { Text } from "../ui/Text";
 import { BottomSheet, Segmented } from "../ui/primitives";
 import { formatMinor } from "../utils/format";
@@ -90,18 +91,8 @@ export function CreateGoalSheet({
         {GOAL_ICONS.map((name) => {
           const active = icon === name;
           return (
-            <Pressable key={name} onPress={() => setIcon(name)}>
-              <View
-                style={[
-                  sheetStyles.categoryCircle,
-                  {
-                    backgroundColor: active ? theme.accent : theme.accentSoft,
-                    borderColor: active ? theme.accent : "transparent",
-                  },
-                ]}
-              >
-                <Icon name={name} color={active ? theme.onAccent : theme.accent} size={18} />
-              </View>
+            <Pressable key={name} onPress={() => setIcon(name)} style={!active && styles.dimmed}>
+              <GoalIconBadge name={name} size={44} />
             </Pressable>
           );
         })}
@@ -193,4 +184,5 @@ export function ContributeGoalSheet({
 const styles = StyleSheet.create({
   summary: { marginBottom: spacing.md, textAlign: "center" },
   gap: { height: spacing.md },
+  dimmed: { opacity: 0.45 },
 });

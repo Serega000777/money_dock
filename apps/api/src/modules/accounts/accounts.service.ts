@@ -8,6 +8,7 @@ import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
 import { firstOrThrow } from "../../db/first-or-throw";
 import { accounts, transactions } from "../../db/schema";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 
 // Signed net effect of every transaction on its account, computed in SQL rather than
 // pulled row-by-row into Node — cheap even as transaction history grows.
@@ -31,13 +32,18 @@ function toAccount(row: typeof accounts.$inferSelect, net: number): Account {
     currency: row.currency as Account["currency"],
     initialBalanceMinor: asMinorUnits(row.initialBalanceMinor),
     currentBalanceMinor: asMinorUnits(row.initialBalanceMinor + net),
+    bank: row.bank,
+    cardLast4: row.cardLast4,
     archivedAt: row.archivedAt?.toISOString() ?? null,
   };
 }
 
 @Injectable()
 export class AccountsService {
-  constructor(@Inject(DATABASE) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: Database,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   async list(userId: string): Promise<Account[]> {
     const rows = await this.db
@@ -53,9 +59,19 @@ export class AccountsService {
   }
 
   async create(userId: string, input: CreateAccountInput): Promise<Account> {
+    // The realistic per-bank card art is a Pro cosmetic — free stays a plain card, never
+    // blocked from creating the account itself over it. Checked here, not only in the
+    // picker's own lock screen, so the API can't be talked into it directly.
+    const canPickBank =
+      input.type === "card" && (await this.entitlements.getPlan(userId)) !== "free";
     const rows = await this.db
       .insert(accounts)
-      .values({ ...input, userId })
+      .values({
+        ...input,
+        userId,
+        bank: canPickBank ? (input.bank ?? null) : null,
+        cardLast4: canPickBank ? (input.cardLast4 ?? null) : null,
+      })
       .returning();
     return toAccount(firstOrThrow(rows), 0);
   }

@@ -4,6 +4,7 @@ import type {
   AdminUserSummary,
   AnalyticsSummary,
   AuthTokens,
+  Bank,
   Category,
   CommandDraft,
   DailySummary,
@@ -124,6 +125,9 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
         name: string;
         currency: string;
         initialBalanceMinor?: number;
+        /** Card design only (Pro) — see the `accounts.bank` schema comment. */
+        bank?: Bank | null;
+        cardLast4?: string | null;
       }) => post<Account>("/accounts", input),
       /** Soft delete — the account is archived, not dropped, so history stays intact. */
       remove: (id: string) => request<void>(`/accounts/${id}`, { method: "DELETE" }),

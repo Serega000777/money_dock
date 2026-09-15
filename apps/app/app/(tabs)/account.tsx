@@ -345,11 +345,17 @@ export default function Account() {
         <Section title="Внешний вид">
           <View style={styles.settingBlock}>
             <Text style={[styles.settingLabel, { color: theme.textSecondary }]}>Тема</Text>
+            {/* A plain light/dark toggle — "Система" used to sit alongside them, but it
+                only ever resolved to one of these two anyway, and until Telegram reports
+                its colour scheme (an async round trip) it defaulted to light even inside
+                a dark chat, which read as "the first two options are the same" the moment
+                that happened. Existing `system` users land on whichever this device
+                currently resolves to (`theme.name`); picking either button here now sets
+                an explicit choice, same as before. */}
             <Segmented<ThemeMode>
-              value={themeMode}
+              value={themeMode === "system" ? theme.name : themeMode}
               onChange={setThemeMode}
               options={[
-                { value: "system", label: "Система" },
                 { value: "light", label: "Светлая" },
                 { value: "dark", label: "Тёмная" },
               ]}

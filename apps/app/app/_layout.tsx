@@ -3,7 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { queryClient } from "../src/api/queryClient";
@@ -50,6 +50,22 @@ function BootGate() {
 
 function ThemedStack() {
   const theme = useTheme();
+  const { webApp } = useTelegram();
+
+  // Keep the host chrome in the same theme as the app. Telegram otherwise keeps the
+  // first (usually white) bottom/header colours until something causes a repaint,
+  // which is why toggling light -> dark appeared to fix the menu after launch.
+  useEffect(() => {
+    webApp?.setHeaderColor?.(theme.background);
+    webApp?.setBackgroundColor?.(theme.background);
+    webApp?.setBottomBarColor?.(theme.background);
+
+    if (Platform.OS === "web") {
+      document.documentElement.style.backgroundColor = theme.background;
+      document.documentElement.style.colorScheme = theme.name;
+      document.body.style.backgroundColor = theme.background;
+    }
+  }, [theme, webApp]);
 
   return (
     <>

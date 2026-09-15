@@ -55,6 +55,13 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         {csp ? <meta httpEquiv="Content-Security-Policy" content={csp} /> : null}
         <meta name="referrer" content="strict-origin-when-cross-origin" />
+        {/* The static export's first paint — before React hydrates and BootScreen takes
+            over — used to default to the browser's white, which read as a flash of the
+            wrong theme for anyone on dark (Telegram reports colorScheme async, so the
+            app can't know which theme to paint that fast either way). BootScreen already
+            always opens dark regardless of the user's final choice, so matching it here
+            keeps the very first frame consistent with the frame right after it. */}
+        <style>{"html,body{background:#0A0614}"}</style>
         <ScrollViewStyleReset />
         <script src="https://telegram.org/js/telegram-web-app.js" />
       </head>
