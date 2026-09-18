@@ -204,6 +204,7 @@ function normalize(input: string): string {
 
 /** "две тысячи пятьсот" → 2500. Returns null when no spelled-out number is present. */
 function parseSpelledNumber(text: string): number | null {
+  if (/полтор[аы]\s+тысяч/.test(text)) return 1500;
   const tokens = text.split(/[\s-]+/);
   let total = 0;
   let current = 0;

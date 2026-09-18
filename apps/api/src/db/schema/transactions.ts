@@ -8,6 +8,7 @@ export const transactionTypeEnum = pgEnum("transaction_type", ["expense", "incom
 export const transactionSourceEnum = pgEnum("transaction_source", [
   "manual",
   "voice",
+  "shortcut",
   "import",
   "bank_sync",
 ]);

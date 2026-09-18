@@ -30,6 +30,7 @@ import { RecurringPaymentsModule } from "./modules/recurring-payments/recurring-
 import { ReviewInboxModule } from "./modules/review-inbox/review-inbox.module";
 import { TelegramBotModule } from "./modules/telegram-bot/telegram-bot.module";
 import { TransactionsModule } from "./modules/transactions/transactions.module";
+import { ShortcutsModule } from "./modules/shortcuts/shortcuts.module";
 import { UsersModule } from "./modules/users/users.module";
 
 @Module({
@@ -56,6 +57,7 @@ import { UsersModule } from "./modules/users/users.module";
     GoalsModule,
     ReviewInboxModule,
     CommandsModule,
+    ShortcutsModule,
     EntitlementsModule,
     ExportModule,
     DemoModule,

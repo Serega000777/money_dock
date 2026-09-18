@@ -1,5 +1,7 @@
 import type {
   Account,
+  AccountInvitePreview,
+  AccountMember,
   AdminStats,
   AdminUserSummary,
   AnalyticsSummary,
@@ -131,17 +133,32 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       }) => post<Account>("/accounts", input),
       /** Soft delete — the account is archived, not dropped, so history stays intact. */
       remove: (id: string) => request<void>(`/accounts/${id}`, { method: "DELETE" }),
+      members: (id: string) => request<AccountMember[]>(`/accounts/${id}/members`),
+      createInvite: (id: string, input: { role: "member" | "viewer"; expiresInHours: number | null; maxUses: number | null }) =>
+        post<{ id: string; token: string; role: string; expiresAt: string | null }>(`/accounts/${id}/invites`, input),
+      revokeInvite: (id: string, inviteId: string) => request<void>(`/accounts/${id}/invites/${inviteId}`, { method: "DELETE" }),
+      updateMember: (id: string, memberId: string, role: "owner" | "member" | "viewer") => request<void>(`/accounts/${id}/members/${memberId}`, { method: "PATCH", body: JSON.stringify({ role }) }),
+      removeMember: (id: string, memberId: string) => request<void>(`/accounts/${id}/members/${memberId}`, { method: "DELETE" }),
+      invitePreview: (token: string) => request<AccountInvitePreview>(`/accounts/invites/${encodeURIComponent(token)}/preview`),
+      acceptInvite: (token: string) => post<Account>(`/accounts/invites/${encodeURIComponent(token)}/accept`),
     },
 
     categories: {
       list: () => request<Category[]>("/categories"),
       create: (input: {
-        type: "expense" | "income";
+        type: "expense" | "income" | "both";
         name: string;
         parentId?: string;
         icon?: string;
         color?: string;
+        aliases?: string[];
       }) => post<Category>("/categories", input),
+    },
+
+    shortcutCredentials: {
+      list: () => request<Array<{ id: string; name: string; createdAt: string; lastUsedAt: string | null; revokedAt: string | null }>>("/shortcut-credentials"),
+      create: (name = "iPhone") => post<{ id: string; token: string; name: string; createdAt: string }>("/shortcut-credentials", { name }),
+      revoke: (id: string) => request<void>(`/shortcut-credentials/${id}`, { method: "DELETE" }),
     },
 
     transactions: {

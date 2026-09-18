@@ -126,7 +126,7 @@ export function DraftSummary({
   const [amountEditing, setAmountEditing] = useState<string | null>(null);
   const dateInputRef = useRef<HTMLInputElement | null>(null);
 
-  const visibleCategories = (categories ?? []).filter((c) => c.type === draft.type);
+  const visibleCategories = (categories ?? []).filter((c) => c.type === draft.type || c.type === "both");
   const currentDaysAgo = daysAgoOf(draft.occurredAt);
   const customDate = !DATE_CHIPS.some((chip) => chip.daysAgo === currentDaysAgo);
 

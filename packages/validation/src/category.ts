@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const categoryTypeSchema = z.enum(["expense", "income"]);
+export const categoryTypeSchema = z.enum(["expense", "income", "both"]);
 
 export const createCategorySchema = z.object({
   type: categoryTypeSchema,
@@ -11,5 +11,6 @@ export const createCategorySchema = z.object({
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
     .optional(),
+  aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
 });
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;

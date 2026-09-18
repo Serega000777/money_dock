@@ -1,4 +1,4 @@
-export type CategoryType = "expense" | "income";
+export type CategoryType = "expense" | "income" | "both";
 
 export interface Category {
   id: string;
@@ -11,4 +11,5 @@ export interface Category {
   /** Stable code for the seeded categories; null for user-created ones. Drives icon choice. */
   systemCode: string | null;
   isSystem: boolean;
+  aliases: string[];
 }

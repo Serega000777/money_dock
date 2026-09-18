@@ -9,6 +9,8 @@ export interface CommandDraft {
   occurredAt: string;
   confidence: number;
   explanation: string[];
+  description: string | null;
+  requiresConfirmation: boolean;
 }
 
 export type Plan = "free" | "pro" | "pro_bank";

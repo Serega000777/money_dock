@@ -6,14 +6,14 @@ import type {
   ListTransactionsQuery,
   UpdateTransactionInput,
 } from "@money-dock/validation";
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 
 import { AuditLogService } from "../../common/audit-log.service";
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
 import { firstOrThrow } from "../../db/first-or-throw";
-import { transactionSplits, transactions, transfers } from "../../db/schema";
+import { transactionSplits, transactions, transfers, users } from "../../db/schema";
 import { AccountsService } from "../accounts/accounts.service";
 import { CategorizationService } from "../categorization/categorization.service";
 
@@ -25,7 +25,7 @@ type TransactionStatusValue = TransactionRow["status"];
  * ограниченное время"). Past this, the row is still there for audit but `restore` refuses. */
 const UNDO_WINDOW_MS = 5 * 60_000;
 
-function toTransaction(row: TransactionRow, splits: TransactionSplit[] = []): Transaction {
+function toTransaction(row: TransactionRow, splits: TransactionSplit[] = [], createdByName: string | null = null): Transaction {
   return {
     id: row.id,
     accountId: row.accountId,
@@ -39,6 +39,8 @@ function toTransaction(row: TransactionRow, splits: TransactionSplit[] = []): Tr
     source: row.source,
     status: row.status,
     splits,
+    createdByUserId: row.userId,
+    createdByName,
   };
 }
 
@@ -51,6 +53,8 @@ export class TransactionsService {
     private readonly auditLog: AuditLogService,
   ) {}
 
+  accessibleAccounts(userId: string) { return this.accountsService.list(userId); }
+
   /**
    * `internal` is for server-side callers (statement import) that need to record a
    * different provenance than a hand-typed entry. The HTTP DTO can't set these — the
@@ -61,7 +65,7 @@ export class TransactionsService {
     input: CreateTransactionInput,
     internal?: { source?: TransactionSourceValue; status?: TransactionStatusValue },
   ): Promise<Transaction> {
-    await this.accountsService.getOwned(userId, input.accountId);
+    await this.accountsService.getWritable(userId, input.accountId);
 
     if (input.splits?.length) {
       try {
@@ -125,8 +129,8 @@ export class TransactionsService {
     if (input.fromAccountId === input.toAccountId) {
       throw new BadRequestException("Cannot transfer to the same account");
     }
-    await this.accountsService.getOwned(userId, input.fromAccountId);
-    await this.accountsService.getOwned(userId, input.toAccountId);
+    await this.accountsService.getWritable(userId, input.fromAccountId);
+    await this.accountsService.getWritable(userId, input.toAccountId);
 
     await this.db.transaction(async (tx) => {
       const outClientId = `${input.clientId}:out`;
@@ -176,17 +180,21 @@ export class TransactionsService {
   }
 
   async list(userId: string, query: ListTransactionsQuery): Promise<Transaction[]> {
-    const conditions = [eq(transactions.userId, userId), isNull(transactions.deletedAt)];
+    if (query.accountId) await this.accountsService.getAccessible(userId, query.accountId);
+    // includeArchived: archiving an account is a soft delete (see AccountsService.archive)
+    // — its past transactions must stay in the history, same as before accounts were
+    // ever shared.
+    const accessibleIds = await this.accountsService.accessibleAccountIds(userId, { includeArchived: true });
+    if (accessibleIds.length === 0) return [];
+    const conditions = [isNull(transactions.deletedAt), inArray(transactions.accountId, accessibleIds)];
     if (query.accountId) conditions.push(eq(transactions.accountId, query.accountId));
 
-    const rows = await this.db
-      .select()
-      .from(transactions)
-      .where(and(...conditions))
+    const rows = await this.db.select({ transaction: transactions, creatorName: users.displayName })
+      .from(transactions).innerJoin(users, eq(users.id, transactions.userId)).where(and(...conditions))
       .orderBy(desc(transactions.occurredAt), desc(transactions.id))
       .limit(query.limit)
       .offset(query.offset);
-    return rows.map((row) => toTransaction(row));
+    return rows.map(({ transaction, creatorName }) => toTransaction(transaction, [], creatorName));
   }
 
   async getOwned(userId: string, id: string): Promise<Transaction> {
@@ -196,11 +204,11 @@ export class TransactionsService {
       .where(
         and(
           eq(transactions.id, id),
-          eq(transactions.userId, userId),
           isNull(transactions.deletedAt),
         ),
       );
     if (!row) throw new NotFoundException("Transaction not found");
+    await this.accountsService.getAccessible(userId, row.accountId);
 
     const splits = await this.db
       .select({
@@ -218,7 +226,9 @@ export class TransactionsService {
 
   async update(userId: string, id: string, input: UpdateTransactionInput): Promise<Transaction> {
     const before = await this.getOwned(userId, id);
-    if (input.accountId) await this.accountsService.getOwned(userId, input.accountId);
+    const access = await this.accountsService.getAccessible(userId, before.accountId);
+    if (before.createdByUserId !== userId && access.role !== "owner") throw new ForbiddenException("Only the creator or owner can edit this transaction");
+    if (input.accountId) await this.accountsService.getWritable(userId, input.accountId);
 
     // Both legs of a transfer have to agree on what they are; flipping one to an expense
     // would leave the other pointing at a transaction that no longer matches it.
@@ -236,6 +246,9 @@ export class TransactionsService {
       );
     }
 
+    // Access (accessible + creator-or-owner) was already verified above; the row is
+    // addressed by id alone from here so an owner editing a co-member's transaction
+    // actually updates it instead of matching zero rows.
     const row = firstOrThrow(
       await this.db
         .update(transactions)
@@ -244,7 +257,7 @@ export class TransactionsService {
           occurredAt: input.occurredAt ? new Date(input.occurredAt) : undefined,
           updatedAt: new Date(),
         })
-        .where(and(eq(transactions.id, id), eq(transactions.userId, userId)))
+        .where(eq(transactions.id, id))
         .returning(),
     );
     return toTransaction(row);
@@ -256,7 +269,11 @@ export class TransactionsService {
    * both — a lone half-transfer isn't meaningful.
    */
   async remove(userId: string, id: string): Promise<void> {
-    await this.getOwned(userId, id);
+    const transaction = await this.getOwned(userId, id);
+    const access = await this.accountsService.getAccessible(userId, transaction.accountId);
+    if (transaction.createdByUserId !== userId && access.role !== "owner") {
+      throw new ForbiddenException("Only the creator or owner can delete this transaction");
+    }
     const deletedAt = new Date();
 
     const removedIds = await this.db.transaction(async (tx) => {
@@ -271,11 +288,12 @@ export class TransactionsService {
       const pairId = asOutgoing?.incomingTransactionId ?? asIncoming?.outgoingTransactionId;
       const ids = pairId ? [id, pairId] : [id];
 
+      // Access to `id` was just verified above; the paired leg of a transfer lives on
+      // the other account of the *same* transfer, which `create()`/`createTransfer()`
+      // already required this user to be writable on, so no separate check is needed
+      // for it here.
       for (const txId of ids) {
-        await tx
-          .update(transactions)
-          .set({ deletedAt })
-          .where(and(eq(transactions.id, txId), eq(transactions.userId, userId)));
+        await tx.update(transactions).set({ deletedAt }).where(eq(transactions.id, txId));
       }
       return ids;
     });
@@ -291,11 +309,12 @@ export class TransactionsService {
 
   /** Undoes a soft delete within the undo window. Restores both legs of a transfer. */
   async restore(userId: string, id: string): Promise<Transaction> {
-    const [row] = await this.db
-      .select()
-      .from(transactions)
-      .where(and(eq(transactions.id, id), eq(transactions.userId, userId)));
+    const [row] = await this.db.select().from(transactions).where(eq(transactions.id, id));
     if (!row || !row.deletedAt) throw new NotFoundException("Deleted transaction not found");
+    const access = await this.accountsService.getAccessible(userId, row.accountId);
+    if (row.userId !== userId && access.role !== "owner") {
+      throw new ForbiddenException("Only the creator or owner can restore this transaction");
+    }
     if (Date.now() - row.deletedAt.getTime() > UNDO_WINDOW_MS) {
       throw new BadRequestException("Undo window has expired");
     }
@@ -313,10 +332,7 @@ export class TransactionsService {
       const ids = pairId ? [id, pairId] : [id];
 
       for (const txId of ids) {
-        await tx
-          .update(transactions)
-          .set({ deletedAt: null })
-          .where(and(eq(transactions.id, txId), eq(transactions.userId, userId)));
+        await tx.update(transactions).set({ deletedAt: null }).where(eq(transactions.id, txId));
       }
       return ids;
     });

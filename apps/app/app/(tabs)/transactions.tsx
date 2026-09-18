@@ -260,7 +260,7 @@ function TransactionDetailSheet({
     },
   });
 
-  const visibleCategories = categories.filter((c) => c.type === type);
+  const visibleCategories = categories.filter((c) => c.type === type || c.type === "both");
   const canSave = Number(amount) > 0 && !save.isPending && !remove.isPending;
 
   return (

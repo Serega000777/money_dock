@@ -1,4 +1,5 @@
 export * from "./accounts";
+export * from "./account-members";
 export * from "./audit-logs";
 export * from "./categories";
 export * from "./category-rules";
@@ -10,6 +11,7 @@ export * from "./recurring-payments";
 export * from "./review-items";
 export * from "./savings-goals";
 export * from "./sessions";
+export * from "./shortcut-credentials";
 export * from "./subscriptions";
 export * from "./transaction-splits";
 export * from "./transactions";

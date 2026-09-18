@@ -221,6 +221,12 @@ export default function Account() {
       </FadeIn>
 
       <FadeIn index={2}>
+        <Section title="Автоматизация">
+          <NavRow href="/quick-entry" icon="bolt" label="Быстрый ввод" hint="Apple Shortcuts" />
+        </Section>
+      </FadeIn>
+
+      <FadeIn index={3}>
         <Section title="Заметки">
           <NavRow
             href="/notes"
@@ -231,7 +237,7 @@ export default function Account() {
         </Section>
       </FadeIn>
 
-      <FadeIn index={3}>
+      <FadeIn index={4}>
         <Section title="Счета">
           {(accounts ?? []).map((account) => (
             <View key={account.id} style={styles.row}>
@@ -242,6 +248,7 @@ export default function Account() {
               <Text style={[styles.rowValue, { color: theme.textSecondary }]}>
                 {formatMinor(account.currentBalanceMinor)} ₽
               </Text>
+              {account.role === "owner" ? <Link href={{ pathname: "/account-sharing", params: { id: account.id } }} asChild><PressableScale><Icon name="person" color={theme.accent} size={18} /></PressableScale></Link> : null}
             </View>
           ))}
           {accounts?.length === 0 ? (
@@ -438,7 +445,7 @@ export default function Account() {
       <CreateRecurringPaymentSheet
         visible={addingPayment}
         onClose={() => setAddingPayment(false)}
-        categories={(categories ?? []).filter((c) => c.type === "expense")}
+        categories={(categories ?? []).filter((c) => c.type === "expense" || c.type === "both")}
         accountId={accounts?.[0]?.id}
         currency={accounts?.[0]?.currency ?? "RUB"}
         onCreated={() => setAddingPayment(false)}

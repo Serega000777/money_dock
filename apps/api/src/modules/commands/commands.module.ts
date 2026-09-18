@@ -11,5 +11,6 @@ import { CommandsService } from "./commands.service";
   imports: [CategorizationModule, EntitlementsModule, TransactionsModule],
   controllers: [CommandsController],
   providers: [CommandsService],
+  exports: [CommandsService],
 })
 export class CommandsModule {}

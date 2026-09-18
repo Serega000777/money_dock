@@ -3,7 +3,7 @@ import { index, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-o
 
 import { users } from "./users";
 
-export const categoryTypeEnum = pgEnum("category_type", ["expense", "income"]);
+export const categoryTypeEnum = pgEnum("category_type", ["expense", "income", "both"]);
 
 export const categories = pgTable(
   "categories",

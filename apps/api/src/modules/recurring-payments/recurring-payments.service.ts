@@ -46,7 +46,7 @@ export class RecurringPaymentsService {
   }
 
   async create(userId: string, input: CreateRecurringPaymentInput): Promise<RecurringPayment> {
-    await this.accountsService.getOwned(userId, input.accountId);
+    await this.accountsService.getWritable(userId, input.accountId);
     const rows = await this.db
       .insert(recurringPayments)
       .values({ ...input, userId })

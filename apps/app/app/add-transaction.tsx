@@ -45,7 +45,7 @@ export default function AddTransaction() {
   });
 
   const account = accounts?.[0];
-  const visibleCategories = (categories ?? []).filter((c) => c.type === type);
+  const visibleCategories = (categories ?? []).filter((c) => c.type === type || c.type === "both");
   const canSave = Boolean(account) && Number(amount) > 0 && !saving;
 
   async function save() {
@@ -225,14 +225,18 @@ function CreateCategorySheet({
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<IconName>("cart");
   const [color, setColor] = useState<string>(categoryPalette[0]);
+  const [categoryType, setCategoryType] = useState<"expense" | "income" | "both">(type);
+  const [aliases, setAliases] = useState("");
 
   const create = useMutation({
-    mutationFn: () => apiClient.categories.create({ type, name: name.trim(), icon, color }),
+    mutationFn: () => apiClient.categories.create({ type: categoryType, name: name.trim(), icon, color, aliases: aliases.split(",").map((v) => v.trim()).filter(Boolean) }),
     onSuccess: async (category) => {
       await queryClient.invalidateQueries({ queryKey: ["categories"] });
       setName("");
       setIcon("cart");
       setColor(categoryPalette[0]);
+      setCategoryType(type);
+      setAliases("");
       onCreated(category);
     },
   });
@@ -251,6 +255,10 @@ function CreateCategorySheet({
           { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
         ]}
       />
+
+      <Text style={[styles.label, { color: theme.textSecondary }]}>Тип</Text>
+      <Segmented value={categoryType} onChange={setCategoryType} options={[{ value: "expense", label: "Расход" }, { value: "income", label: "Доход" }, { value: "both", label: "Оба" }]} />
+      <TextInput value={aliases} onChangeText={setAliases} placeholder="Алиасы через запятую" placeholderTextColor={theme.textTertiary} style={[styles.nameInput, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]} />
 
       <Text style={[styles.label, { color: theme.textSecondary }]}>Иконка</Text>
       <View style={styles.iconGrid}>

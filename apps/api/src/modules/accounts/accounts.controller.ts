@@ -1,9 +1,13 @@
-import type { Account } from "@money-dock/shared-types";
+import type { Account, AccountInvitePreview, AccountMember } from "@money-dock/shared-types";
 import {
+  createAccountInviteSchema,
   createAccountSchema,
   updateAccountSchema,
   type CreateAccountInput,
   type UpdateAccountInput,
+  type CreateAccountInviteInput,
+  updateAccountMemberSchema,
+  type UpdateAccountMemberInput,
 } from "@money-dock/validation";
 import {
   Body,
@@ -66,4 +70,37 @@ export class AccountsController {
   ): Promise<void> {
     return this.accounts.archive(user.id, id);
   }
+
+  @Get(":id/members")
+  members(@CurrentUser() user: AuthenticatedUser, @Param("id", ParseUUIDPipe) id: string): Promise<AccountMember[]> {
+    return this.accounts.members(user.id, id);
+  }
+
+  @Post(":id/invites")
+  invite(@CurrentUser() user: AuthenticatedUser, @Param("id", ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(createAccountInviteSchema)) body: CreateAccountInviteInput) {
+    return this.accounts.createInvite(user.id, id, body);
+  }
+
+  @Delete(":id/invites/:inviteId")
+  revokeInvite(@CurrentUser() user: AuthenticatedUser, @Param("id", ParseUUIDPipe) id: string, @Param("inviteId", ParseUUIDPipe) inviteId: string) {
+    return this.accounts.revokeInvite(user.id, id, inviteId);
+  }
+
+  @Patch(":id/members/:memberId")
+  updateMember(@CurrentUser() user: AuthenticatedUser, @Param("id", ParseUUIDPipe) id: string, @Param("memberId", ParseUUIDPipe) memberId: string,
+    @Body(new ZodValidationPipe(updateAccountMemberSchema)) body: UpdateAccountMemberInput) {
+    return this.accounts.updateMember(user.id, id, memberId, body.role);
+  }
+
+  @Delete(":id/members/:memberId")
+  removeMember(@CurrentUser() user: AuthenticatedUser, @Param("id", ParseUUIDPipe) id: string, @Param("memberId", ParseUUIDPipe) memberId: string) {
+    return this.accounts.removeMember(user.id, id, memberId);
+  }
+
+  @Get("invites/:token/preview")
+  preview(@Param("token") token: string): Promise<AccountInvitePreview> { return this.accounts.invitePreview(token); }
+
+  @Post("invites/:token/accept")
+  accept(@CurrentUser() user: AuthenticatedUser, @Param("token") token: string): Promise<Account> { return this.accounts.acceptInvite(user.id, token); }
 }

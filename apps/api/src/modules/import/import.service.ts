@@ -60,7 +60,7 @@ export class ImportService {
     accountId: string,
     file: { originalname: string; buffer: Buffer },
   ): Promise<ImportPreviewResult> {
-    await this.accounts.getOwned(userId, accountId); // ownership check — throws 404 if not the user's
+    await this.accounts.getWritable(userId, accountId); // access check — 404/403 if not usable by this user
     const fileHash = createHash("sha256").update(file.buffer).digest("hex");
 
     const [alreadyCommitted] = await this.db
@@ -145,7 +145,7 @@ export class ImportService {
     // Previewing is free; committing is the act that costs a plan slot.
     await this.entitlements.consume(userId, "import");
 
-    const account = await this.accounts.getOwned(userId, job.accountId);
+    const account = await this.accounts.getWritable(userId, job.accountId);
     const draft = job.draftJson ?? [];
     for (const row of draft) {
       if (row.status === "error" || row.status === "duplicate") continue;

@@ -27,17 +27,23 @@ export class ExportService {
   ) {}
 
   async exportAll(userId: string) {
+    // Same account-membership scope as the transaction list — otherwise a shared
+    // account's export would silently miss every co-member's rows.
+    const accountIds = await this.accounts.accessibleAccountIds(userId, { includeArchived: true });
+
     const [user, accountList, categoryList, plan, txRows, reviewRows, ruleRows, noteRows] =
       await Promise.all([
         this.users.getById(userId),
         this.accounts.list(userId),
         this.categories.listForUser(userId),
         this.entitlements.getPlan(userId),
-        this.db
-          .select()
-          .from(transactions)
-          .where(and(eq(transactions.userId, userId), isNull(transactions.deletedAt)))
-          .orderBy(asc(transactions.occurredAt)),
+        accountIds.length
+          ? this.db
+              .select()
+              .from(transactions)
+              .where(and(inArray(transactions.accountId, accountIds), isNull(transactions.deletedAt)))
+              .orderBy(asc(transactions.occurredAt))
+          : Promise.resolve([]),
         this.db
           .select()
           .from(reviewItems)

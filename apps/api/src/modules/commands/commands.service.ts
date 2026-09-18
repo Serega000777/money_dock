@@ -1,11 +1,11 @@
-import { CommandParseError, parseCommand } from "@money-dock/business-rules";
+import { CommandParseError, normalizeMerchant, parseCommand } from "@money-dock/business-rules";
 import type { CurrencyCode, Transaction } from "@money-dock/shared-types";
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
-import { accounts, categories, reviewItems } from "../../db/schema";
+import { accounts, categories, categoryRules, reviewItems, users } from "../../db/schema";
 import { CategorizationService } from "../categorization/categorization.service";
 import { EntitlementsService } from "../entitlements/entitlements.service";
 import { TransactionsService } from "../transactions/transactions.service";
@@ -22,6 +22,8 @@ export interface CommandDraft {
   confidence: number;
   /** Human-readable reasons, so the confirmation card can explain itself. */
   explanation: string[];
+  description: string | null;
+  requiresConfirmation: boolean;
 }
 
 const EXPLANATIONS: Record<string, string> = {
@@ -47,24 +49,30 @@ export class CommandsService {
   ) {}
 
   /**
-   * Hands-free capture for Siri and the home-screen widget: the phrase is never shown
-   * back before saving, so the transaction is stored as needs_review and queued in the
-   * Review Inbox. Opening the app is what turns it into a confirmed operation.
+   * Hands-free capture for Siri, the home-screen widget, and the iOS Shortcut: the
+   * phrase is never shown back before saving — there is no confirmation step in the
+   * request itself — so this always stores needs_review and queues a Review Inbox item,
+   * regardless of how confident the parse was. `draft.requiresConfirmation` is for the
+   * *other* capture path (`parse` + an on-screen confirm card, e.g. the /voice screen),
+   * which can act on a low-confidence parse by asking before it ever calls this method.
    */
   async capture(
     userId: string,
     text: string,
     source: "voice" | "text",
     clientId: string,
+    accountId?: string,
+    transactionSource: "voice" | "shortcut" = "voice",
   ): Promise<Transaction> {
     const draft = await this.parse(userId, text, source);
-    if (!draft.accountId) throw new BadRequestException("Сначала добавьте счёт");
+    const targetAccountId = accountId ?? draft.accountId;
+    if (!targetAccountId) throw new BadRequestException("Сначала добавьте счёт");
 
     const transaction = await this.transactions.create(
       userId,
       {
         type: draft.type,
-        accountId: draft.accountId,
+        accountId: targetAccountId,
         categoryId: draft.categoryId ?? undefined,
         amountMinor: draft.amountMinor,
         currency: draft.currency as CurrencyCode,
@@ -72,7 +80,7 @@ export class CommandsService {
         note: text,
         clientId,
       },
-      { source: "voice", status: "needs_review" },
+      { source: transactionSource, status: "needs_review" },
     );
 
     await this.db.insert(reviewItems).values({
@@ -99,15 +107,35 @@ export class CommandsService {
       );
     }
 
-    const userAccounts = await this.db
+    const userAccounts = await this.accountsForUser(userId);
+
+    const [user] = await this.db.select({ timezone: users.timezone }).from(users).where(eq(users.id, userId));
+
+    // Same normalizer categories.service.ts writes category_rules.pattern with (and the
+    // one statement-import matching already reads it with) — a hand-rolled duplicate
+    // here previously folded ё→е on read but not on write, so an alias containing ё
+    // could never match. A pattern under 2 characters is excluded: a single letter would
+    // match almost any phrase, hijacking the category for input that isn't about it.
+    const normalized = normalizeMerchant(text);
+    const customMatches = await this.db.select({ id: categories.id, name: categories.name, type: categories.type, pattern: categoryRules.pattern })
+      .from(categoryRules).innerJoin(categories, eq(categories.id, categoryRules.categoryId))
+      .where(and(eq(categoryRules.userId, userId), eq(categoryRules.active, true), eq(categories.userId, userId)));
+    const custom = customMatches
+      .filter((row) => row.pattern.length >= 2)
+      .sort((a, b) => b.pattern.length - a.pattern.length)
+      .find((row) => normalized.includes(row.pattern));
+
+    if (custom && custom.type !== "both" && !parsed.matched.includes("type")) parsed.type = custom.type;
+
+    const allAccounts = await this.db
       .select()
       .from(accounts)
-      .where(and(eq(accounts.userId, userId), isNull(accounts.archivedAt)));
+      .where(and(isNull(accounts.archivedAt), inArray(accounts.id, userAccounts.map((a) => a.id))));
 
     // Prefer the account type the user named; otherwise fall back to their first account.
     const account =
-      (parsed.accountType && userAccounts.find((a) => a.type === parsed.accountType)) ||
-      userAccounts[0] ||
+      (parsed.accountType && allAccounts.find((a) => a.type === parsed.accountType)) ||
+      allAccounts[0] ||
       null;
 
     const matched = [...parsed.matched];
@@ -118,7 +146,8 @@ export class CommandsService {
     // classifier) run over the whole phrase — "яндекс такси" or "вкусвилл" are brands
     // the parser deliberately doesn't know; and finally "Другое", so the draft always
     // proposes *some* category for the user to accept or swap in the confirmation card.
-    let category = parsed.categoryCode ? await this.systemCategory(userId, parsed.categoryCode) : null;
+    let category = custom ? { id: custom.id, name: custom.name } : parsed.categoryCode ? await this.systemCategory(userId, parsed.categoryCode) : null;
+    if (custom) { matched.push("category"); confidence = Math.max(confidence, custom.type === "both" ? 0.86 : 0.96); }
     if (!category && parsed.type === "expense") {
       const guessed = await this.categorization.categorize(userId, text);
       if (guessed.categoryId) {
@@ -129,12 +158,16 @@ export class CommandsService {
         }
       }
     }
+    // Captured before the "Другое" fallback below fills `category` unconditionally —
+    // requiresConfirmation used to check `!category`, which after that fallback was
+    // never true, silently dropping the "no real category matched" half of the check.
+    const categoryResolved = category !== null;
     category ??= await this.systemCategory(
       userId,
       parsed.type === "income" ? "other_income" : "other_expense",
     );
 
-    const occurredAt = new Date(Date.now() - parsed.daysAgo * 86_400_000);
+    const occurredAt = this.localDaysAgo(parsed.daysAgo, user?.timezone ?? "Europe/Moscow");
 
     return {
       type: parsed.type,
@@ -147,7 +180,21 @@ export class CommandsService {
       occurredAt: occurredAt.toISOString(),
       confidence: Number(confidence.toFixed(2)),
       explanation: matched.map((key) => EXPLANATIONS[key] ?? key),
+      description: text.replace(/\d[\d\s]*(?:[.,]\d+)?\s*(?:тыс\.?|тысяч|к)?/i, "").trim() || null,
+      requiresConfirmation: confidence < 0.75 || !categoryResolved,
     };
+  }
+
+  private async accountsForUser(userId: string) {
+    return this.transactions.accessibleAccounts(userId);
+  }
+
+  private localDaysAgo(daysAgo: number, timezone: string): Date {
+    const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" });
+    const parts = Object.fromEntries(formatter.formatToParts(new Date()).map((part) => [part.type, part.value]));
+    const noonUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T12:00:00.000Z`);
+    noonUtc.setUTCDate(noonUtc.getUTCDate() - daysAgo);
+    return noonUtc;
   }
 
   private async systemCategory(

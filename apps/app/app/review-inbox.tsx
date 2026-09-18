@@ -111,7 +111,7 @@ export default function ReviewInbox() {
             {openFor === item.id ? (
               <View style={styles.categoryGrid}>
                 {(categories ?? [])
-                  .filter((c: Category) => c.type === "expense")
+                  .filter((c: Category) => c.type === "expense" || c.type === "both")
                   .map((category: Category) => {
                     const color = categoryColor(category);
                     return (

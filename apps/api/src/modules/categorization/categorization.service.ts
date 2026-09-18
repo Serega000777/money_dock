@@ -1,10 +1,11 @@
 import { classifyByKeyword, mccToSystemCategory, normalizeMerchant } from "@money-dock/business-rules";
 import { Inject, Injectable } from "@nestjs/common";
-import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
 import { categories, categoryRules, merchantAliases, transactions } from "../../db/schema";
+import { AccountsService } from "../accounts/accounts.service";
 
 export type CategorizationSource =
   | "user_rule"
@@ -41,7 +42,10 @@ const UNCATEGORIZED: CategorizationResult = {
  */
 @Injectable()
 export class CategorizationService {
-  constructor(@Inject(DATABASE) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE) private readonly db: Database,
+    private readonly accounts: AccountsService,
+  ) {}
 
   async categorize(
     userId: string,
@@ -101,12 +105,16 @@ export class CategorizationService {
     userId: string,
     pattern: string,
   ): Promise<CategorizationResult | null> {
+    // Every account this user can see, not just ones transactions.userId happens to
+    // name — otherwise a shared account never learns from a co-member's past corrections.
+    const accountIds = await this.accounts.accessibleAccountIds(userId, { includeArchived: true });
+    if (accountIds.length === 0) return null;
     const [historical] = await this.db
       .select({ categoryId: transactions.categoryId })
       .from(transactions)
       .where(
         and(
-          eq(transactions.userId, userId),
+          inArray(transactions.accountId, accountIds),
           isNull(transactions.deletedAt),
           isNotNull(transactions.categoryId),
           eq(sql`lower(trim(${transactions.merchant}))`, pattern),

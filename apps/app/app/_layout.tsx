@@ -1,6 +1,6 @@
 import { typography } from "@money-dock/design-tokens";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
@@ -30,11 +30,15 @@ import { BootScreen } from "../src/ui/BootScreen";
  *   plain browser today, a future native build eventually.
  */
 function BootGate() {
-  const { isInsideTelegram } = useTelegram();
+  const { isInsideTelegram, startParam } = useTelegram();
   const accessToken = useAuthStore((state) => state.accessToken);
   const loginFailed = useAuthStore((state) => state.loginFailed);
   const [booted, setBooted] = useState(false);
   useEffect(() => setBooted(true), []);
+  useEffect(() => {
+    if (!accessToken || !startParam?.startsWith("budget_inv_")) return;
+    router.replace({ pathname: "/invite", params: { token: startParam.slice("budget_inv_".length) } });
+  }, [accessToken, startParam]);
 
   const signedIn = Boolean(accessToken);
   const booting = !booted || (isInsideTelegram && !signedIn && !loginFailed);

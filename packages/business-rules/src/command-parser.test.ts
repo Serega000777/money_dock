@@ -22,6 +22,8 @@ describe("parseCommand — amounts", () => {
   it("reads spelled-out numbers", () => {
     expect(parseCommand("потратил две тысячи пятьсот на бензин").amountMinor).toBe(250_000);
     expect(parseCommand("потратил сто рублей").amountMinor).toBe(10_000);
+    expect(parseCommand("зарплата пятнадцать тысяч").amountMinor).toBe(1_500_000);
+    expect(parseCommand("полторы тысячи кофе").amountMinor).toBe(150_000);
   });
 
   it("throws when there is no amount at all", () => {
@@ -133,6 +135,13 @@ describe("parseCommand — confidence", () => {
 });
 
 describe("parseCommand — the examples from the product spec", () => {
+  it.each([
+    ["зп 15000", "income", 1_500_000, "salary"],
+    ["кофе 250", "expense", 25_000, "restaurants"],
+    ["бензин 4200", "expense", 420_000, "fuel"],
+  ])("parses %s", (phrase, type, amountMinor, categoryCode) => {
+    expect(parseCommand(phrase)).toMatchObject({ type, amountMinor, categoryCode });
+  });
   it('"Добавь 2500 рублей в расходы на топливо"', () => {
     const result = parseCommand("Добавь 2500 рублей в расходы на топливо");
     expect(result).toMatchObject({ type: "expense", amountMinor: 250_000, categoryCode: "fuel" });

@@ -712,7 +712,7 @@ export default function Home() {
       <CreateRecurringPaymentSheet
         visible={addingPayment}
         onClose={() => setAddingPayment(false)}
-        categories={(categories ?? []).filter((c) => c.type === "expense")}
+        categories={(categories ?? []).filter((c) => c.type === "expense" || c.type === "both")}
         accountId={accounts?.[0]?.id}
         currency={accounts?.[0]?.currency ?? "RUB"}
         onCreated={() => setAddingPayment(false)}

@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
-import { accounts, categories, transactions } from "../../db/schema";
+import { accountMembers, accounts, categories, transactions } from "../../db/schema";
 
 interface DemoEntry {
   daysAgo: number;
@@ -170,6 +170,14 @@ export class DemoDataService {
       ])
       .returning();
     if (!cash || !card) return;
+
+    // AccountsService.list/getAccessible now read through account_members, not
+    // accounts.userId directly — without this, a freshly seeded user's own accounts
+    // would be invisible to them.
+    await this.db.insert(accountMembers).values([
+      { accountId: cash.id, userId, role: "owner", createdByUserId: userId },
+      { accountId: card.id, userId, role: "owner", createdByUserId: userId },
+    ]);
 
     const systemCategories = await this.db
       .select({ id: categories.id, systemCode: categories.systemCode })

@@ -8,6 +8,7 @@ interface TelegramContextValue {
   isInsideTelegram: boolean;
   initData: string | null;
   user: TelegramUser | null;
+  startParam: string | null;
 }
 
 const TelegramContext = createContext<TelegramContextValue>({
@@ -15,6 +16,7 @@ const TelegramContext = createContext<TelegramContextValue>({
   isInsideTelegram: false,
   initData: null,
   user: null,
+  startParam: null,
 });
 
 export function TelegramProvider({ children }: { children: ReactNode }) {
@@ -43,6 +45,7 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
       isInsideTelegram: initData !== null,
       initData,
       user: webApp?.initDataUnsafe.user ?? null,
+      startParam: webApp?.initDataUnsafe.start_param ?? null,
     };
   }, [webApp]);
 

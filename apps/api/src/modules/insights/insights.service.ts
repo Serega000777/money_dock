@@ -1,10 +1,11 @@
 import { addDays, averageDailySpend, dayOfMonth, percentChange, startOfDay, startOfMonth } from "@money-dock/business-rules";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { and, desc, eq, gt, gte, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
 import { categories, insights, reviewItems, transactions } from "../../db/schema";
+import { AccountsService } from "../accounts/accounts.service";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { UsersService } from "../users/users.service";
 
@@ -51,6 +52,7 @@ export class InsightsService {
     @Inject(DATABASE) private readonly db: Database,
     private readonly analytics: AnalyticsService,
     private readonly users: UsersService,
+    private readonly accounts: AccountsService,
   ) {}
 
   async getDailySummary(userId: string, now = new Date()): Promise<DailySummary> {
@@ -63,10 +65,11 @@ export class InsightsService {
     // Days strictly before yesterday, in the current month — the baseline "average" that
     // yesterday's spend is compared against. Zero when yesterday was the 1st.
     const baselineDays = Math.max(dayOfMonth(yesterdayStart, tz) - 1, 0);
+    const accountIds = await this.accounts.accessibleAccountIds(userId, { includeArchived: true });
 
     const [yesterdayExpenseMinor, baselineExpenseMinor, reviewCount, summary] = await Promise.all([
-      this.periodExpense(userId, yesterdayStart, todayStart),
-      baselineDays > 0 ? this.periodExpense(userId, monthStart, yesterdayStart) : Promise.resolve(0),
+      this.periodExpense(accountIds, yesterdayStart, todayStart),
+      baselineDays > 0 ? this.periodExpense(accountIds, monthStart, yesterdayStart) : Promise.resolve(0),
       this.pendingReviewCount(userId),
       this.analytics.getSummary(userId, now),
     ]);
@@ -118,10 +121,11 @@ export class InsightsService {
   private async refreshCategoryGrowthInsights(userId: string, now: Date): Promise<void> {
     const currentStart = addDays(now, -GROWTH_WINDOW_DAYS);
     const previousStart = addDays(currentStart, -GROWTH_WINDOW_DAYS);
+    const accountIds = await this.accounts.accessibleAccountIds(userId, { includeArchived: true });
 
     const [current, previous] = await Promise.all([
-      this.categoryExpenseTotals(userId, currentStart, now),
-      this.categoryExpenseTotals(userId, previousStart, currentStart),
+      this.categoryExpenseTotals(accountIds, currentStart, now),
+      this.categoryExpenseTotals(accountIds, previousStart, currentStart),
     ]);
     const previousByCategory = new Map(previous.map((row) => [row.categoryId, row.totalMinor]));
 
@@ -199,7 +203,8 @@ export class InsightsService {
     }
   }
 
-  private async periodExpense(userId: string, from: Date, to: Date): Promise<number> {
+  private async periodExpense(accountIds: string[], from: Date, to: Date): Promise<number> {
+    if (accountIds.length === 0) return 0;
     const [row] = await this.db
       .select({
         total:
@@ -210,7 +215,7 @@ export class InsightsService {
       .from(transactions)
       .where(
         and(
-          eq(transactions.userId, userId),
+          inArray(transactions.accountId, accountIds),
           isNull(transactions.deletedAt),
           gte(transactions.occurredAt, from),
           lt(transactions.occurredAt, to),
@@ -220,10 +225,11 @@ export class InsightsService {
   }
 
   private async categoryExpenseTotals(
-    userId: string,
+    accountIds: string[],
     from: Date,
     to: Date,
   ): Promise<Array<{ categoryId: string | null; totalMinor: number }>> {
+    if (accountIds.length === 0) return [];
     return this.db
       .select({
         categoryId: transactions.categoryId,
@@ -232,7 +238,7 @@ export class InsightsService {
       .from(transactions)
       .where(
         and(
-          eq(transactions.userId, userId),
+          inArray(transactions.accountId, accountIds),
           eq(transactions.type, "expense"),
           isNull(transactions.deletedAt),
           gte(transactions.occurredAt, from),

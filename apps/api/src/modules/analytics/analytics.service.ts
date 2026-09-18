@@ -13,7 +13,7 @@ import {
 } from "@money-dock/business-rules";
 import { asMinorUnits, type AnalyticsSummary } from "@money-dock/shared-types";
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
@@ -45,6 +45,11 @@ export class AnalyticsService {
 
     const accounts = await this.accounts.list(userId);
     const totalBalanceMinor = accounts.reduce((sum, a) => sum + a.currentBalanceMinor, 0);
+    // Historical totals include archived accounts (archiving is a soft delete — the
+    // spend still happened) and every account this user is a *member* of, not just the
+    // ones they created, so a shared account's totals match for every member looking at
+    // it, not only whoever's transactions.userId the row happens to carry.
+    const accountIds = await this.accounts.accessibleAccountIds(userId, { includeArchived: true });
 
     const elapsedDays = dayOfMonth(now, tz);
     const daysRemaining = daysRemainingInMonth(now, tz);
@@ -53,12 +58,12 @@ export class AnalyticsService {
     const dayStart = startOfDay(now, tz);
 
     const [currentMonth, comparableLastMonth, today, byPaymentKind] = await Promise.all([
-      this.periodTotals(userId, monthStart, undefined),
+      this.periodTotals(accountIds, monthStart, undefined),
       // Compare against the same number of elapsed days last month — comparing a
       // partial current month to a *full* previous month would understate spend growth.
-      this.periodTotals(userId, prevMonthStart, addDays(prevMonthStart, elapsedDays)),
-      this.periodTotals(userId, dayStart, undefined),
-      this.expenseByPaymentKind(userId, monthStart),
+      this.periodTotals(accountIds, prevMonthStart, addDays(prevMonthStart, elapsedDays)),
+      this.periodTotals(accountIds, dayStart, undefined),
+      this.expenseByPaymentKind(accountIds, monthStart),
     ]);
 
     const avgDailySpendMinor = averageDailySpend(currentMonth.expenseMinor, elapsedDays);
@@ -86,12 +91,13 @@ export class AnalyticsService {
   }
 
   private async periodTotals(
-    userId: string,
+    accountIds: string[],
     from: Date,
     to: Date | undefined,
   ): Promise<PeriodTotals> {
+    if (accountIds.length === 0) return { incomeMinor: 0, expenseMinor: 0 };
     const conditions = [
-      eq(transactions.userId, userId),
+      inArray(transactions.accountId, accountIds),
       isNull(transactions.deletedAt),
       gte(transactions.occurredAt, from),
     ];
@@ -116,7 +122,8 @@ export class AnalyticsService {
 
   /** Same expense total as periodTotals, split by `accounts.type` — "cash" vs. "card"/
    * "bank" combined (home screen: "траты наличными" / "траты с банка"). */
-  private async expenseByPaymentKind(userId: string, from: Date): Promise<ExpenseByPaymentKind> {
+  private async expenseByPaymentKind(accountIds: string[], from: Date): Promise<ExpenseByPaymentKind> {
+    if (accountIds.length === 0) return { cashMinor: 0, bankMinor: 0 };
     const rows = await this.db
       .select({
         kind: accountsTable.type,
@@ -126,7 +133,7 @@ export class AnalyticsService {
       .innerJoin(accountsTable, eq(transactions.accountId, accountsTable.id))
       .where(
         and(
-          eq(transactions.userId, userId),
+          inArray(transactions.accountId, accountIds),
           eq(transactions.type, "expense"),
           isNull(transactions.deletedAt),
           gte(transactions.occurredAt, from),

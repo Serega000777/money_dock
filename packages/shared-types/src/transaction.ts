@@ -2,7 +2,7 @@ import type { CurrencyCode, MinorUnits } from "./money";
 
 export type TransactionType = "expense" | "income" | "transfer";
 
-export type TransactionSource = "manual" | "voice" | "import" | "bank_sync";
+export type TransactionSource = "manual" | "voice" | "shortcut" | "import" | "bank_sync";
 
 export type TransactionStatus = "confirmed" | "needs_review";
 
@@ -24,4 +24,6 @@ export interface Transaction {
   source: TransactionSource;
   status: TransactionStatus;
   splits: TransactionSplit[];
+  createdByUserId: string;
+  createdByName: string | null;
 }

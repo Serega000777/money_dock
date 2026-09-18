@@ -8,5 +8,7 @@ export * from "./money";
 export * from "./note";
 export * from "./recurring-payment";
 export * from "./review";
+export * from "./sharing";
+export * from "./shortcut";
 export * from "./transaction";
 export * from "./user";
