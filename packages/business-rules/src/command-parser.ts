@@ -29,6 +29,9 @@ const INCOME_WORDS = [
   "получил",
   "получила",
   "зарплат",
+  // The common shorthand ("зп 15000") — INCOME_CATEGORY_KEYWORDS.salary already lists
+  // it for category matching, but that only ever runs once `type` is already "income".
+  "зп",
   "поступил",
   "пришл",
   "заработал",
