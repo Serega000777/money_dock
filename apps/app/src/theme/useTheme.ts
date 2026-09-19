@@ -11,11 +11,15 @@ import { useSettingsStore } from "./settingsStore";
  */
 export function useTheme(): Theme {
   const mode = useSettingsStore((state) => state.themeMode);
-  const { webApp } = useTelegram();
+  // From TelegramProvider's own React state (kept in sync with a `themeChanged`
+  // listener), not `webApp.colorScheme` read directly — that property can still change
+  // after this component's first render, with nothing to trigger a re-render when it
+  // does (see the comment in TelegramProvider.tsx).
+  const { colorScheme: telegramColorScheme } = useTelegram();
   const systemScheme = useColorScheme();
 
   if (mode !== "system") return mode === "dark" ? darkTheme : lightTheme;
-  const scheme = webApp?.colorScheme ?? systemScheme ?? "light";
+  const scheme = telegramColorScheme ?? systemScheme ?? "light";
   return scheme === "dark" ? darkTheme : lightTheme;
 }
 

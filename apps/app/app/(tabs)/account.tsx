@@ -244,11 +244,34 @@ export default function Account() {
               <View style={[styles.rowIcon, { backgroundColor: theme.accentSoft }]}>
                 <Icon name="card" color={theme.accent} size={18} />
               </View>
-              <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>{account.name}</Text>
+              <Text style={[styles.rowLabel, { color: theme.textPrimary }]} numberOfLines={1}>
+                {account.name}
+              </Text>
               <Text style={[styles.rowValue, { color: theme.textSecondary }]}>
                 {formatMinor(account.currentBalanceMinor)} ₽
               </Text>
-              {account.role === "owner" ? <Link href={{ pathname: "/account-sharing", params: { id: account.id } }} asChild><PressableScale><Icon name="person" color={theme.accent} size={18} /></PressableScale></Link> : null}
+              {account.role === "owner" ? (
+                // Labeled, not a bare icon — an unlabeled 18px glyph after the balance
+                // read as decoration, not a button, so the sharing feature itself was
+                // easy to miss entirely.
+                <Link href={{ pathname: "/account-sharing", params: { id: account.id } }} asChild>
+                  <PressableScale
+                    style={StyleSheet.flatten([styles.shareButton, { backgroundColor: theme.accentSoft }])}
+                  >
+                    <Icon name="person" color={theme.accent} size={14} />
+                    <Text style={[styles.shareButtonText, { color: theme.accent }]}>Участники</Text>
+                  </PressableScale>
+                </Link>
+              ) : account.role === "member" || account.role === "viewer" ? (
+                // No management link for a non-owner, but still a visible sign that this
+                // account is shared, not just theirs — there was previously no way to
+                // tell the two apart from this screen at all.
+                <Pill
+                  label={account.role === "member" ? "Участник" : "Просмотр"}
+                  color={theme.textSecondary}
+                  background={theme.surfaceSunken}
+                />
+              ) : null}
             </View>
           ))}
           {accounts?.length === 0 ? (
@@ -540,6 +563,15 @@ const styles = StyleSheet.create({
   rowMain: { flex: 1, gap: 2 },
   rowSub: typography.caption,
   rowValue: typography.callout,
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+  },
+  shareButtonText: { ...typography.caption, fontWeight: "600" },
   iconButton: { paddingHorizontal: 2 },
   badge: {
     minWidth: 26,

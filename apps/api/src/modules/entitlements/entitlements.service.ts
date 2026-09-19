@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
-import { subscriptions, usageCounters } from "../../db/schema";
+import { subscriptions, usageCounters, users } from "../../db/schema";
 
 export type Plan = "free" | "pro" | "pro_bank";
 export type MeteredFeature = "voice" | "import";
@@ -30,6 +30,13 @@ export class EntitlementsService {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
   async getPlan(userId: string): Promise<Plan> {
+    // The app's one operator (ADMIN_TELEGRAM_IDS, see AuthService) shouldn't have to also
+    // gift themselves a subscription to use their own product — admin already implies
+    // full access everywhere else (AdminGuard), and there's no real billing yet for them
+    // to have paid through in the first place.
+    const [account] = await this.db.select({ role: users.role }).from(users).where(eq(users.id, userId));
+    if (account?.role === "admin") return "pro_bank";
+
     const [row] = await this.db
       .select()
       .from(subscriptions)
