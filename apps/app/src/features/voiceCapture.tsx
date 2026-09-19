@@ -18,6 +18,8 @@ import { Text } from "../ui/Text";
 import { PressableScale, Segmented } from "../ui/primitives";
 import { generateClientId } from "../utils/uuid";
 
+import { openPaywallFromError } from "./paywall";
+
 /**
  * Parse + save, shared by the home screen's press-and-hold mic and the dedicated /voice
  * screen (typed commands, examples, browsers with no speech API). Both need exactly the
@@ -30,6 +32,7 @@ export function useVoiceCapture() {
   const parse = useMutation({
     mutationFn: ({ value, source }: { value: string; source: "voice" | "text" }) =>
       apiClient.commands.parse(value, source),
+    onError: (error) => openPaywallFromError(error),
   });
 
   const save = useMutation({

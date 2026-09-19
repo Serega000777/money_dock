@@ -11,6 +11,7 @@ import { Icon } from "../ui/Icon";
 import { Text } from "../ui/Text";
 import { BottomSheet, Segmented } from "../ui/primitives";
 
+import { usePaywallStore } from "./paywall";
 import { SheetSubmit, sheetStyles } from "./recurring";
 
 const TYPE_OPTIONS: { value: AccountType; label: string }[] = [
@@ -182,12 +183,19 @@ function BankPicker({
           })}
         </ScrollView>
         {locked ? (
-          <View style={[styles.bankLockOverlay, { backgroundColor: `${theme.background}B3` }]}>
+          <Pressable
+            style={[styles.bankLockOverlay, { backgroundColor: `${theme.background}B3` }]}
+            onPress={() =>
+              usePaywallStore
+                .getState()
+                .open("Реалистичный дизайн банковской карты — в подписке Pro.")
+            }
+          >
             <Icon name="lock" color={theme.textSecondary} size={16} strokeWidth={2} />
             <Text style={[styles.bankLockText, { color: theme.textSecondary }]}>
               Реалистичный дизайн карты — в подписке Pro
             </Text>
-          </View>
+          </Pressable>
         ) : null}
       </View>
 

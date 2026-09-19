@@ -9,6 +9,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { queryClient } from "../src/api/queryClient";
 import { AuthProvider } from "../src/auth/AuthProvider";
 import { useAuthStore } from "../src/auth/authStore";
+import { PaywallModal } from "../src/features/paywall";
 import { OnboardingFlow } from "../src/onboarding/OnboardingFlow";
 import { TelegramProvider, useTelegram } from "../src/telegram/TelegramProvider";
 import { useTheme } from "../src/theme/useTheme";
@@ -98,6 +99,7 @@ export default function RootLayout() {
             <View style={styles.flex}>
               <ThemedStack />
               <BootGate />
+              <PaywallModal />
             </View>
           </AuthProvider>
         </TelegramProvider>

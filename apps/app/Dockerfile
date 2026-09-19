@@ -9,6 +9,12 @@ RUN pnpm install --frozen-lockfile
 # Baked into the bundle at build time — must be the public URL the Mini App will call.
 ARG EXPO_PUBLIC_API_URL
 ENV EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL}
+# Optional t.me chat links for the account screen's support/feedback rows — empty means
+# those rows show "Скоро" until filled in (see account.tsx's SUPPORT/FEEDBACK constants).
+ARG EXPO_PUBLIC_SUPPORT_TELEGRAM_URL
+ENV EXPO_PUBLIC_SUPPORT_TELEGRAM_URL=${EXPO_PUBLIC_SUPPORT_TELEGRAM_URL}
+ARG EXPO_PUBLIC_FEEDBACK_TELEGRAM_URL
+ENV EXPO_PUBLIC_FEEDBACK_TELEGRAM_URL=${EXPO_PUBLIC_FEEDBACK_TELEGRAM_URL}
 ENV NODE_ENV=production
 # Build the workspace packages the app imports from their dist/ (api-client, validation,
 # ...), then export. `expo export` is called directly: the package's `build` script wraps

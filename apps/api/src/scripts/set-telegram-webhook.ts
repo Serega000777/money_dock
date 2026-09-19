@@ -25,7 +25,10 @@ async function main(): Promise<void> {
     body: JSON.stringify({
       url: `${publicUrl.replace(/\/$/, "")}/api/telegram/webhook`,
       secret_token: secret,
-      allowed_updates: ["message"],
+      // "pre_checkout_query" is required for Stars payments (TelegramBotService.
+      // handlePreCheckoutQuery) — without it in this list Telegram never delivers those
+      // updates at all, and every Stars purchase hangs until it times out on its own.
+      allowed_updates: ["message", "pre_checkout_query"],
     }),
   });
 

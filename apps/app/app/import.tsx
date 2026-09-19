@@ -6,11 +6,13 @@ import { useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
+import { openPaywallFromError } from "../src/features/paywall";
 import { useTheme } from "../src/theme/useTheme";
 import { GradientBox } from "../src/ui/Gradient";
 import { Icon } from "../src/ui/Icon";
 import { Text } from "../src/ui/Text";
 import { Card, FadeIn, Pill, PressableScale, Screen } from "../src/ui/primitives";
+import { apiErrorMessage, isPlanLimitError } from "../src/utils/apiError";
 import { formatMinor } from "../src/utils/format";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -42,7 +44,10 @@ export default function Import() {
       setError(null);
       setPreview(result);
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e) => {
+      openPaywallFromError(e);
+      setError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать файл"));
+    },
   });
 
   const commit = useMutation({

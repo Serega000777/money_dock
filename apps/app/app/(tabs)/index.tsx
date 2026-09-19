@@ -11,7 +11,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, router } from "expo-router";
 import { useRef, useState } from "react";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
@@ -39,6 +39,7 @@ import {
   ProgressBar,
   Screen,
 } from "../../src/ui/primitives";
+import { apiErrorMessage, isPlanLimitError } from "../../src/utils/apiError";
 import { formatMinor } from "../../src/utils/format";
 import { useSpeechRecognition } from "../../src/voice/useSpeechRecognition";
 
@@ -127,7 +128,9 @@ export default function Home() {
       { value: transcript, source: "voice" },
       {
         onSuccess: (result) => setVoiceDraft(result),
-        onError: (e: Error) => setVoiceError(e.message.replace(/^\d+\s*/, "")),
+        // The paywall modal (opened by useVoiceCapture's own onError) already explains
+        // a plan-limit 403 — no need to duplicate that as inline text.
+        onError: (e) => setVoiceError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать команду")),
       },
     );
   });
@@ -381,11 +384,15 @@ export default function Home() {
                 <Icon name="chevron" color={theme.textSecondary} size={14} />
               </Pressable>
             </View>
-            <View style={styles.accountsRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.accountsRow}
+            >
               {accounts.map((account: Account, index: number) => (
                 <AccountTile key={account.id} account={account} vivid={index === 0} />
               ))}
-            </View>
+            </ScrollView>
           </FadeIn>
         ) : enabled && accounts ? (
           // A brand-new user: nothing can be recorded until there is an account, so this
@@ -781,7 +788,10 @@ function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
   // A picked bank draws its own art and owns the tile's whole colour story — Card's
   // usual gradient/plain split doesn't apply once there's a card design underneath.
   const bankArt = account.type === "card" && account.bank;
-  const light = vivid || Boolean(bankArt);
+  // White text only where the surface underneath is actually dark enough for it: bank
+  // art always is, and the vivid tileGradient is too in dark theme — but light theme's
+  // tileGradient is a pale near-white wash, where white-on-white was unreadable.
+  const light = Boolean(bankArt) || (vivid && theme.name === "dark");
   const nameColor = light ? "#FFFFFF" : theme.textPrimary;
   const metaColor = light ? "rgba(255,255,255,0.72)" : theme.textTertiary;
   const balanceColor = light ? "#FFFFFF" : theme.textPrimary;
@@ -1054,9 +1064,9 @@ const styles = StyleSheet.create({
   accountsTitle: typography.headline,
   accountsAllButton: { flexDirection: "row", alignItems: "center", gap: 2 },
   accountsAll: { ...typography.callout, fontWeight: "600" },
-  accountsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  accountsRow: { flexDirection: "row", gap: spacing.sm, paddingRight: spacing.xs },
   accountTile: {
-    width: "48.5%",
+    width: 168,
     // The reference's card is ~115px at its 430px width; taller than this and
     // space-between opens a gap between the name block and the balance that the
     // reference doesn't have.

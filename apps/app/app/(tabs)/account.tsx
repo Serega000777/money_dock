@@ -1,7 +1,7 @@
 import type { TextScaleName } from "@money-dock/design-tokens";
 import { radii, spacing, typography } from "@money-dock/design-tokens";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, type Href } from "expo-router";
+import { Link, router, type Href } from "expo-router";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { Image, Platform, Pressable, StyleSheet, View } from "react-native";
@@ -31,7 +31,12 @@ import {
   Segmented,
 } from "../../src/ui/primitives";
 import { fileToAvatarDataUrl } from "../../src/utils/avatar";
+import { openExternalLink } from "../../src/utils/externalLink";
 import { formatMinor } from "../../src/utils/format";
+
+const SUPPORT_TELEGRAM_URL = process.env.EXPO_PUBLIC_SUPPORT_TELEGRAM_URL || null;
+const FEEDBACK_TELEGRAM_URL = process.env.EXPO_PUBLIC_FEEDBACK_TELEGRAM_URL || null;
+const AUTHOR_EMAIL = "serega.velichko7@yandex.ru";
 
 /** Web-only: turns the export payload into a downloaded .json file. The Mini App is a
  * web target, so this covers the real use case; native would need Share/FS APIs instead. */
@@ -49,7 +54,7 @@ function downloadReport(data: unknown): void {
 /** Everything that used to be split across "План" and "Ещё" lives here. */
 export default function Account() {
   const theme = useTheme();
-  const { isInsideTelegram, user } = useTelegram();
+  const { isInsideTelegram, user, webApp } = useTelegram();
   const {
     themeMode,
     textScale,
@@ -185,23 +190,19 @@ export default function Account() {
               {me?.baseCurrency ?? "RUB"}
             </Text>
           </View>
-          <View
-            style={[
-              styles.planBadge,
-              {
-                backgroundColor: entitlements?.plan === "free" ? theme.surfaceSunken : theme.accent,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.planBadgeText,
-                { color: entitlements?.plan === "free" ? theme.textSecondary : theme.onAccent },
-              ]}
+          {entitlements?.plan === "free" ? (
+            <PressableScale
+              style={StyleSheet.flatten([styles.planBadge, { backgroundColor: theme.surfaceSunken }])}
+              onPress={() => router.push("/upgrade")}
             >
-              {entitlements?.plan === "free" ? "Free" : "Pro"}
-            </Text>
-          </View>
+              <Icon name="crown" color={theme.accent} size={12} />
+              <Text style={[styles.planBadgeText, { color: theme.textSecondary }]}>Купить Pro</Text>
+            </PressableScale>
+          ) : (
+            <View style={[styles.planBadge, { backgroundColor: theme.accent }]}>
+              <Text style={[styles.planBadgeText, { color: theme.onAccent }]}>Pro</Text>
+            </View>
+          )}
         </Card>
         {avatarError ? (
           <Text style={[styles.avatarError, { color: theme.negative }]}>{avatarError}</Text>
@@ -420,6 +421,9 @@ export default function Account() {
                 : "без ограничений"}
             </Text>
           </View>
+          {entitlements?.plan === "free" ? (
+            <NavRow href="/upgrade" icon="crown" label="Купить Pro" />
+          ) : null}
         </Section>
       </FadeIn>
 
@@ -441,6 +445,35 @@ export default function Account() {
       </FadeIn>
 
       <FadeIn index={9}>
+        <Section title="Поддержка">
+          <SupportRow
+            icon="headset"
+            label="Служба поддержки"
+            onPress={
+              SUPPORT_TELEGRAM_URL
+                ? () => openExternalLink(SUPPORT_TELEGRAM_URL, webApp)
+                : undefined
+            }
+          />
+          <SupportRow
+            icon="bulb"
+            label="Предложить изменение"
+            onPress={
+              FEEDBACK_TELEGRAM_URL
+                ? () => openExternalLink(FEEDBACK_TELEGRAM_URL, webApp)
+                : undefined
+            }
+          />
+          <SupportRow
+            icon="mail"
+            label="Написать автору"
+            hint={AUTHOR_EMAIL}
+            onPress={() => openExternalLink(`mailto:${AUTHOR_EMAIL}`, webApp)}
+          />
+        </Section>
+      </FadeIn>
+
+      <FadeIn index={10}>
         <Section title="Правовая информация">
           <NavRow href="/legal/privacy" icon="note" label="Политика конфиденциальности" />
           <NavRow href="/legal/terms" icon="note" label="Условия использования" />
@@ -448,7 +481,7 @@ export default function Account() {
         </Section>
       </FadeIn>
 
-      <FadeIn index={10}>
+      <FadeIn index={11}>
         <Section title="Скоро">
           <Text style={[styles.soon, { color: theme.textSecondary }]}>
             Telegram-уведомления и подключение банков появятся на следующих этапах.
@@ -457,7 +490,7 @@ export default function Account() {
       </FadeIn>
 
       {me?.role === "admin" ? (
-        <FadeIn index={11}>
+        <FadeIn index={12}>
           <Section title="Админ">
             <NavRow href="/admin" icon="shield" label="Админ-панель" />
           </Section>
@@ -484,6 +517,38 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{title}</Text>
       <Card style={styles.card}>{children}</Card>
     </View>
+  );
+}
+
+/** A NavRow that opens something outside the app instead of routing — the two
+ * Telegram-chat rows stay a plain, undiscoverable-looking row with a "Скоро" pill until
+ * their env var is filled in (EXPO_PUBLIC_SUPPORT_TELEGRAM_URL / _FEEDBACK_TELEGRAM_URL),
+ * matching the onboarding screen's SocialButton "soon" treatment. */
+function SupportRow({
+  icon,
+  label,
+  hint,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  hint?: string;
+  onPress?: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <PressableScale style={styles.row} onPress={onPress} disabled={!onPress}>
+      <View style={[styles.rowIcon, { backgroundColor: theme.accentSoft }]}>
+        <Icon name={icon} color={theme.accent} size={18} />
+      </View>
+      <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>{label}</Text>
+      {hint ? <Text style={[styles.rowValue, { color: theme.textTertiary }]}>{hint}</Text> : null}
+      {onPress ? (
+        <Icon name="chevron" color={theme.textTertiary} size={18} />
+      ) : (
+        <Pill label="Скоро" color={theme.textSecondary} background={theme.surfaceSunken} />
+      )}
+    </PressableScale>
   );
 }
 
@@ -540,7 +605,14 @@ const styles = StyleSheet.create({
   profileText: { flex: 1, gap: 2 },
   name: typography.headline,
   subtitle: typography.caption,
-  planBadge: { borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  planBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: radii.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
   planBadgeText: { ...typography.caption, fontWeight: "700" },
 
   section: { gap: spacing.sm },

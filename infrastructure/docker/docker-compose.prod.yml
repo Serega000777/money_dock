@@ -56,6 +56,9 @@ services:
       args:
         # Baked into the JS bundle at build time; the app calls this for every request.
         EXPO_PUBLIC_API_URL: https://${DOMAIN}/api
+        # Optional t.me chat links — unset means the account screen shows "Скоро" there.
+        EXPO_PUBLIC_SUPPORT_TELEGRAM_URL: ${SUPPORT_TELEGRAM_URL:-}
+        EXPO_PUBLIC_FEEDBACK_TELEGRAM_URL: ${FEEDBACK_TELEGRAM_URL:-}
     restart: unless-stopped
     depends_on:
       - api

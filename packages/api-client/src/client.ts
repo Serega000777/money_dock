@@ -304,6 +304,13 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       get: () => request<Entitlements>("/entitlements"),
     },
 
+    payments: {
+      pricing: () => request<{ starsMonthly: number }>("/payments/pricing"),
+      /** Telegram Stars is the only method wired to a real provider today — see
+       * PaymentsController. The invoice link opens via `Telegram.WebApp.openInvoice`. */
+      starsInvoiceLink: () => post<{ url: string }>("/payments/stars/invoice-link"),
+    },
+
     imports: {
       /** `file` is a browser File/Blob; multipart is built here so screens stay dumb. */
       preview: async (accountId: string, file: Blob, fileName: string) => {

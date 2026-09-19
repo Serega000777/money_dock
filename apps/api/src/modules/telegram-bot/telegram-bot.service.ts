@@ -2,12 +2,22 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 import { parseCorsOrigins, type Env } from "../../config/env";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 import { UsersService } from "../users/users.service";
 
-import type { TelegramMessage, TelegramUpdate } from "./telegram-update";
+import type { TelegramMessage, TelegramSuccessfulPayment, TelegramUpdate } from "./telegram-update";
 
 const SHARE_CONTACT_TEXT = "📱 Поделиться номером";
 const START_TEXT = "🚀 Начать";
+
+/** Whole Stars, no decimal subdivision (unlike real-money currencies) — see
+ * https://core.telegram.org/bots/payments-stars. */
+export const PRO_MONTHLY_STARS = 199;
+const PRO_MONTHLY_DAYS = 30;
+/** Prefix for the invoice payload Telegram echoes back on successful_payment — see
+ * handleSuccessfulPayment. Versioned loosely by including the plan name, so a second
+ * plan/price later doesn't need a payload format change. */
+const STARS_PAYLOAD_PREFIX = "pro_monthly";
 
 const WELCOME_TEXT =
   "Привет! Это Amola 💜\n\n" +
@@ -36,6 +46,7 @@ export class TelegramBotService {
   constructor(
     private readonly config: ConfigService<Env, true>,
     private readonly users: UsersService,
+    private readonly entitlements: EntitlementsService,
   ) {
     this.apiUrl = `https://api.telegram.org/bot${config.get("TELEGRAM_BOT_TOKEN", { infer: true })}`;
 
@@ -56,12 +67,60 @@ export class TelegramBotService {
    * slow or unreachable api.telegram.org must never turn into a slow or failed webhook
    * response — Telegram would just retry the same update. */
   async handleUpdate(update: TelegramUpdate): Promise<void> {
+    if (update.pre_checkout_query) return this.handlePreCheckoutQuery(update.pre_checkout_query.id);
+
     const message = update.message;
     if (!message?.from) return;
 
+    if (message.successful_payment) return this.handleSuccessfulPayment(message);
     if (message.text === "/start") return this.handleStart(message);
     if (message.contact) return this.handleContact(message);
     // Anything else — no command grammar to teach; the share-number keyboard is still up.
+  }
+
+  /** A public link that opens Telegram's native Stars payment sheet — from inside the
+   * Mini App via `Telegram.WebApp.openInvoice`, or from any chat if just shared as a URL.
+   * The payload is what ties a successful payment back to our own user id (see
+   * handleSuccessfulPayment) — nothing about who opens or pays the link identifies them
+   * on its own, since createInvoiceLink isn't addressed to any one chat. */
+  async createStarsInvoiceLink(userId: string): Promise<string> {
+    const body = await this.callApiAwaited("createInvoiceLink", {
+      title: "Amola Finance Pro",
+      description: "Голос и импорт без лимитов, дизайн карт банков — на 30 дней.",
+      payload: `${STARS_PAYLOAD_PREFIX}:${userId}`,
+      currency: "XTR",
+      prices: [{ label: "Pro, 1 месяц", amount: PRO_MONTHLY_STARS }],
+    });
+    const url = (body as { result?: unknown }).result;
+    if (typeof url !== "string") throw new Error("Telegram createInvoiceLink returned no url");
+    return url;
+  }
+
+  /** Telegram blocks the payment on this for up to 10s — always approved: a subscription
+   * has no stock to run out of, and price/currency were already fixed when the invoice
+   * link was created, not something this side could revise now anyway. */
+  private async handlePreCheckoutQuery(id: string): Promise<void> {
+    this.callApi("answerPreCheckoutQuery", { pre_checkout_query_id: id, ok: true });
+  }
+
+  /** The one place a Stars payment is trusted as real — this arrives from Telegram's own
+   * servers (through the same secret-checked webhook every other update does), after
+   * Telegram has already taken the user's Stars, not from anything the client claims. */
+  private async handleSuccessfulPayment(message: TelegramMessage): Promise<void> {
+    const payment = message.successful_payment as TelegramSuccessfulPayment;
+    const [prefix, userId] = payment.invoice_payload.split(":");
+    if (prefix !== STARS_PAYLOAD_PREFIX || !userId) {
+      this.logger.error(`Unrecognized Stars payload: ${payment.invoice_payload}`);
+      return;
+    }
+
+    const expiresAt = new Date(Date.now() + PRO_MONTHLY_DAYS * 86_400_000);
+    await this.entitlements.setPlan(userId, "pro", expiresAt);
+
+    this.callApi("sendMessage", {
+      chat_id: message.chat.id,
+      text: `Готово! Pro активен до ${expiresAt.toLocaleDateString("ru-RU")}. Спасибо 💜`,
+    });
   }
 
   private async handleStart(message: TelegramMessage): Promise<void> {
@@ -141,6 +200,22 @@ export class TelegramBotService {
         inline_keyboard: [[{ text: START_TEXT, web_app: { url: this.miniAppUrl } }]],
       },
     });
+  }
+
+  /** Unlike `callApi`, this one actually rejects and hands back Telegram's parsed
+   * response body — for the few calls (currently just createInvoiceLink) whose result a
+   * caller needs, as opposed to the fire-and-forget replies the webhook path sends. */
+  private async callApiAwaited(method: string, body: Record<string, unknown>): Promise<unknown> {
+    const res = await fetch(`${this.apiUrl}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const parsed: unknown = await res.json();
+    if (!res.ok || (parsed as { ok?: boolean }).ok !== true) {
+      throw new Error(`Telegram ${method} failed: ${res.status} ${JSON.stringify(parsed)}`);
+    }
+    return parsed;
   }
 
   /** Never rejects and is deliberately not awaited by the webhook path — see

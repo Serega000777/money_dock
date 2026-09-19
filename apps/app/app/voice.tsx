@@ -13,6 +13,7 @@ import { Icon } from "../src/ui/Icon";
 import { PulseRing } from "../src/ui/PulseRing";
 import { Text } from "../src/ui/Text";
 import { Card, FadeIn, PressableScale, Screen } from "../src/ui/primitives";
+import { apiErrorMessage, isPlanLimitError } from "../src/utils/apiError";
 import { useSpeechRecognition } from "../src/voice/useSpeechRecognition";
 
 const EXAMPLES = [
@@ -49,9 +50,11 @@ export default function Voice() {
             setError(null);
             setDraft(result);
           },
-          onError: (e: Error) => {
+          onError: (e) => {
             setDraft(null);
-            setError(e.message.replace(/^\d+\s*/, ""));
+            // The paywall modal (opened by useVoiceCapture's own onError) already
+            // explains a plan-limit 403 — no need to duplicate that as inline text.
+            setError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать команду"));
           },
         },
       );

@@ -46,6 +46,11 @@ export type IconName =
   | "receipt"
   | "bulb"
   | "camera"
+  | "crown"
+  | "headset"
+  | "mail"
+  | "star"
+  | "bank"
   // categories
   | "cart"
   | "cutlery"
@@ -354,6 +359,48 @@ export function Icon({ name, color, size = 24, strokeWidth = 1.7, filled = false
         <>
           <Path d="M9 4.6h6l1.2 2.2h2.4a1.6 1.6 0 0 1 1.6 1.6v9a1.6 1.6 0 0 1-1.6 1.6H5.4a1.6 1.6 0 0 1-1.6-1.6v-9a1.6 1.6 0 0 1 1.6-1.6h2.4z" {...s} />
           <Circle cx="12" cy="13" r="3.4" {...s} />
+        </>
+      ) : null}
+
+      {name === "crown" ? (
+        <Path
+          d="M4.4 9.2 8 12l4-6.4L16 12l3.6-2.8-1.3 9.2H5.7Z"
+          fill={color}
+          stroke="none"
+        />
+      ) : null}
+
+      {name === "headset" ? (
+        <>
+          <Path d="M4.4 13.4v-1.8a7.6 7.6 0 0 1 15.2 0v1.8" {...s} />
+          <Path
+            d="M4.4 13.4h1.8a1.4 1.4 0 0 1 1.4 1.4v2.8a1.4 1.4 0 0 1-1.4 1.4H4.4Zm15.2 0h-1.8a1.4 1.4 0 0 0-1.4 1.4v2.8a1.4 1.4 0 0 0 1.4 1.4h1.8Z"
+            {...s}
+          />
+          <Path d="M17.4 19.4a3.4 3.4 0 0 1-3.4 2.2h-1.2" {...s} />
+        </>
+      ) : null}
+
+      {name === "mail" ? (
+        <>
+          <Rect x="3.6" y="5.8" width="16.8" height="12.4" rx="2.2" {...s} />
+          <Path d="M4.4 7.2 12 13l7.6-5.8" {...s} />
+        </>
+      ) : null}
+
+      {name === "star" ? (
+        <Path
+          d="M12 3.6l2.5 5.2 5.7.7-4.2 4 1.1 5.7L12 16.4l-5.1 2.8 1.1-5.7-4.2-4 5.7-.7Z"
+          fill={color}
+          stroke="none"
+        />
+      ) : null}
+
+      {name === "bank" ? (
+        <>
+          <Path d="M4 9.4 12 4.4l8 5" {...s} />
+          <Path d="M5 9.4h14v2H5zM6 11.4v6.6M10 11.4v6.6M14 11.4v6.6M18 11.4v6.6" {...s} />
+          <Path d="M4.4 19.6h15.2" {...s} />
         </>
       ) : null}
 

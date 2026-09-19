@@ -4,8 +4,8 @@
     {
       "name": "app-web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@money-dock/app", "web"],
-      "port": 8081
+      "runtimeArgs": ["--filter", "@money-dock/app", "web", "--", "--port", "8090"],
+      "port": 8090
     },
     {
       "name": "api",
