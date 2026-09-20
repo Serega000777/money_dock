@@ -113,6 +113,13 @@
       "when": 1789463927317,
       "tag": "0015_neat_edwin_jarvis",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789857762641,
+      "tag": "0016_new_franklin_richards",
+      "breakpoints": true
     }
   ]
 }

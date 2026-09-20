@@ -14,6 +14,14 @@ import { users } from "./users";
 /** Deliberately three tiers, not four — the spec calls out competitors' confusing ladders. */
 export const planEnum = pgEnum("plan", ["free", "pro", "pro_bank"]);
 
+/** Telegram may deliver the same payment more than once. */
+export const starsPayments = pgTable("stars_payments", {
+  chargeId: text("charge_id").primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const subscriptions = pgTable(
   "subscriptions",
   {

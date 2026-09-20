@@ -69,7 +69,7 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
       initData,
       user: webApp?.initDataUnsafe.user ?? null,
       startParam: webApp?.initDataUnsafe.start_param ?? null,
-      colorScheme,
+      colorScheme: initData ? colorScheme : null,
     };
   }, [webApp, colorScheme]);
 

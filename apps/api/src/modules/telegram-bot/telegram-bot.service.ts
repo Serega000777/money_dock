@@ -67,7 +67,7 @@ export class TelegramBotService {
    * slow or unreachable api.telegram.org must never turn into a slow or failed webhook
    * response — Telegram would just retry the same update. */
   async handleUpdate(update: TelegramUpdate): Promise<void> {
-    if (update.pre_checkout_query) return this.handlePreCheckoutQuery(update.pre_checkout_query.id);
+    if (update.pre_checkout_query) return this.handlePreCheckoutQuery(update.pre_checkout_query);
 
     const message = update.message;
     if (!message?.from) return;
@@ -99,8 +99,18 @@ export class TelegramBotService {
   /** Telegram blocks the payment on this for up to 10s — always approved: a subscription
    * has no stock to run out of, and price/currency were already fixed when the invoice
    * link was created, not something this side could revise now anyway. */
-  private async handlePreCheckoutQuery(id: string): Promise<void> {
-    this.callApi("answerPreCheckoutQuery", { pre_checkout_query_id: id, ok: true });
+  private paymentUser(payment: { invoice_payload: string; currency: string; total_amount: number }): string | null {
+    const match = /^pro_monthly:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(payment.invoice_payload);
+    return match && payment.currency === "XTR" && payment.total_amount === PRO_MONTHLY_STARS ? match[1]! : null;
+  }
+
+  private async handlePreCheckoutQuery(query: NonNullable<TelegramUpdate["pre_checkout_query"]>): Promise<void> {
+    const userId = this.paymentUser(query);
+    const ok = Boolean(userId && await this.entitlements.hasUser(userId));
+    await this.callApiAwaited("answerPreCheckoutQuery", {
+      pre_checkout_query_id: query.id, ok,
+      ...(!ok ? { error_message: "Счёт устарел. Откройте Amola и создайте новый платёж." } : {}),
+    });
   }
 
   /** The one place a Stars payment is trusted as real — this arrives from Telegram's own
@@ -108,18 +118,18 @@ export class TelegramBotService {
    * Telegram has already taken the user's Stars, not from anything the client claims. */
   private async handleSuccessfulPayment(message: TelegramMessage): Promise<void> {
     const payment = message.successful_payment as TelegramSuccessfulPayment;
-    const [prefix, userId] = payment.invoice_payload.split(":");
-    if (prefix !== STARS_PAYLOAD_PREFIX || !userId) {
-      this.logger.error(`Unrecognized Stars payload: ${payment.invoice_payload}`);
+    const userId = this.paymentUser(payment);
+    if (!userId || !payment.telegram_payment_charge_id) {
+      this.logger.error("Invalid Stars payment details");
       return;
     }
 
-    const expiresAt = new Date(Date.now() + PRO_MONTHLY_DAYS * 86_400_000);
-    await this.entitlements.setPlan(userId, "pro", expiresAt);
+    const applied = await this.entitlements.applyStarsPayment(userId, payment.telegram_payment_charge_id, payment.total_amount, PRO_MONTHLY_DAYS);
+    if (!applied) return;
 
     this.callApi("sendMessage", {
       chat_id: message.chat.id,
-      text: `Готово! Pro активен до ${expiresAt.toLocaleDateString("ru-RU")}. Спасибо 💜`,
+      text: `Готово! Pro активен${applied.expiresAt ? ` до ${applied.expiresAt.toLocaleDateString("ru-RU")}` : " без ограничения срока"}. Спасибо 💜`,
     });
   }
 

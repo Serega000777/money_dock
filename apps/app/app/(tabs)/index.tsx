@@ -806,7 +806,7 @@ function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
           bank={account.bank as Bank}
           last4={account.cardLast4}
           compact
-          fillStyle={{ top: -14, right: -14, bottom: -14, left: -14 }}
+            fillStyle={{ top: 0, right: 0, bottom: 0, left: 0 }}
         />
       ) : !vivid && theme.decorGlow ? (
         <GlowBlob top="-25%" left="55%" size={140} color={theme.decorGlow} opacity={0.35} />
@@ -1066,11 +1066,12 @@ const styles = StyleSheet.create({
   accountsAll: { ...typography.callout, fontWeight: "600" },
   accountsRow: { flexDirection: "row", gap: spacing.sm, paddingRight: spacing.xs },
   accountTile: {
-    width: 168,
+    width: 272,
+    flexShrink: 0,
     // The reference's card is ~115px at its 430px width; taller than this and
     // space-between opens a gap between the name block and the balance that the
     // reference doesn't have.
-    minHeight: 104,
+    minHeight: 160,
     justifyContent: "space-between",
     // The reference's 16px padding scaled to a 390px phone — also what buys the name
     // enough room to fit "Основная карта" without an ellipsis.

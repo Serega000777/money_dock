@@ -12,6 +12,7 @@ import { useAuthStore } from "../src/auth/authStore";
 import { PaywallModal } from "../src/features/paywall";
 import { OnboardingFlow } from "../src/onboarding/OnboardingFlow";
 import { TelegramProvider, useTelegram } from "../src/telegram/TelegramProvider";
+import { hydrateSettings } from "../src/theme/settingsStore";
 import { useTheme } from "../src/theme/useTheme";
 import { BootScreen } from "../src/ui/BootScreen";
 
@@ -91,6 +92,7 @@ function ThemedStack() {
 }
 
 export default function RootLayout() {
+  useEffect(hydrateSettings, []);
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>

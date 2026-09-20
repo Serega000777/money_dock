@@ -80,6 +80,7 @@ export class TransactionsService {
     }
 
     return this.db.transaction(async (tx) => {
+      await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for("update");
       const [existing] = await tx
         .select()
         .from(transactions)

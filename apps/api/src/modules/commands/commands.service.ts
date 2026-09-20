@@ -5,7 +5,7 @@ import { and, eq, inArray, isNull, or } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
-import { accounts, categories, categoryRules, reviewItems, users } from "../../db/schema";
+import { accounts, categories, categoryRules, reviewItems, transactions, users } from "../../db/schema";
 import { CategorizationService } from "../categorization/categorization.service";
 import { EntitlementsService } from "../entitlements/entitlements.service";
 import { TransactionsService } from "../transactions/transactions.service";
@@ -83,12 +83,17 @@ export class CommandsService {
       { source: transactionSource, status: "needs_review" },
     );
 
-    await this.db.insert(reviewItems).values({
-      userId,
-      transactionId: transaction.id,
-      reason: "unconfirmed_capture",
-      confidence: Math.round(draft.confidence * 100),
-      suggestedJson: draft.categoryId ? { categoryId: draft.categoryId } : null,
+    await this.db.transaction(async (tx) => {
+      await tx.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, transaction.id)).for("update");
+      const [existing] = await tx.select({ id: reviewItems.id }).from(reviewItems)
+        .where(eq(reviewItems.transactionId, transaction.id));
+      if (!existing && transaction.status === "needs_review") await tx.insert(reviewItems).values({
+        userId,
+        transactionId: transaction.id,
+        reason: "unconfirmed_capture",
+        confidence: Math.round(draft.confidence * 100),
+        suggestedJson: draft.categoryId ? { categoryId: draft.categoryId } : null,
+      });
     });
 
     return transaction;

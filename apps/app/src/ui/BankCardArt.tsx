@@ -105,7 +105,7 @@ export function BankCardArt({
         <Rect x="0" y="0" width={W} height={H} rx="18" fill={`url(#${id})`} />
         <Rect x="0" y="0" width={W} height={H} rx="18" fill={`url(#${glowId})`} />
         <Path
-          d="M176 -8C150 50 139 108 126 184M226 -8C195 51 184 117 167 184M278 -8C242 55 224 122 207 184"
+          d="M260 -8C226 58 176 75 126 184M308 38C219 45 190 108 167 184M310 92C256 106 224 143 207 184"
           stroke={style.glow}
           strokeWidth={compact ? 1.2 : 1.8}
           fill="none"
@@ -170,7 +170,7 @@ export function BankCardArt({
               fill={style.labelColor}
               opacity={0.85}
             >
-              {`•••• ${last4 ?? "0000"}`}
+              {last4 ? `•••• ${last4}` : "•••• ••••"}
             </SvgText>
           </>
         )}

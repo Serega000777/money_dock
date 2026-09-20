@@ -45,6 +45,7 @@ export function useVoiceCapture() {
         amountMinor: confirmed.amountMinor,
         currency: confirmed.currency,
         occurredAt: confirmed.occurredAt,
+        note: confirmed.description ?? undefined,
         clientId: generateClientId(),
       });
     },

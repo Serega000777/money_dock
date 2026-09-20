@@ -35,6 +35,7 @@ export default function Upgrade() {
   const { data: entitlements } = useQuery({
     queryKey: ["entitlements"],
     queryFn: () => apiClient.entitlements.get(),
+    refetchInterval: status === "paid" ? 2000 : false,
   });
   const { data: pricing } = useQuery({
     queryKey: ["payments-pricing"],
@@ -114,7 +115,7 @@ export default function Upgrade() {
           <Card style={styles.doneCard}>
             <Icon name="check" color={theme.positive} size={22} strokeWidth={2.2} />
             <Text style={[styles.doneText, { color: theme.textPrimary }]}>
-              Готово! Pro активирован
+                Оплата получена. Проверяем активацию Pro… Если проверка задержалась, вернитесь в кабинет чуть позже.
             </Text>
             <PressableScale onPress={() => router.back()}>
               <Text style={[styles.doneBack, { color: theme.accent }]}>Вернуться</Text>

@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
-import { subscriptions, usageCounters, users } from "../../db/schema";
+import { starsPayments, subscriptions, usageCounters, users } from "../../db/schema";
 
 export type Plan = "free" | "pro" | "pro_bank";
 export type MeteredFeature = "voice" | "import";
@@ -28,6 +28,31 @@ export interface Entitlements {
 @Injectable()
 export class EntitlementsService {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
+
+  async hasUser(userId: string): Promise<boolean> {
+    const [user] = await this.db.select({ id: users.id }).from(users).where(eq(users.id, userId));
+    return Boolean(user);
+  }
+
+  async applyStarsPayment(userId: string, chargeId: string, amount: number, days: number) {
+    return this.db.transaction(async (tx) => {
+      // Serialize distinct payments for the same account, including its first subscription.
+      const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for("update");
+      if (!user) throw new Error("Payment account not found");
+      const inserted = await tx.insert(starsPayments).values({ userId, chargeId, amount })
+        .onConflictDoNothing().returning();
+      if (!inserted.length) return null;
+      const [current] = await tx.select().from(subscriptions).where(eq(subscriptions.userId, userId));
+      const active = current && current.plan !== "free" && (!current.expiresAt || current.expiresAt.getTime() > Date.now());
+      const perpetual = active && !current.expiresAt;
+      const expiresAt = perpetual ? null : new Date(Math.max(Date.now(), active ? current.expiresAt!.getTime() : 0) + days * 86_400_000);
+      const plan = active ? current.plan : "pro";
+      await tx.insert(subscriptions).values({ userId, plan, expiresAt }).onConflictDoUpdate({
+        target: subscriptions.userId, set: { plan, expiresAt, updatedAt: new Date() },
+      });
+      return { expiresAt };
+    });
+  }
 
   async getPlan(userId: string): Promise<Plan> {
     // The app's one operator (ADMIN_TELEGRAM_IDS, see AuthService) shouldn't have to also

@@ -50,7 +50,8 @@ function save(settings: Settings): void {
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
-  ...load(),
+  // Match the static HTML on the first client render; restore preferences after hydration.
+  ...defaults,
   setThemeMode: (themeMode) => {
     save({ ...get(), themeMode });
     set({ themeMode });
@@ -68,3 +69,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ homeRightMetric });
   },
 }));
+
+export function hydrateSettings(): void {
+  useSettingsStore.setState(load());
+}
