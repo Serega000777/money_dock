@@ -24,7 +24,10 @@ interface SettingsState extends Settings {
 
 const STORAGE_KEY = "money-dock-settings";
 const defaults: Settings = {
-  themeMode: "system",
+  // Dark by default for everyone who hasn't explicitly picked "Светлая" — also what keeps
+  // the very first paint (before hydrateSettings restores a saved choice) matching a
+  // dark-mode user's real preference instead of flashing light first.
+  themeMode: "dark",
   textScale: "medium",
   homeLeftMetric: "expense",
   homeRightMetric: "free",
