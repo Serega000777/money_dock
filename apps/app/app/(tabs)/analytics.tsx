@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
+import { TransactionDetailSheet } from "../../src/features/transactionDetail";
 import { useTheme } from "../../src/theme/useTheme";
 import { BarChart, type Bar } from "../../src/ui/BarChart";
 import { Donut, type DonutSlice } from "../../src/ui/Donut";
@@ -195,6 +196,7 @@ export default function Analytics() {
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
   const [picker, setPicker] = useState<"month" | "year" | "custom" | null>(null);
   const [openCategory, setOpenCategory] = useState<CategoryTotal | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const accessToken = useAuthStore((state) => state.accessToken);
   const enabled = Boolean(accessToken);
 
@@ -463,9 +465,18 @@ export default function Analytics() {
             )}
             color={openCategory.color}
             icon={openCategory.icon}
+            onSelect={setEditingTransaction}
           />
         ) : null}
       </BottomSheet>
+
+      {editingTransaction ? (
+        <TransactionDetailSheet
+          transaction={editingTransaction}
+          categories={categories ?? []}
+          onClose={() => setEditingTransaction(null)}
+        />
+      ) : null}
 
       {picker === "month" ? (
         <MonthPickerSheet
@@ -520,10 +531,12 @@ function CategoryTransactions({
   transactions,
   color,
   icon,
+  onSelect,
 }: {
   transactions: Transaction[];
   color: string;
   icon: IconName;
+  onSelect: (transaction: Transaction) => void;
 }) {
   const theme = useTheme();
   const sorted = [...transactions].sort(
@@ -545,7 +558,11 @@ function CategoryTransactions({
           {index > 0 ? (
             <View style={[styles.categoryDivider, { backgroundColor: theme.border }]} />
           ) : null}
-          <View style={styles.categoryRow}>
+          <Pressable
+            style={styles.categoryRow}
+            onPress={() => onSelect(tx)}
+            accessibilityLabel={`Операция: ${tx.merchant ?? "без описания"}`}
+          >
             <View style={[styles.dot, { backgroundColor: `${color}1F` }]}>
               <Icon name={icon} color={color} size={16} />
             </View>
@@ -566,7 +583,8 @@ function CategoryTransactions({
             <Text style={[styles.categoryAmount, { color: theme.textPrimary }]}>
               −{formatMinor(tx.amountMinor)} ₽
             </Text>
-          </View>
+            <Icon name="chevron" color={theme.textTertiary} size={14} />
+          </Pressable>
         </View>
       ))}
     </ScrollView>
