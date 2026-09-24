@@ -54,7 +54,7 @@ const INCOME_WORDS = [
   "подарили",
   "продал",
 ];
-const EXPENSE_WORDS = ["потрат", "расход", "купил", "заплатил", "оплатил", "потратил"];
+const EXPENSE_WORDS = ["потрат", "трат", "расход", "купил", "заплатил", "оплатил", "потратил"];
 
 /**
  * Category hints keyed by the system_code seeded in the categories table, split by
@@ -239,9 +239,19 @@ function parseSpelledNumber(text: string): number | null {
 
 /** Digits first ("2500", "2 500", "1500.50"), then spelled-out numbers. */
 function extractAmountMinor(text: string): number | null {
-  const digits = text.match(/\d[\d\s\u00A0]*(?:[.,]\d{1,2})?/);
+  const digits = text.match(/\d[\d\s\u00A0.,]*\d|\d/);
   if (digits) {
-    const cleaned = digits[0].replace(/[\s\u00A0]/g, "").replace(",", ".");
+    const raw = digits[0];
+    // Kopecks are always 1-2 digits, so a "."/"," is only a decimal separator when it's
+    // immediately followed by 1-2 digits with nothing after; a trailing group of exactly
+    // 3 digits can't be kopecks, so it must be a thousands separator instead. Android's
+    // voice-to-text often writes a spoken amount as "20.000"/"20,000" rather than
+    // "20000"/"20 000" (thousands grouping) -- reading that trailing "000" as kopecks
+    // used to silently divide the amount by 1000.
+    const decimalTail = raw.match(/[.,](\d{1,2})$/);
+    const wholePart = decimalTail ? raw.slice(0, -decimalTail[0].length) : raw;
+    const cleaned =
+      wholePart.replace(/[\s\u00A0.,]/g, "") + (decimalTail ? `.${decimalTail[1]}` : "");
     const value = Number(cleaned);
     if (Number.isFinite(value) && value > 0) {
       // No  here: JS word boundaries are ASCII-only and never match after a Cyrillic

@@ -33,12 +33,31 @@ describe("parseCommand — amounts", () => {
   it("throws on empty input", () => {
     expect(() => parseCommand("   ")).toThrow(CommandParseError);
   });
+
+  it("reads a dot or comma used as a thousands separator, not kopecks", () => {
+    // Android's voice-to-text sometimes writes a spoken "20 тысяч" as "20.000"/"20,000"
+    // instead of "20000"/"20 000" — a trailing 3-digit group after "."/"," can never be
+    // kopecks (those are always 1-2 digits), so it must be read as full thousands.
+    expect(parseCommand("добавь трату свадьба 20.000 рублей").amountMinor).toBe(2_000_000);
+    expect(parseCommand("добавь трату свадьба 20,000 рублей").amountMinor).toBe(2_000_000);
+    expect(parseCommand("потратил 1.234.567 рублей").amountMinor).toBe(123_456_700);
+  });
+
+  it("still reads a genuine 1-2 digit decimal after the thousands fix", () => {
+    expect(parseCommand("потратил 20.5 рублей").amountMinor).toBe(2_050);
+    expect(parseCommand("потратил 20000,00 рублей").amountMinor).toBe(2_000_000);
+  });
 });
 
 describe("parseCommand — type", () => {
   it("treats spending words as an expense", () => {
     expect(parseCommand("потратил 500 рублей").type).toBe("expense");
     expect(parseCommand("купил кофе за 300").type).toBe("expense");
+  });
+
+  it('recognizes "добавь трату" — the imperative noun form, not just "потратил"', () => {
+    expect(parseCommand("добавь трату свадьба 20000 рублей").type).toBe("expense");
+    expect(parseCommand("добавь трату свадьба 20000 рублей").matched).toContain("type");
   });
 
   it("treats income words as income", () => {

@@ -24,7 +24,20 @@ const COLUMN_WIDTH = 26;
  * Spending over the period. Bars grow once on mount and on every period change; the
  * tapped bar reveals its own amount, so the chart carries numbers without a legend.
  */
-export function BarChart({ bars, accent }: { bars: Bar[]; accent: string }) {
+export function BarChart({
+  bars,
+  accent,
+  caption = "Динамика расходов",
+  formatValue = (value) => `${formatMinor(value)} ₽`,
+}: {
+  bars: Bar[];
+  accent: string;
+  /** Header label shown when no bar is selected — defaults to the spending-chart copy. */
+  caption?: string;
+  /** How the selected bar's value renders — defaults to money; pass a plain formatter
+   * (e.g. `String`) for a chart of counts, like the admin dashboard's signups trend. */
+  formatValue?: (value: number) => string;
+}) {
   const theme = useTheme();
   const [selected, setSelected] = useState<string | null>(null);
   const grow = useRef(new Animated.Value(0)).current;
@@ -84,10 +97,10 @@ export function BarChart({ bars, accent }: { bars: Bar[]; accent: string }) {
     <View style={styles.wrap}>
       <View style={styles.headerRow}>
         <Text style={[styles.caption, { color: theme.textSecondary }]}>
-          {active ? active.label : "Динамика расходов"}
+          {active ? active.label : caption}
         </Text>
         <Text style={[styles.value, { color: theme.textPrimary }]}>
-          {active ? `${formatMinor(active.value)} ₽` : ""}
+          {active ? formatValue(active.value) : ""}
         </Text>
       </View>
 

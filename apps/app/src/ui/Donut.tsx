@@ -25,7 +25,17 @@ const C = 2 * Math.PI * R;
  * on the wrapper — the SVG itself never re-renders while it animates, which is what keeps
  * this cheap on a low-end phone inside Telegram.
  */
-export function Donut({ slices, caption }: { slices: DonutSlice[]; caption: string }) {
+export function Donut({
+  slices,
+  caption,
+  formatValue = (value) => `${formatMinor(value)} ₽`,
+}: {
+  slices: DonutSlice[];
+  caption: string;
+  /** How the centre value renders — defaults to money; pass a plain formatter (e.g.
+   * `String`) for a donut of counts, like the admin dashboard's plan breakdown. */
+  formatValue?: (value: number) => string;
+}) {
   const theme = useTheme();
   const [selected, setSelected] = useState<string | null>(null);
   const reveal = useRef(new Animated.Value(0)).current;
@@ -103,7 +113,7 @@ export function Donut({ slices, caption }: { slices: DonutSlice[]; caption: stri
 
         <View style={styles.center} pointerEvents="none">
           <Text style={[styles.centerValue, { color: theme.textPrimary }]} numberOfLines={1}>
-            {formatMinor(centerValue)} ₽
+            {formatValue(centerValue)}
           </Text>
           <Text style={[styles.centerLabel, { color: theme.textSecondary }]} numberOfLines={1}>
             {centerLabel}

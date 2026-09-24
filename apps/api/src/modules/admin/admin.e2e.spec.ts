@@ -78,6 +78,11 @@ describe("Admin panel (e2e)", () => {
     expect(stats.body.totalUsers).toBeGreaterThanOrEqual(2);
     expect(typeof stats.body.activeToday).toBe("number");
     expect(typeof stats.body.totalAccounts).toBe("number");
+    expect(stats.body.planBreakdown.free).toBeGreaterThanOrEqual(2);
+    expect(typeof stats.body.starsRevenue.total).toBe("number");
+    expect(typeof stats.body.starsRevenue.last30Days).toBe("number");
+    expect(stats.body.signupsByDay).toHaveLength(14);
+    expect(stats.body.signupsByDay.at(-1).count).toBeGreaterThanOrEqual(2);
 
     const found = await authed("get", "/admin/users?query=AdminE2E&limit=50", adminToken).expect(200);
     expect(found.body.map((u: { id: string }) => u.id)).toContain(plainUserId);
@@ -93,6 +98,9 @@ describe("Admin panel (e2e)", () => {
     const entitlements = await authed("get", "/entitlements", plainToken).expect(200);
     expect(entitlements.body.plan).toBe("pro");
     expect(entitlements.body.limits.voice).toBe(-1);
+
+    const stats = await authed("get", "/admin/stats", adminToken).expect(200);
+    expect(stats.body.planBreakdown.pro).toBeGreaterThanOrEqual(1);
   });
 
   it("a plain user cannot gift themselves a subscription", async () => {

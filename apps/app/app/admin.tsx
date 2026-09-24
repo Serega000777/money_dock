@@ -7,11 +7,15 @@ import { ActivityIndicator, StyleSheet, TextInput, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
 import { useTheme } from "../src/theme/useTheme";
-import { Icon } from "../src/ui/Icon";
+import { BarChart } from "../src/ui/BarChart";
+import { Donut } from "../src/ui/Donut";
+import { GradientBox } from "../src/ui/Gradient";
+import { Icon, type IconName } from "../src/ui/Icon";
 import { Text } from "../src/ui/Text";
 import { BottomSheet, Card, FadeIn, Pill, PressableScale, Screen, Segmented } from "../src/ui/primitives";
 
 const PLAN_LABEL: Record<Plan, string> = { free: "Free", pro: "Pro", pro_bank: "Pro + Банк" };
+const PLAN_COLOR: Record<Plan, string> = { free: "#9AA0B3", pro: "#7C4DFF", pro_bank: "#F5B841" };
 const DAY_OPTIONS: { value: string; label: string }[] = [
   { value: "7", label: "7 дней" },
   { value: "30", label: "30 дней" },
@@ -21,6 +25,14 @@ const DAY_OPTIONS: { value: string; label: string }[] = [
 function formatLastActive(value: string | null): string {
   if (!value) return "ещё не заходил";
   return new Date(value).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+}
+
+function shortDayLabel(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "UTC",
+  });
 }
 
 /** Owner-only view: registration/activity counts, and gifting a subscription by hand
@@ -64,15 +76,69 @@ export default function Admin() {
       <Stack.Screen options={{ headerShown: true, title: "Админ-панель" }} />
 
       <FadeIn index={0}>
-        <View style={styles.statsGrid}>
-          <StatCard label="Всего пользователей" value={stats?.totalUsers} />
-          <StatCard label="Активны за сутки" value={stats?.activeToday} />
-          <StatCard label="Активны за 30 дней" value={stats?.activeLast30Days} />
-          <StatCard label="Всего счетов" value={stats?.totalAccounts} />
-        </View>
+        <GradientBox colors={theme.accentGradient} diagonal highlight radius={radii.lg} style={styles.revenueCard}>
+          <View style={styles.revenueHead}>
+            <View style={styles.revenueBadge}>
+              <Icon name="star" color="#FFFFFF" size={22} />
+            </View>
+            <View style={styles.revenueText}>
+              <Text style={styles.revenueLabel}>Выручка Telegram Stars</Text>
+              <Text style={styles.revenueValue}>
+                {stats?.starsRevenue.total ?? "—"} <Text style={styles.revenueUnit}>⭐</Text>
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.revenueSub}>
+            За 30 дней: {stats?.starsRevenue.last30Days ?? "—"} ⭐
+          </Text>
+        </GradientBox>
       </FadeIn>
 
       <FadeIn index={1}>
+        <View style={styles.statsGrid}>
+          <StatCard icon="person" label="Всего пользователей" value={stats?.totalUsers} />
+          <StatCard icon="chart" label="Активны за сутки" value={stats?.activeToday} />
+          <StatCard icon="chart" label="Активны за 30 дней" value={stats?.activeLast30Days} />
+          <StatCard icon="card" label="Всего счетов" value={stats?.totalAccounts} />
+        </View>
+      </FadeIn>
+
+      {stats ? (
+        <FadeIn index={2}>
+          <Card style={styles.dashboardCard}>
+            <Text style={[styles.dashboardTitle, { color: theme.textSecondary }]}>Тарифы</Text>
+            <Donut
+              caption="Пользователей"
+              formatValue={(value) => String(value)}
+              slices={(Object.keys(PLAN_LABEL) as Plan[]).map((plan) => ({
+                id: plan,
+                label: PLAN_LABEL[plan],
+                color: PLAN_COLOR[plan],
+                value: stats.planBreakdown[plan],
+              }))}
+            />
+          </Card>
+        </FadeIn>
+      ) : null}
+
+      {stats ? (
+        <FadeIn index={3}>
+          <Card style={styles.dashboardCard}>
+            <BarChart
+              accent={theme.accent}
+              caption="Регистрации по дням"
+              formatValue={(value) => String(value)}
+              bars={stats.signupsByDay.map((day) => ({
+                key: day.date,
+                label: shortDayLabel(day.date),
+                value: day.count,
+              }))}
+            />
+          </Card>
+        </FadeIn>
+      ) : null}
+
+      <FadeIn index={4}>
         <Card style={styles.searchCard}>
           <View style={[styles.searchRow, { backgroundColor: theme.surfaceSunken }]}>
             <Icon name="person" color={theme.textTertiary} size={16} />
@@ -95,7 +161,7 @@ export default function Admin() {
       ) : null}
 
       {(users ?? []).map((user: AdminUserSummary, index: number) => (
-        <FadeIn key={user.id} index={Math.min(index + 2, 8)}>
+        <FadeIn key={user.id} index={Math.min(index + 5, 10)}>
           <Card style={styles.userCard}>
             <View style={styles.userHeader}>
               <Text style={[styles.userName, { color: theme.textPrimary }]} numberOfLines={1}>
@@ -156,10 +222,21 @@ export default function Admin() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number | undefined }) {
+function StatCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: IconName;
+  label: string;
+  value: number | undefined;
+}) {
   const theme = useTheme();
   return (
-    <Card gradient style={styles.statCard}>
+    <Card style={styles.statCard}>
+      <View style={[styles.statIcon, { backgroundColor: theme.accentSoft }]}>
+        <Icon name={icon} color={theme.accent} size={16} />
+      </View>
       <Text style={[styles.statValue, { color: theme.textPrimary }]}>{value ?? "—"}</Text>
       <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{label}</Text>
     </Card>
@@ -167,9 +244,36 @@ function StatCard({ label, value }: { label: string; value: number | undefined }
 }
 
 const styles = StyleSheet.create({
+  revenueCard: { gap: spacing.sm, padding: spacing.lg },
+  revenueHead: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  revenueBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: radii.pill,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  revenueText: { gap: 2 },
+  revenueLabel: { ...typography.caption, color: "rgba(255,255,255,0.85)" },
+  revenueValue: { ...typography.display, fontSize: 26, color: "#FFFFFF" },
+  revenueUnit: { ...typography.headline, color: "rgba(255,255,255,0.85)" },
+  revenueSub: { ...typography.callout, color: "rgba(255,255,255,0.85)" },
+
+  dashboardCard: { gap: spacing.md },
+  dashboardTitle: { ...typography.overline, textTransform: "uppercase" },
+
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
-  statCard: { width: "47%", gap: 2 },
-  statValue: { ...typography.display, fontSize: 28 },
+  statCard: { width: "47%", gap: 4 },
+  statIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: radii.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+  },
+  statValue: { ...typography.display, fontSize: 26 },
   statLabel: typography.caption,
 
   searchCard: { padding: spacing.sm },

@@ -10,6 +10,14 @@ export interface AdminStats {
    * from `totalUsers`: how many wallets people have actually set up, not how many people
    * signed up. */
   totalAccounts: number;
+  /** How many users are on each tier right now — the raw stored plan (a missing
+   * subscription row counts as `free`), same definition AdminUserSummary.plan uses. */
+  planBreakdown: Record<Plan, number>;
+  /** Telegram Stars actually collected (in Stars, not minor units — Stars has no
+   * fractional unit) — the one real revenue number until another payment method ships. */
+  starsRevenue: { total: number; last30Days: number };
+  /** New signups per calendar day (UTC) for the last 14 days, oldest first. */
+  signupsByDay: { date: string; count: number }[];
 }
 
 export interface AdminUserSummary {
