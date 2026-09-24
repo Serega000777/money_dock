@@ -1,6 +1,6 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
-import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
 import type { ShortcutCaptureInput } from "@money-dock/validation";
 
 import type { Database } from "../../db/client";
@@ -32,14 +32,23 @@ export class ShortcutsService {
 
   async authenticate(token: string): Promise<string> {
     const now = new Date();
-    const [credential] = await this.db.select().from(shortcutCredentials).where(and(eq(shortcutCredentials.tokenHash, hash(token)), isNull(shortcutCredentials.revokedAt), or(isNull(shortcutCredentials.expiresAt), sql`${shortcutCredentials.expiresAt} > ${now}`)));
+    // gt(), not a raw sql`... > ${now}` template — interpolating a plain Date into raw
+    // sql skips drizzle's column-aware parameter binding, and postgres.js was sending
+    // Postgres the JS Date's locale string (e.g. "Thu Sep 24 2026 ... (GMT-0400)"),
+    // which it can't parse as a timestamp, so every request with an expiring credential
+    // 500'd instead of authenticating.
+    const [credential] = await this.db.select().from(shortcutCredentials).where(and(eq(shortcutCredentials.tokenHash, hash(token)), isNull(shortcutCredentials.revokedAt), or(isNull(shortcutCredentials.expiresAt), gt(shortcutCredentials.expiresAt, now))));
     if (!credential) throw new UnauthorizedException("Invalid or revoked Shortcut token");
     await this.db.update(shortcutCredentials).set({ lastUsedAt: now }).where(eq(shortcutCredentials.id, credential.id));
     return credential.userId;
   }
 
   async capture(userId: string, input: ShortcutCaptureInput) {
-    const tx = await this.commands.capture(userId, input.input, input.mode, input.clientRequestId, input.walletId, "shortcut");
+    // A client that can't build its own UUID (most generic Android "HTTP request"
+    // shortcut apps) just omits it — this only costs that one request retry-safety, not
+    // correctness, since a fresh id here can never collide with a real duplicate.
+    const clientRequestId = input.clientRequestId ?? randomUUID();
+    const tx = await this.commands.capture(userId, input.input, input.mode, clientRequestId, input.walletId, "shortcut");
     const sign = tx.type === "income" ? "+" : "−";
     return { success: true, transaction: tx, message: `${sign}${new Intl.NumberFormat("ru-RU").format(tx.amountMinor / 100)} ₽` };
   }
