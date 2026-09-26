@@ -2,7 +2,7 @@ import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type { Category, Transaction } from "@money-dock/shared-types";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View, type ViewStyle } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
@@ -33,6 +33,7 @@ type CalendarPeriod = "week" | "month" | "year";
 interface CategoryTotal extends DonutSlice {
   icon: ReturnType<typeof categoryIcon>;
   share: number;
+  type: "expense" | "income";
 }
 
 interface Window {
@@ -244,41 +245,52 @@ export default function Analytics() {
     const expenses = all.filter(
       (tx) => tx.type === "expense" && inRange(tx, current.from, current.to),
     );
-    const income = all
-      .filter((tx) => tx.type === "income" && inRange(tx, current.from, current.to))
-      .reduce((sum, tx) => sum + tx.amountMinor, 0);
+    const incomeList = all.filter(
+      (tx) => tx.type === "income" && inRange(tx, current.from, current.to),
+    );
+    const income = incomeList.reduce((sum, tx) => sum + tx.amountMinor, 0);
     const spent = expenses.reduce((sum, tx) => sum + tx.amountMinor, 0);
     const spentBefore = all
       .filter((tx) => tx.type === "expense" && inRange(tx, previous.from, previous.to))
       .reduce((sum, tx) => sum + tx.amountMinor, 0);
 
-    const totals = new Map<string, number>();
-    for (const tx of expenses) {
-      const key = tx.categoryId ?? "none";
-      totals.set(key, (totals.get(key) ?? 0) + tx.amountMinor);
-    }
+    // Same grouping for both directions — a plain "which categories, how much" total per
+    // transaction type — so income gets the identical donut/list breakdown expenses does.
+    const groupByCategory = (list: Transaction[], total: number, type: "expense" | "income") => {
+      const totals = new Map<string, number>();
+      for (const tx of list) {
+        const key = tx.categoryId ?? "none";
+        totals.set(key, (totals.get(key) ?? 0) + tx.amountMinor);
+      }
+      return [...totals.entries()]
+        .map(([id, value]): CategoryTotal => {
+          const category = byId.get(id);
+          return {
+            id,
+            label: category?.name ?? "Без категории",
+            value,
+            share: total > 0 ? value / total : 0,
+            color: categoryColor(category),
+            icon: categoryIcon(category),
+            type,
+          };
+        })
+        .sort((a, b) => b.value - a.value);
+    };
 
-    const breakdown: CategoryTotal[] = [...totals.entries()]
-      .map(([id, value]) => {
-        const category = byId.get(id);
-        return {
-          id,
-          label: category?.name ?? "Без категории",
-          value,
-          share: spent > 0 ? value / spent : 0,
-          color: categoryColor(category),
-          icon: categoryIcon(category),
-        };
-      })
-      .sort((a, b) => b.value - a.value);
+    const breakdown = groupByCategory(expenses, spent, "expense");
+    const incomeBreakdown = groupByCategory(incomeList, income, "income");
 
     return {
       spent,
       income,
       changePercent: spentBefore > 0 ? ((spent - spentBefore) / spentBefore) * 100 : null,
       breakdown,
+      incomeBreakdown,
       bars: buildBars(period, current.from, current.to, expenses),
+      incomeBars: buildBars(period, current.from, current.to, incomeList),
       expenses,
+      incomeList,
     };
   }, [transactions, categories, period, current, previous]);
 
@@ -401,57 +413,24 @@ export default function Analytics() {
         </View>
       </FadeIn>
 
-      {view.spent > 0 ? (
-        <FadeIn index={4}>
-          <Card>
-            <BarChart bars={view.bars} accent={theme.accent} />
-          </Card>
-        </FadeIn>
-      ) : null}
+      <CategoryBreakdownSection
+        title="Расходы по категориям"
+        emptyText="Пока нет расходов за этот период"
+        bars={view.bars}
+        breakdown={view.breakdown}
+        donutCaption={current.label.toLowerCase()}
+        onOpenCategory={setOpenCategory}
+      />
 
-      {view.breakdown.length > 0 ? (
-        <FadeIn index={5}>
-          <Card style={styles.donutCard}>
-            <Donut slices={view.breakdown} caption={current.label.toLowerCase()} />
-          </Card>
-        </FadeIn>
-      ) : null}
-
-      <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>По категориям</Text>
-
-      {view.breakdown.length === 0 ? (
-        <Text style={[styles.empty, { color: theme.textSecondary }]}>
-          Пока нет расходов за этот период
-        </Text>
-      ) : (
-        <Card style={styles.listCard}>
-          {view.breakdown.map((item, i) => (
-            <FadeIn key={item.id} index={Math.min(i, 6)}>
-              <Pressable style={styles.breakdownRow} onPress={() => setOpenCategory(item)}>
-                <View style={styles.breakdownHeader}>
-                  <View style={[styles.dot, { backgroundColor: `${item.color}1F` }]}>
-                    <Icon name={item.icon} color={item.color} size={16} />
-                  </View>
-                  <Text
-                    style={[styles.breakdownName, { color: theme.textPrimary }]}
-                    numberOfLines={1}
-                  >
-                    {item.label}
-                  </Text>
-                  <Text style={[styles.breakdownShare, { color: theme.textSecondary }]}>
-                    {Math.round(item.share * 100)}%
-                  </Text>
-                  <Text style={[styles.breakdownAmount, { color: theme.textPrimary }]}>
-                    {formatMinor(item.value)} ₽
-                  </Text>
-                  <Icon name="chevron" color={theme.textTertiary} size={14} />
-                </View>
-                <ProgressBar share={item.share} color={item.color} />
-              </Pressable>
-            </FadeIn>
-          ))}
-        </Card>
-      )}
+      <CategoryBreakdownSection
+        title="Доходы по категориям"
+        emptyText="Пока нет доходов за этот период"
+        bars={view.incomeBars}
+        breakdown={view.incomeBreakdown}
+        donutCaption={current.label.toLowerCase()}
+        onOpenCategory={setOpenCategory}
+        style={styles.incomeSection}
+      />
 
       <BottomSheet
         visible={openCategory !== null}
@@ -460,7 +439,7 @@ export default function Analytics() {
       >
         {openCategory ? (
           <CategoryTransactions
-            transactions={view.expenses.filter(
+            transactions={(openCategory.type === "income" ? view.incomeList : view.expenses).filter(
               (tx) => (tx.categoryId ?? "none") === openCategory.id,
             )}
             color={openCategory.color}
@@ -522,6 +501,82 @@ export default function Analytics() {
         />
       ) : null}
     </Screen>
+  );
+}
+
+/** One direction's worth of the analytics screen — trend bars, donut, and the tappable
+ * per-category list — shared by expenses and income so the two stay in lockstep instead
+ * of two hand-maintained copies drifting apart. */
+function CategoryBreakdownSection({
+  title,
+  emptyText,
+  bars,
+  breakdown,
+  donutCaption,
+  onOpenCategory,
+  style,
+}: {
+  title: string;
+  emptyText: string;
+  bars: Bar[];
+  breakdown: CategoryTotal[];
+  donutCaption: string;
+  onOpenCategory: (item: CategoryTotal) => void;
+  style?: ViewStyle;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.sectionWrap, style]}>
+      {breakdown.length > 0 ? (
+        <FadeIn index={4}>
+          <Card>
+            <BarChart bars={bars} accent={theme.accent} />
+          </Card>
+        </FadeIn>
+      ) : null}
+
+      {breakdown.length > 0 ? (
+        <FadeIn index={5}>
+          <Card style={styles.donutCard}>
+            <Donut slices={breakdown} caption={donutCaption} />
+          </Card>
+        </FadeIn>
+      ) : null}
+
+      <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{title}</Text>
+
+      {breakdown.length === 0 ? (
+        <Text style={[styles.empty, { color: theme.textSecondary }]}>{emptyText}</Text>
+      ) : (
+        <Card style={styles.listCard}>
+          {breakdown.map((item, i) => (
+            <FadeIn key={item.id} index={Math.min(i, 6)}>
+              <Pressable style={styles.breakdownRow} onPress={() => onOpenCategory(item)}>
+                <View style={styles.breakdownHeader}>
+                  <View style={[styles.dot, { backgroundColor: `${item.color}1F` }]}>
+                    <Icon name={item.icon} color={item.color} size={16} />
+                  </View>
+                  <Text
+                    style={[styles.breakdownName, { color: theme.textPrimary }]}
+                    numberOfLines={1}
+                  >
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.breakdownShare, { color: theme.textSecondary }]}>
+                    {Math.round(item.share * 100)}%
+                  </Text>
+                  <Text style={[styles.breakdownAmount, { color: theme.textPrimary }]}>
+                    {formatMinor(item.value)} ₽
+                  </Text>
+                  <Icon name="chevron" color={theme.textTertiary} size={14} />
+                </View>
+                <ProgressBar share={item.share} color={item.color} />
+              </Pressable>
+            </FadeIn>
+          ))}
+        </Card>
+      )}
+    </View>
   );
 }
 
@@ -617,6 +672,8 @@ const styles = StyleSheet.create({
   tileHint: typography.caption,
   donutCard: { paddingVertical: spacing.xl },
   sectionTitle: { ...typography.headline, marginTop: spacing.md },
+  sectionWrap: { gap: spacing.md },
+  incomeSection: { marginTop: spacing.xl },
   listCard: { gap: spacing.lg },
   breakdownRow: { gap: spacing.sm },
   breakdownHeader: { flexDirection: "row", alignItems: "center", gap: spacing.sm },

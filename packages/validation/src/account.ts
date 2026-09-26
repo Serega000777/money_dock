@@ -3,7 +3,7 @@ import { z } from "zod";
 import { currencyCodeSchema } from "./money";
 
 export const accountTypeSchema = z.enum(["cash", "card", "bank"]);
-export const bankSchema = z.enum(["sber", "alfa", "tinkoff", "vtb", "ozon"]);
+export const bankSchema = z.enum(["sber", "alfa", "tinkoff", "vtb", "ozon", "bank_russia", "gazprombank"]);
 
 export const createAccountSchema = z.object({
   type: accountTypeSchema,

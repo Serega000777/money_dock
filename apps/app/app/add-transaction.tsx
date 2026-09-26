@@ -10,6 +10,7 @@ import { useTheme } from "../src/theme/useTheme";
 import { GradientBox } from "../src/ui/Gradient";
 import { Icon, PICKABLE_ICONS, type IconName } from "../src/ui/Icon";
 import { NumericKeypad } from "../src/ui/NumericKeypad";
+import { DatePickerSheet } from "../src/ui/PeriodPicker";
 import { Text } from "../src/ui/Text";
 import { categoryColor, categoryIcon } from "../src/ui/categoryVisual";
 import { BottomSheet, FadeIn, PressableScale, Screen, Segmented } from "../src/ui/primitives";
@@ -32,6 +33,8 @@ export default function AddTransaction() {
   const [amount, setAmount] = useState("");
   const [merchant, setMerchant] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [occurredAt, setOccurredAt] = useState(() => new Date());
+  const [pickingDate, setPickingDate] = useState(false);
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -59,6 +62,7 @@ export default function AddTransaction() {
         amountMinor: Math.round(Number(amount) * 100),
         currency: account.currency,
         merchant: merchant.trim() || undefined,
+        occurredAt: occurredAt.toISOString(),
         clientId: generateClientId(),
       });
       await Promise.all([
@@ -114,13 +118,26 @@ export default function AddTransaction() {
         <TextInput
           value={merchant}
           onChangeText={setMerchant}
-          placeholder="Где потрачено (необязательно)"
+          placeholder={type === "income" ? "Откуда пришло (необязательно)" : "Где потрачено (необязательно)"}
           placeholderTextColor={theme.textTertiary}
           style={[
             styles.merchantInput,
             { color: theme.textPrimary, backgroundColor: theme.surface, borderColor: theme.border },
           ]}
         />
+      </FadeIn>
+
+      <FadeIn index={3}>
+        <Pressable
+          style={[styles.dateRow, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          onPress={() => setPickingDate(true)}
+        >
+          <Icon name="calendar" color={theme.textSecondary} size={16} />
+          <Text style={[styles.dateText, { color: theme.textPrimary }]}>
+            {occurredAt.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+          </Text>
+          <Icon name="chevron" color={theme.textTertiary} size={14} />
+        </Pressable>
       </FadeIn>
 
       <Text style={[styles.label, { color: theme.textSecondary }]}>Категория</Text>
@@ -201,6 +218,17 @@ export default function AddTransaction() {
         onCreated={(category) => {
           setCategoryId(category.id);
           setCreatingCategory(false);
+        }}
+      />
+
+      <DatePickerSheet
+        visible={pickingDate}
+        onClose={() => setPickingDate(false)}
+        initialDate={occurredAt}
+        maxDate={new Date()}
+        onSelect={(day) => {
+          setOccurredAt(day);
+          setPickingDate(false);
         }}
       />
     </Screen>
@@ -332,6 +360,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   label: { ...typography.overline, textTransform: "uppercase", marginTop: spacing.xs },
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  dateText: { ...typography.body, flex: 1 },
 
   categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md },
   categoryItem: { width: "22%" },

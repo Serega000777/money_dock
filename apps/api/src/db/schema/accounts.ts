@@ -3,7 +3,15 @@ import { bigint, index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-o
 import { users } from "./users";
 
 export const accountTypeEnum = pgEnum("account_type", ["cash", "card", "bank"]);
-export const bankEnum = pgEnum("bank", ["sber", "alfa", "tinkoff", "vtb", "ozon"]);
+export const bankEnum = pgEnum("bank", [
+  "sber",
+  "alfa",
+  "tinkoff",
+  "vtb",
+  "ozon",
+  "bank_russia",
+  "gazprombank",
+]);
 
 export const accounts = pgTable(
   "accounts",

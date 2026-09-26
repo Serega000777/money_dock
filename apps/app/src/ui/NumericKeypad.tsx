@@ -1,6 +1,7 @@
 import { radii, spacing, typography } from "@money-dock/design-tokens";
 import { StyleSheet, View } from "react-native";
 
+import { useTelegram } from "../telegram/TelegramProvider";
 import { useTheme } from "../theme/useTheme";
 
 import { Icon } from "./Icon";
@@ -14,6 +15,7 @@ const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"] as 
  * the amount string is the caller's job (`onKey`); this component only draws the grid. */
 export function NumericKeypad({ onKey }: { onKey: (key: (typeof KEYS)[number]) => void }) {
   const theme = useTheme();
+  const { webApp } = useTelegram();
   return (
     <View style={styles.grid}>
       {KEYS.map((key) => (
@@ -22,7 +24,12 @@ export function NumericKeypad({ onKey }: { onKey: (key: (typeof KEYS)[number]) =
         // the button fill it.
         <View key={key} style={styles.keySlot}>
           <PressableScale
-            onPress={() => onKey(key)}
+            onPress={() => {
+              // The same light tap iOS's own number pad gives — Telegram's bridge is the
+              // only way to get it from a Mini App at all (no web equivalent exists).
+              webApp?.HapticFeedback?.impactOccurred("light");
+              onKey(key);
+            }}
             accessibilityLabel={key === "back" ? "Стереть" : key}
             style={styles.key}
           >

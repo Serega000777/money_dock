@@ -45,6 +45,13 @@ export interface TelegramWebApp {
   openTelegramLink?: (url: string) => void;
   /** Any other external link (mailto:, https:) — opens outside the Mini App. */
   openLink?: (url: string) => void;
+  /** Native tap feedback — the only way to get an iOS/Android haptic buzz from a Mini
+   * App; the web platform has no equivalent (Safari never shipped navigator.vibrate). */
+  HapticFeedback?: {
+    impactOccurred: (style: "light" | "medium" | "heavy" | "rigid" | "soft") => void;
+    notificationOccurred: (type: "error" | "success" | "warning") => void;
+    selectionChanged: () => void;
+  };
 }
 
 export interface TelegramWindow {
