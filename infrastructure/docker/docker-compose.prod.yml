@@ -48,6 +48,9 @@ services:
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
       # Optional public HTTPS image sent with the /start welcome message.
       TELEGRAM_BANNER_URL: ${TELEGRAM_BANNER_URL:-}
+      # Powers server-side voice transcription (iOS has no SpeechRecognition API).
+      # Unset = the transcribe endpoint returns 503, voice input stays broken on iPhone.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
 
   web:
     build:
