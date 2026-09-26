@@ -10,6 +10,8 @@ import { CategorizationService } from "../categorization/categorization.service"
 import { EntitlementsService } from "../entitlements/entitlements.service";
 import { TransactionsService } from "../transactions/transactions.service";
 
+import { TranscriptionService } from "./transcription.service";
+
 export interface CommandDraft {
   type: "expense" | "income";
   amountMinor: number;
@@ -46,6 +48,7 @@ export class CommandsService {
     private readonly entitlements: EntitlementsService,
     private readonly transactions: TransactionsService,
     private readonly categorization: CategorizationService,
+    private readonly transcription: TranscriptionService,
   ) {}
 
   /**
@@ -97,6 +100,15 @@ export class CommandsService {
     });
 
     return transaction;
+  }
+
+  /** Same as `parse(text, "voice")`, except the text comes from a recorded clip instead
+   * of the browser's own speech recognizer — the path iOS needs, since WebKit has never
+   * implemented `SpeechRecognition`. Voice quota is charged exactly once, inside the
+   * `parse()` call below — transcribing itself isn't metered separately. */
+  async parseAudio(userId: string, audio: Buffer, mimeType: string): Promise<CommandDraft> {
+    const text = await this.transcription.transcribe(audio, mimeType);
+    return this.parse(userId, text, "voice");
   }
 
   async parse(userId: string, text: string, source: "voice" | "text"): Promise<CommandDraft> {

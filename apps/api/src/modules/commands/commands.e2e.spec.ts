@@ -200,4 +200,70 @@ describe("Voice/text commands + entitlements (e2e)", () => {
     expect(typeof res.body.used.voice).toBe("number");
     expect(userId).toBeTruthy();
   });
+
+  describe("transcribe — the iOS path (no client-side SpeechRecognition)", () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    function mockGemini(text: string) {
+      return jest.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }),
+      } as Response);
+    }
+
+    it("turns a recorded clip into the same kind of draft parse() returns", async () => {
+      mockGemini("Потратил 500 рублей на кофе");
+
+      const res = await authed("post", "/commands/transcribe")
+        .attach("audio", Buffer.from("fake-audio-bytes"), "clip.webm")
+        .expect(200);
+
+      expect(res.body).toMatchObject({ type: "expense", amountMinor: 50_000 });
+      expect(res.body.categoryName).toBe("Кафе и рестораны");
+    });
+
+    it("meters it as voice, same as the browser-recognized path", async () => {
+      const fresh = await newUser();
+      mockGemini("потратил 100");
+
+      await request(app.getHttpServer())
+        .post("/commands/transcribe")
+        .set("Authorization", `Bearer ${fresh.accessToken}`)
+        .attach("audio", Buffer.from("x"), "clip.webm")
+        .expect(200);
+
+      const state = await request(app.getHttpServer())
+        .get("/entitlements")
+        .set("Authorization", `Bearer ${fresh.accessToken}`)
+        .expect(200);
+      expect(state.body.used.voice).toBe(1);
+    });
+
+    it("rejects with no audio attached", async () => {
+      await authed("post", "/commands/transcribe").expect(400);
+    });
+
+    it("surfaces a clear error when Gemini has nothing to say, instead of crashing", async () => {
+      jest.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ candidates: [] }),
+      } as Response);
+
+      await authed("post", "/commands/transcribe")
+        .attach("audio", Buffer.from("silence"), "clip.webm")
+        .expect(400);
+    });
+
+    it("surfaces a clear error when Gemini itself fails", async () => {
+      jest.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        text: async () => "upstream unavailable",
+      } as Response);
+
+      await authed("post", "/commands/transcribe")
+        .attach("audio", Buffer.from("x"), "clip.webm")
+        .expect(500);
+    });
+  });
 });

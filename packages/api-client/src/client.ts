@@ -298,6 +298,28 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       /** Saves without confirmation — used by Siri and the widget, not by the screens. */
       capture: (text: string, source: "voice" | "text", clientId: string) =>
         post<Transaction>("/commands/capture", { text, source, clientId }),
+      /** Same result as `parse`, from a recorded clip instead of browser-recognized
+       * text — the path a client with no SpeechRecognition (every iOS browser) needs. */
+      transcribe: async (audio: Blob): Promise<CommandDraft> => {
+        const form = new FormData();
+        form.append("audio", audio, "clip.webm");
+        // Multipart can't go through request(): setting Content-Type by hand would drop
+        // the boundary. The 401-refresh handling is mirrored here instead.
+        const upload = (token: string | null | undefined) =>
+          fetch(`${baseUrl}/commands/transcribe`, {
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            body: form,
+          });
+
+        let res = await upload(getAccessToken?.());
+        if (res.status === 401) {
+          const refreshed = await refreshOnce();
+          if (refreshed) res = await upload(refreshed);
+        }
+        if (!res.ok) throw new ApiError(res.status, await res.text());
+        return (await res.json()) as CommandDraft;
+      },
     },
 
     entitlements: {

@@ -38,6 +38,13 @@ const envSchema = z
     // Signs short-lived access JWTs. Refresh tokens are opaque random strings, hashed at
     // rest (see SessionsService) — they need no signing secret of their own.
     JWT_ACCESS_SECRET: z.string().min(32),
+    // Powers server-side speech-to-text (TranscriptionService) for clients with no
+    // client-side recognizer — notably every iOS browser, since WebKit has never shipped
+    // the Web Speech API's SpeechRecognition interface. Optional: without it, recording
+    // audio on an unsupported client fails with a clear "unavailable" error instead of
+    // the whole app refusing to boot.
+    GEMINI_API_KEY: z.string().min(1).optional(),
+    GEMINI_MODEL: z.string().min(1).default("gemini-2.0-flash"),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && parseCorsOrigins(env.CORS_ORIGIN) === "*") {

@@ -35,6 +35,14 @@ export function useVoiceCapture() {
     onError: (error) => openPaywallFromError(error),
   });
 
+  // The iOS path: WebKit has never implemented SpeechRecognition, so there a spoken
+  // command is recorded instead (useAudioRecorder) and sent here as audio — same voice
+  // quota, same paywall-on-403, same CommandDraft result as parse() above.
+  const transcribe = useMutation({
+    mutationFn: (audio: Blob) => apiClient.commands.transcribe(audio),
+    onError: (error) => openPaywallFromError(error),
+  });
+
   const save = useMutation({
     mutationFn: (confirmed: CommandDraft) => {
       if (!confirmed.accountId) throw new Error("Сначала добавьте счёт");
@@ -57,7 +65,7 @@ export function useVoiceCapture() {
       ]),
   });
 
-  return { parse, save };
+  return { parse, save, transcribe };
 }
 
 const DAY_MS = 86_400_000;

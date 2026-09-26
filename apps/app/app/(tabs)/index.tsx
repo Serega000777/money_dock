@@ -10,7 +10,7 @@ import type {
 } from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, router } from "expo-router";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
@@ -41,6 +41,7 @@ import {
 } from "../../src/ui/primitives";
 import { apiErrorMessage, isPlanLimitError } from "../../src/utils/apiError";
 import { formatMinor } from "../../src/utils/format";
+import { useAudioRecorder } from "../../src/voice/useAudioRecorder";
 import { useSpeechRecognition } from "../../src/voice/useSpeechRecognition";
 
 const MIC_SIZE = 132;
@@ -134,6 +135,23 @@ export default function Home() {
       },
     );
   });
+  // The iOS fallback: WebKit has never implemented SpeechRecognition, so a held press
+  // there records audio instead and sends the clip to the server to be transcribed.
+  const recorder = useAudioRecorder();
+  const releaseRecording = useCallback(async () => {
+    const clip = await recorder.stop();
+    if (!clip) return;
+    setVoiceError(null);
+    voice.transcribe.mutate(clip, {
+      onSuccess: (result) => setVoiceDraft(result),
+      onError: (e) => setVoiceError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось распознать речь")),
+    });
+    // `recorder`/`voice.transcribe` are stable for the life of the screen.
+  }, []);
+  const voiceSupported = speech.supported || recorder.supported;
+  const voiceListening = speech.supported ? speech.listening : recorder.recording;
+  const voiceStart = speech.supported ? speech.start : recorder.start;
+  const voiceStop = speech.supported ? speech.stop : releaseRecording;
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: () => apiClient.categories.list(),
@@ -308,16 +326,16 @@ export default function Home() {
                   pointerEvents="none"
                   style={[styles.micRing2, { borderColor: "rgba(128,67,255,0.18)" }]}
                 />
-                <PulseRing active={speech.listening} color={theme.accent} size={MIC_SIZE} />
-                {speech.supported ? (
+                <PulseRing active={voiceListening} color={theme.accent} size={MIC_SIZE} />
+                {voiceSupported ? (
                   <PressableScale
                     accessibilityLabel="Добавить операцию голосом"
-                    onPressIn={speech.start}
-                    onPressOut={speech.stop}
+                    onPressIn={voiceStart}
+                    onPressOut={voiceStop}
                   >
                     <GradientBox
                       colors={
-                        speech.listening ? [theme.negative, theme.accent] : theme.accentGradient
+                        voiceListening ? [theme.negative, theme.accent] : theme.accentGradient
                       }
                       diagonal
                       radius={radii.pill}
@@ -352,14 +370,17 @@ export default function Home() {
               <WaveBars color={theme.accent} />
             </View>
             <Text style={[styles.micTitle, { color: theme.textPrimary }]}>
-              {speech.listening
-                ? "Говорите…"
-                : speech.supported
-                  ? "Скажите, что потратили или получили"
-                  : "Скажите, что потратили или получили (текстом)"}
+              {voice.transcribe.isPending
+                ? "Распознаю…"
+                : voiceListening
+                  ? "Говорите…"
+                  : voiceSupported
+                    ? "Скажите, что потратили или получили"
+                    : "Скажите, что потратили или получили (текстом)"}
             </Text>
             <Text style={[styles.micHint, { color: theme.textTertiary }]}>
               {speech.error ??
+                recorder.error ??
                 voiceError ??
                 "«Потратил 840 в кафе» или «Пришла зарплата 80 тысяч» — разберём и покажем на подтверждение"}
             </Text>

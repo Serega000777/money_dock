@@ -14,6 +14,7 @@ import { PulseRing } from "../src/ui/PulseRing";
 import { Text } from "../src/ui/Text";
 import { Card, FadeIn, PressableScale, Screen } from "../src/ui/primitives";
 import { apiErrorMessage, isPlanLimitError } from "../src/utils/apiError";
+import { useAudioRecorder } from "../src/voice/useAudioRecorder";
 import { useSpeechRecognition } from "../src/voice/useSpeechRecognition";
 
 const EXAMPLES = [
@@ -71,6 +72,25 @@ export default function Voice() {
     }, []),
   );
 
+  // The iOS fallback: WebKit has never implemented SpeechRecognition, so a held press
+  // there records audio instead and sends the clip to the server to be transcribed.
+  const recorder = useAudioRecorder();
+  const releaseRecording = useCallback(async () => {
+    const clip = await recorder.stop();
+    if (!clip) return;
+    voice.transcribe.mutate(clip, {
+      onSuccess: (result) => {
+        setError(null);
+        setDraft(result);
+      },
+      onError: (e) => {
+        setDraft(null);
+        setError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось распознать речь"));
+      },
+    });
+    // `recorder`/`voice.transcribe` are stable for the life of the screen.
+  }, []);
+
   const voiceLeft =
     entitlements && entitlements.limits.voice >= 0
       ? Math.max(0, entitlements.limits.voice - entitlements.used.voice)
@@ -80,13 +100,24 @@ export default function Voice() {
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: "Голос и текст" }} />
 
-      {speech.supported ? (
+      {speech.supported || recorder.supported ? (
         <FadeIn index={0}>
           <View style={styles.micWrap}>
-            <PulseRing active={speech.listening} color={theme.accent} size={MIC_SIZE} />
-            <Pressable onPressIn={speech.start} onPressOut={speech.stop}>
+            <PulseRing
+              active={speech.supported ? speech.listening : recorder.recording}
+              color={theme.accent}
+              size={MIC_SIZE}
+            />
+            <Pressable
+              onPressIn={speech.supported ? speech.start : recorder.start}
+              onPressOut={speech.supported ? speech.stop : releaseRecording}
+            >
               <GradientBox
-                colors={speech.listening ? [theme.negative, theme.accent] : theme.accentGradient}
+                colors={
+                  (speech.supported ? speech.listening : recorder.recording)
+                    ? [theme.negative, theme.accent]
+                    : theme.accentGradient
+                }
                 diagonal
                 radius={radii.pill}
                 style={styles.mic}
@@ -97,7 +128,11 @@ export default function Voice() {
               </GradientBox>
             </Pressable>
             <Text style={[styles.micHint, { color: theme.textSecondary }]}>
-              {speech.listening ? "Говорите…" : "Удерживайте и говорите"}
+              {voice.transcribe.isPending
+                ? "Распознаю…"
+                : (speech.supported ? speech.listening : recorder.recording)
+                  ? "Говорите…"
+                  : "Удерживайте и говорите"}
             </Text>
             {voiceLeft !== null ? (
               <Text style={[styles.hint, { color: theme.textTertiary }]}>
@@ -149,6 +184,9 @@ export default function Voice() {
 
       {speech.error ? (
         <Text style={[styles.error, { color: theme.negative }]}>{speech.error}</Text>
+      ) : null}
+      {recorder.error ? (
+        <Text style={[styles.error, { color: theme.negative }]}>{recorder.error}</Text>
       ) : null}
       {error ? <Text style={[styles.error, { color: theme.negative }]}>{error}</Text> : null}
 
