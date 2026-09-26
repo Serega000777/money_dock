@@ -18,6 +18,7 @@ import { BankingModule } from "./modules/banking/banking.module";
 import { CategoriesModule } from "./modules/categories/categories.module";
 import { CategorizationModule } from "./modules/categorization/categorization.module";
 import { CommandsModule } from "./modules/commands/commands.module";
+import { DebtsModule } from "./modules/debts/debts.module";
 import { DemoModule } from "./modules/demo/demo.module";
 import { EntitlementsModule } from "./modules/entitlements/entitlements.module";
 import { ExportModule } from "./modules/export/export.module";
@@ -54,6 +55,7 @@ import { UsersModule } from "./modules/users/users.module";
     ImportModule,
     NotesModule,
     RecurringPaymentsModule,
+    DebtsModule,
     GoalsModule,
     ReviewInboxModule,
     CommandsModule,

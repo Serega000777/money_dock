@@ -288,6 +288,12 @@ export default function Account() {
       </FadeIn>
 
       <FadeIn index={4}>
+        <Section title="Долги">
+          <NavRow href="/debts" icon="wallet" label="Долги" hint="Мне должны и я должен" />
+        </Section>
+      </FadeIn>
+
+      <FadeIn index={4}>
         <Section title="Регулярные платежи">
           {(recurringPayments ?? []).map((payment) => {
             const category = payment.categoryId

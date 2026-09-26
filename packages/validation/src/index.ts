@@ -3,6 +3,7 @@ export * from "./admin";
 export * from "./auth";
 export * from "./category";
 export * from "./command";
+export * from "./debt";
 export * from "./goal";
 export * from "./money";
 export * from "./note";

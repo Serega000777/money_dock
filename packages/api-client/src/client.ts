@@ -10,6 +10,8 @@ import type {
   Category,
   CommandDraft,
   DailySummary,
+  Debt,
+  DebtDirection,
   Entitlements,
   ImportPreview,
   Insight,
@@ -252,6 +254,32 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       contribute: (id: string, amountMinor: number) =>
         post<SavingsGoal>(`/goals/${id}/contribute`, { amountMinor }),
       remove: (id: string) => request<void>(`/goals/${id}`, { method: "DELETE" }),
+    },
+
+    debts: {
+      list: () => request<Debt[]>("/debts"),
+      create: (input: {
+        direction: DebtDirection;
+        counterpartyName: string;
+        amountMinor: number;
+        currency: string;
+        note?: string;
+        dueDate?: string;
+      }) => post<Debt>("/debts", input),
+      update: (
+        id: string,
+        input: Partial<{
+          direction: DebtDirection;
+          counterpartyName: string;
+          amountMinor: number;
+          currency: string;
+          note: string;
+          dueDate: string;
+        }>,
+      ) => request<Debt>(`/debts/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+      settle: (id: string) => post<Debt>(`/debts/${id}/settle`),
+      unsettle: (id: string) => post<Debt>(`/debts/${id}/unsettle`),
+      remove: (id: string) => request<void>(`/debts/${id}`, { method: "DELETE" }),
     },
 
     admin: {

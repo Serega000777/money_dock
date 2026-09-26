@@ -3,6 +3,7 @@ export * from "./account-members";
 export * from "./audit-logs";
 export * from "./categories";
 export * from "./category-rules";
+export * from "./debts";
 export * from "./import-jobs";
 export * from "./insights";
 export * from "./merchant-aliases";
