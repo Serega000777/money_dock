@@ -18,7 +18,7 @@ const FEATURES = [
   "Совместные счета без ограничений на участников",
 ];
 
-type PaymentStatus = "idle" | "opening" | "paid" | "failed";
+type PaymentStatus = "idle" | "opening" | "verifying" | "pending" | "failed";
 
 /**
  * The "beautiful payment page" the account screen's Pro badge and the paywall modal both
@@ -35,7 +35,7 @@ export default function Upgrade() {
   const { data: entitlements } = useQuery({
     queryKey: ["entitlements"],
     queryFn: () => apiClient.entitlements.get(),
-    refetchInterval: status === "paid" ? 2000 : false,
+    refetchInterval: status === "verifying" || status === "pending" ? 2000 : false,
   });
   const { data: pricing } = useQuery({
     queryKey: ["payments-pricing"],
@@ -51,8 +51,8 @@ export default function Upgrade() {
       }
       setStatus("opening");
       webApp.openInvoice(url, (result) => {
-        if (result === "paid") {
-          setStatus("paid");
+        if (result === "paid" || result === "pending") {
+          setStatus(result === "paid" ? "verifying" : "pending");
           void queryClient.invalidateQueries({ queryKey: ["entitlements"] });
         } else if (result === "cancelled") {
           setStatus("idle");
@@ -110,13 +110,14 @@ export default function Upgrade() {
             </Text>
           </Card>
         </FadeIn>
-      ) : status === "paid" ? (
+      ) : status === "verifying" || status === "pending" ? (
         <FadeIn index={2}>
           <Card style={styles.doneCard}>
             <Icon name="check" color={theme.positive} size={22} strokeWidth={2.2} />
             <Text style={[styles.doneText, { color: theme.textPrimary }]}>
-              Оплата получена. Проверяем активацию Pro… Если проверка задержалась, вернитесь в
-              кабинет чуть позже.
+              {status === "pending"
+                ? "Платёж обрабатывается Telegram. Pro включится автоматически после подтверждения."
+                : "Оплата получена. Проверяем активацию Pro…"}
             </Text>
             <PressableScale onPress={() => router.back()}>
               <Text style={[styles.doneBack, { color: theme.accent }]}>Вернуться</Text>

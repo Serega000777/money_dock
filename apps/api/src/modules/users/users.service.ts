@@ -130,6 +130,24 @@ export class UsersService {
       );
   }
 
+  /** Prevents a shareable invoice link from being used by a different Telegram account.
+   * The invoice payload identifies our user, while the checkout update identifies the
+   * payer; both must point to the same identity before Telegram is allowed to charge. */
+  async ownsTelegramIdentity(userId: string, telegramUserId: number): Promise<boolean> {
+    const [identity] = await this.db
+      .select({ userId: userIdentities.userId })
+      .from(userIdentities)
+      .where(
+        and(
+          eq(userIdentities.userId, userId),
+          eq(userIdentities.provider, "telegram"),
+          eq(userIdentities.providerUserId, String(telegramUserId)),
+        ),
+      )
+      .limit(1);
+    return Boolean(identity);
+  }
+
   async getById(id: string): Promise<User> {
     const [row] = await this.db.select().from(users).where(eq(users.id, id));
     if (!row) throw new NotFoundException("User not found");

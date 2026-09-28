@@ -9,6 +9,9 @@ import type { TelegramMessage, TelegramSuccessfulPayment, TelegramUpdate } from 
 
 const SHARE_CONTACT_TEXT = "📱 Поделиться номером";
 const START_TEXT = "🚀 Начать";
+const PAYMENT_SUPPORT_TEXT =
+  "По вопросам оплаты Amola Pro напишите на serega.velichko7@yandex.ru. " +
+  "Укажите ваш Telegram username и примерное время платежа — поможем проверить или вернуть Stars.";
 
 /** Whole Stars, no decimal subdivision (unlike real-money currencies) — see
  * https://core.telegram.org/bots/payments-stars. */
@@ -73,7 +76,10 @@ export class TelegramBotService {
     if (!message?.from) return;
 
     if (message.successful_payment) return this.handleSuccessfulPayment(message);
-    if (message.text === "/start") return this.handleStart(message);
+    const command = message.text?.split("@")[0]?.trim().toLowerCase();
+    if (command === "/start") return this.handleStart(message);
+    if (command === "/terms") return this.handleTerms(message);
+    if (command === "/support" || command === "/paysupport") return this.handlePaymentSupport(message);
     if (message.contact) return this.handleContact(message);
     // Anything else — no command grammar to teach; the share-number keyboard is still up.
   }
@@ -96,9 +102,9 @@ export class TelegramBotService {
     return url;
   }
 
-  /** Telegram blocks the payment on this for up to 10s — always approved: a subscription
-   * has no stock to run out of, and price/currency were already fixed when the invoice
-   * link was created, not something this side could revise now anyway. */
+  /** Telegram blocks the payment on this for up to 10s. Besides price and payload, bind
+   * the payer to the account that created the invoice so a forwarded link cannot activate
+   * Pro on somebody else's account. */
   private paymentUser(payment: { invoice_payload: string; currency: string; total_amount: number }): string | null {
     const match = /^pro_monthly:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(payment.invoice_payload);
     return match && payment.currency === "XTR" && payment.total_amount === PRO_MONTHLY_STARS ? match[1]! : null;
@@ -106,7 +112,11 @@ export class TelegramBotService {
 
   private async handlePreCheckoutQuery(query: NonNullable<TelegramUpdate["pre_checkout_query"]>): Promise<void> {
     const userId = this.paymentUser(query);
-    const ok = Boolean(userId && await this.entitlements.hasUser(userId));
+    const ok = Boolean(
+      userId &&
+        (await this.entitlements.hasUser(userId)) &&
+        (await this.users.ownsTelegramIdentity(userId, query.from.id)),
+    );
     await this.callApiAwaited("answerPreCheckoutQuery", {
       pre_checkout_query_id: query.id, ok,
       ...(!ok ? { error_message: "Счёт устарел. Откройте Amola и создайте новый платёж." } : {}),
@@ -119,7 +129,12 @@ export class TelegramBotService {
   private async handleSuccessfulPayment(message: TelegramMessage): Promise<void> {
     const payment = message.successful_payment as TelegramSuccessfulPayment;
     const userId = this.paymentUser(payment);
-    if (!userId || !payment.telegram_payment_charge_id) {
+    if (
+      !userId ||
+      !payment.telegram_payment_charge_id ||
+      !message.from ||
+      !(await this.users.ownsTelegramIdentity(userId, message.from.id))
+    ) {
       this.logger.error("Invalid Stars payment details");
       return;
     }
@@ -172,6 +187,18 @@ export class TelegramBotService {
    * container as plain pages, so they read fine in Telegram's in-app browser too. */
   private legalUrl(slug: "terms" | "privacy" | "personal-data"): string {
     return `${this.miniAppUrl ?? "https://amola-finance.ru"}/legal/${slug}`;
+  }
+
+  private handleTerms(message: TelegramMessage): void {
+    this.callApi("sendMessage", {
+      chat_id: message.chat.id,
+      text: `Условия использования Amola Finance: ${this.legalUrl("terms")}`,
+      link_preview_options: { is_disabled: true },
+    });
+  }
+
+  private handlePaymentSupport(message: TelegramMessage): void {
+    this.callApi("sendMessage", { chat_id: message.chat.id, text: PAYMENT_SUPPORT_TEXT });
   }
 
   private async handleContact(message: TelegramMessage): Promise<void> {

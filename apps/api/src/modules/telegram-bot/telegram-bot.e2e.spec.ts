@@ -205,6 +205,53 @@ describe("Telegram bot webhook (e2e)", () => {
     expect(perpetual.expiresAt).toBeNull();
   });
 
+  it("rejects checkout and payment when the Telegram payer does not own the invoice account", async () => {
+    const ownerTelegramId = runPrefix * 1_000_000 + 4;
+    const strangerTelegramId = ownerTelegramId + 1;
+    const login = await request(app.getHttpServer())
+      .post("/auth/telegram")
+      .send({ initData: signInitData(ownerTelegramId) })
+      .expect(200);
+    const userId = login.body.user.id as string;
+
+    await request(app.getHttpServer())
+      .post("/telegram/webhook")
+      .set("X-Telegram-Bot-Api-Secret-Token", WEBHOOK_SECRET)
+      .send({
+        pre_checkout_query: {
+          id: `wrong-payer-${runPrefix}`,
+          from: { id: strangerTelegramId },
+          currency: "XTR",
+          total_amount: 199,
+          invoice_payload: `pro_monthly:${userId}`,
+        },
+      })
+      .expect(200);
+
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      expect.stringContaining("answerPreCheckoutQuery"),
+      expect.objectContaining({ body: expect.stringContaining('"ok":false') }),
+    );
+
+    await request(app.getHttpServer())
+      .post("/telegram/webhook")
+      .set("X-Telegram-Bot-Api-Secret-Token", WEBHOOK_SECRET)
+      .send({
+        message: {
+          chat: { id: strangerTelegramId },
+          from: { id: strangerTelegramId, first_name: "Stranger" },
+          successful_payment: {
+            currency: "XTR",
+            total_amount: 199,
+            invoice_payload: `pro_monthly:${userId}`,
+            telegram_payment_charge_id: `wrong-payer-charge-${runPrefix}`,
+          },
+        },
+      })
+      .expect(200);
+    expect(await entitlements.getPlan(userId)).toBe("free");
+  });
+
   it("ignores a successful_payment with a payload it doesn't recognize, instead of crashing", async () => {
     await request(app.getHttpServer())
       .post("/telegram/webhook")
