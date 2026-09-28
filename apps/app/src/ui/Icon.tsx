@@ -327,9 +327,7 @@ export function Icon({ name, color, size = 24, strokeWidth = 1.7, filled = false
         </>
       ) : null}
 
-      {name === "bolt" ? (
-        <Path d="M13.6 3.2 6.4 13.6h4.6l-1.2 7.2 7.2-10.4h-4.6z" {...s} />
-      ) : null}
+      {name === "bolt" ? <Path d="M13.6 3.2 6.4 13.6h4.6l-1.2 7.2 7.2-10.4h-4.6z" {...s} /> : null}
 
       {name === "palm" ? (
         <>
@@ -357,17 +355,16 @@ export function Icon({ name, color, size = 24, strokeWidth = 1.7, filled = false
 
       {name === "camera" ? (
         <>
-          <Path d="M9 4.6h6l1.2 2.2h2.4a1.6 1.6 0 0 1 1.6 1.6v9a1.6 1.6 0 0 1-1.6 1.6H5.4a1.6 1.6 0 0 1-1.6-1.6v-9a1.6 1.6 0 0 1 1.6-1.6h2.4z" {...s} />
+          <Path
+            d="M9 4.6h6l1.2 2.2h2.4a1.6 1.6 0 0 1 1.6 1.6v9a1.6 1.6 0 0 1-1.6 1.6H5.4a1.6 1.6 0 0 1-1.6-1.6v-9a1.6 1.6 0 0 1 1.6-1.6h2.4z"
+            {...s}
+          />
           <Circle cx="12" cy="13" r="3.4" {...s} />
         </>
       ) : null}
 
       {name === "crown" ? (
-        <Path
-          d="M4.4 9.2 8 12l4-6.4L16 12l3.6-2.8-1.3 9.2H5.7Z"
-          fill={color}
-          stroke="none"
-        />
+        <Path d="M4.4 9.2 8 12l4-6.4L16 12l3.6-2.8-1.3 9.2H5.7Z" fill={color} stroke="none" />
       ) : null}
 
       {name === "headset" ? (

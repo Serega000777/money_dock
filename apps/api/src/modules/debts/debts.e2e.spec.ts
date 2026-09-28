@@ -60,7 +60,12 @@ describe("Debts (e2e)", () => {
 
   it("creates a debt in each direction and lists both", async () => {
     await authed("post", "/debts")
-      .send({ direction: "owed_to_me", counterpartyName: "Саша", amountMinor: 300_000, currency: "RUB" })
+      .send({
+        direction: "owed_to_me",
+        counterpartyName: "Саша",
+        amountMinor: 300_000,
+        currency: "RUB",
+      })
       .expect(201);
     await authed("post", "/debts")
       .send({ direction: "i_owe", counterpartyName: "Маша", amountMinor: 150_000, currency: "RUB" })
@@ -97,7 +102,12 @@ describe("Debts (e2e)", () => {
 
   it("settles and unsettles a debt", async () => {
     const created = await authed("post", "/debts")
-      .send({ direction: "owed_to_me", counterpartyName: "Дима", amountMinor: 2000, currency: "RUB" })
+      .send({
+        direction: "owed_to_me",
+        counterpartyName: "Дима",
+        amountMinor: 2000,
+        currency: "RUB",
+      })
       .expect(201);
 
     const settled = await authed("post", `/debts/${created.body.id}/settle`).expect(201);
@@ -120,7 +130,12 @@ describe("Debts (e2e)", () => {
 
   it("keeps each user's debts private — no cross-account read, update, or delete", async () => {
     const created = await authed("post", "/debts")
-      .send({ direction: "owed_to_me", counterpartyName: "Приватно", amountMinor: 100, currency: "RUB" })
+      .send({
+        direction: "owed_to_me",
+        counterpartyName: "Приватно",
+        amountMinor: 100,
+        currency: "RUB",
+      })
       .expect(201);
 
     const otherList = await authed("get", "/debts", otherToken).expect(200);
@@ -135,7 +150,12 @@ describe("Debts (e2e)", () => {
 
   it("rejects an invalid direction instead of silently coercing it", async () => {
     await authed("post", "/debts")
-      .send({ direction: "sideways", counterpartyName: "Кто-то", amountMinor: 100, currency: "RUB" })
+      .send({
+        direction: "sideways",
+        counterpartyName: "Кто-то",
+        amountMinor: 100,
+        currency: "RUB",
+      })
       .expect(400);
   });
 });

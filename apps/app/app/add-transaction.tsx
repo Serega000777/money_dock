@@ -118,7 +118,9 @@ export default function AddTransaction() {
         <TextInput
           value={merchant}
           onChangeText={setMerchant}
-          placeholder={type === "income" ? "Откуда пришло (необязательно)" : "Где потрачено (необязательно)"}
+          placeholder={
+            type === "income" ? "Откуда пришло (необязательно)" : "Где потрачено (необязательно)"
+          }
           placeholderTextColor={theme.textTertiary}
           style={[
             styles.merchantInput,
@@ -134,7 +136,11 @@ export default function AddTransaction() {
         >
           <Icon name="calendar" color={theme.textSecondary} size={16} />
           <Text style={[styles.dateText, { color: theme.textPrimary }]}>
-            {occurredAt.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+            {occurredAt.toLocaleDateString("ru-RU", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
           </Text>
           <Icon name="chevron" color={theme.textTertiary} size={14} />
         </Pressable>
@@ -257,7 +263,17 @@ function CreateCategorySheet({
   const [aliases, setAliases] = useState("");
 
   const create = useMutation({
-    mutationFn: () => apiClient.categories.create({ type: categoryType, name: name.trim(), icon, color, aliases: aliases.split(",").map((v) => v.trim()).filter(Boolean) }),
+    mutationFn: () =>
+      apiClient.categories.create({
+        type: categoryType,
+        name: name.trim(),
+        icon,
+        color,
+        aliases: aliases
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean),
+      }),
     onSuccess: async (category) => {
       await queryClient.invalidateQueries({ queryKey: ["categories"] });
       setName("");
@@ -285,8 +301,25 @@ function CreateCategorySheet({
       />
 
       <Text style={[styles.label, { color: theme.textSecondary }]}>Тип</Text>
-      <Segmented value={categoryType} onChange={setCategoryType} options={[{ value: "expense", label: "Расход" }, { value: "income", label: "Доход" }, { value: "both", label: "Оба" }]} />
-      <TextInput value={aliases} onChangeText={setAliases} placeholder="Алиасы через запятую" placeholderTextColor={theme.textTertiary} style={[styles.nameInput, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]} />
+      <Segmented
+        value={categoryType}
+        onChange={setCategoryType}
+        options={[
+          { value: "expense", label: "Расход" },
+          { value: "income", label: "Доход" },
+          { value: "both", label: "Оба" },
+        ]}
+      />
+      <TextInput
+        value={aliases}
+        onChangeText={setAliases}
+        placeholder="Алиасы через запятую"
+        placeholderTextColor={theme.textTertiary}
+        style={[
+          styles.nameInput,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
+      />
 
       <Text style={[styles.label, { color: theme.textSecondary }]}>Иконка</Text>
       <View style={styles.iconGrid}>

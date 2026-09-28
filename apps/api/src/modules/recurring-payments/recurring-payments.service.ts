@@ -65,7 +65,10 @@ export class RecurringPaymentsService {
   /** Logs today's payment as a real transaction and stamps `lastPaidAt` — being monthly
    * and calendar-anchored (`dueDay`), there's no date to roll forward like a
    * week/year interval would need; next month's due day is already implied. */
-  async pay(userId: string, id: string): Promise<{ payment: RecurringPayment; transaction: Transaction }> {
+  async pay(
+    userId: string,
+    id: string,
+  ): Promise<{ payment: RecurringPayment; transaction: Transaction }> {
     const [row] = await this.db
       .select()
       .from(recurringPayments)

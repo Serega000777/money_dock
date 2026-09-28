@@ -117,9 +117,9 @@ describe("Review inbox (e2e)", () => {
     expect(after.body.status).toBe("confirmed");
 
     const inboxAfter = await authed("get", "/review-inbox").expect(200);
-    expect(
-      (inboxAfter.body as ReviewInboxItemDto[]).some((i) => i.transaction.id === txId),
-    ).toBe(false);
+    expect((inboxAfter.body as ReviewInboxItemDto[]).some((i) => i.transaction.id === txId)).toBe(
+      false,
+    );
 
     // A rule should now exist for this merchant: a fresh preview auto-categorizes it
     // and no longer sends it to review.
@@ -171,9 +171,7 @@ describe("Review inbox (e2e)", () => {
     expect(originalAfter.body.status).toBe("confirmed");
 
     const inboxAfter = await authed("get", "/review-inbox").expect(200);
-    expect(
-      (inboxAfter.body as ReviewInboxItemDto[]).some((i) => i.id === item.id),
-    ).toBe(false);
+    expect((inboxAfter.body as ReviewInboxItemDto[]).some((i) => i.id === item.id)).toBe(false);
   });
 
   it("not_duplicate confirms the transaction and resolves the review item", async () => {
@@ -204,9 +202,7 @@ describe("Review inbox (e2e)", () => {
     expect(after.body.status).toBe("confirmed");
 
     const inboxAfter = await authed("get", "/review-inbox").expect(200);
-    expect(
-      (inboxAfter.body as ReviewInboxItemDto[]).some((i) => i.id === item.id),
-    ).toBe(false);
+    expect((inboxAfter.body as ReviewInboxItemDto[]).some((i) => i.id === item.id)).toBe(false);
   });
 
   it("dismiss resolves the review item without touching the transaction", async () => {
@@ -214,16 +210,16 @@ describe("Review inbox (e2e)", () => {
     const txId = await importAndCommit(statementRow("2026-08-05", "-30.00", merchant));
     const item = await findReviewItem(txId);
 
-    await authed("post", `/review-inbox/${item.id}/resolve`).send({ action: "dismiss" }).expect(204);
+    await authed("post", `/review-inbox/${item.id}/resolve`)
+      .send({ action: "dismiss" })
+      .expect(204);
 
     const after = await authed("get", `/transactions/${txId}`).expect(200);
     expect(after.body.categoryId).toBeNull();
     expect(after.body.status).toBe("needs_review");
 
     const inboxAfter = await authed("get", "/review-inbox").expect(200);
-    expect(
-      (inboxAfter.body as ReviewInboxItemDto[]).some((i) => i.id === item.id),
-    ).toBe(false);
+    expect((inboxAfter.body as ReviewInboxItemDto[]).some((i) => i.id === item.id)).toBe(false);
   });
 
   it("refuses to resolve an already-resolved item", async () => {
@@ -231,8 +227,12 @@ describe("Review inbox (e2e)", () => {
     const txId = await importAndCommit(statementRow("2026-08-06", "-10.00", merchant));
     const item = await findReviewItem(txId);
 
-    await authed("post", `/review-inbox/${item.id}/resolve`).send({ action: "dismiss" }).expect(204);
-    await authed("post", `/review-inbox/${item.id}/resolve`).send({ action: "dismiss" }).expect(400);
+    await authed("post", `/review-inbox/${item.id}/resolve`)
+      .send({ action: "dismiss" })
+      .expect(204);
+    await authed("post", `/review-inbox/${item.id}/resolve`)
+      .send({ action: "dismiss" })
+      .expect(400);
   });
 
   it("prevents one user from resolving another user's review item (IDOR)", async () => {

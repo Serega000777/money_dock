@@ -138,7 +138,9 @@ export function DraftSummary({
   const [amountEditing, setAmountEditing] = useState<string | null>(null);
   const dateInputRef = useRef<HTMLInputElement | null>(null);
 
-  const visibleCategories = (categories ?? []).filter((c) => c.type === draft.type || c.type === "both");
+  const visibleCategories = (categories ?? []).filter(
+    (c) => c.type === draft.type || c.type === "both",
+  );
   const currentDaysAgo = daysAgoOf(draft.occurredAt);
   const customDate = !DATE_CHIPS.some((chip) => chip.daysAgo === currentDaysAgo);
 
@@ -185,7 +187,8 @@ export function DraftSummary({
             noFocusRing,
             {
               color: theme.textPrimary,
-              width: 8 + 24 * Math.max(2, (amountEditing ?? amountToText(draft.amountMinor)).length),
+              width:
+                8 + 24 * Math.max(2, (amountEditing ?? amountToText(draft.amountMinor)).length),
             },
           ]}
           onFocus={() => setAmountEditing(amountToText(draft.amountMinor))}
@@ -244,9 +247,7 @@ export function DraftSummary({
           {Platform.OS === "web" ? (
             <Chip
               label={
-                customDate
-                  ? new Date(draft.occurredAt).toLocaleDateString("ru-RU")
-                  : "Другая дата"
+                customDate ? new Date(draft.occurredAt).toLocaleDateString("ru-RU") : "Другая дата"
               }
               active={customDate}
               onPress={() => {
@@ -309,7 +310,9 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
     <View style={styles.field}>
       <View style={styles.fieldHead}>
         <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{label}</Text>
-        {hint ? <Text style={[styles.fieldHint, { color: theme.textTertiary }]}>{hint}</Text> : null}
+        {hint ? (
+          <Text style={[styles.fieldHint, { color: theme.textTertiary }]}>{hint}</Text>
+        ) : null}
       </View>
       {children}
     </View>

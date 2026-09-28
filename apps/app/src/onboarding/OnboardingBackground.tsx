@@ -1,6 +1,14 @@
 import { useId } from "react";
 import { StyleSheet, View } from "react-native";
-import Svg, { Defs, Ellipse, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
+import Svg, {
+  Defs,
+  Ellipse,
+  LinearGradient,
+  Path,
+  RadialGradient,
+  Rect,
+  Stop,
+} from "react-native-svg";
 
 import { ob } from "./palette";
 

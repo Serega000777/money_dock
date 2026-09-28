@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-export const createShortcutCredentialSchema = z.object({ name: z.string().trim().min(1).max(80).default("iPhone") });
+export const createShortcutCredentialSchema = z.object({
+  name: z.string().trim().min(1).max(80).default("iPhone"),
+});
 export const shortcutCaptureSchema = z.object({
   input: z.string().trim().min(1).max(300),
   walletId: z.string().uuid().optional(),

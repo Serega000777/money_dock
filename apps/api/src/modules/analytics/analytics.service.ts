@@ -122,7 +122,10 @@ export class AnalyticsService {
 
   /** Same expense total as periodTotals, split by `accounts.type` — "cash" vs. "card"/
    * "bank" combined (home screen: "траты наличными" / "траты с банка"). */
-  private async expenseByPaymentKind(accountIds: string[], from: Date): Promise<ExpenseByPaymentKind> {
+  private async expenseByPaymentKind(
+    accountIds: string[],
+    from: Date,
+  ): Promise<ExpenseByPaymentKind> {
     if (accountIds.length === 0) return { cashMinor: 0, bankMinor: 0 };
     const rows = await this.db
       .select({

@@ -12,7 +12,15 @@ import { Donut } from "../src/ui/Donut";
 import { GradientBox } from "../src/ui/Gradient";
 import { Icon, type IconName } from "../src/ui/Icon";
 import { Text } from "../src/ui/Text";
-import { BottomSheet, Card, FadeIn, Pill, PressableScale, Screen, Segmented } from "../src/ui/primitives";
+import {
+  BottomSheet,
+  Card,
+  FadeIn,
+  Pill,
+  PressableScale,
+  Screen,
+  Segmented,
+} from "../src/ui/primitives";
 
 const PLAN_LABEL: Record<Plan, string> = { free: "Free", pro: "Pro", pro_bank: "Pro + Банк" };
 const PLAN_COLOR: Record<Plan, string> = { free: "#9AA0B3", pro: "#7C4DFF", pro_bank: "#F5B841" };
@@ -76,7 +84,13 @@ export default function Admin() {
       <Stack.Screen options={{ headerShown: true, title: "Админ-панель" }} />
 
       <FadeIn index={0}>
-        <GradientBox colors={theme.accentGradient} diagonal highlight radius={radii.lg} style={styles.revenueCard}>
+        <GradientBox
+          colors={theme.accentGradient}
+          diagonal
+          highlight
+          radius={radii.lg}
+          style={styles.revenueCard}
+        >
           <View style={styles.revenueHead}>
             <View style={styles.revenueBadge}>
               <Icon name="star" color="#FFFFFF" size={22} />
@@ -182,7 +196,10 @@ export default function Admin() {
                 setGiftPlan(user.plan === "free" ? "pro" : user.plan);
                 setGiftDays("30");
               }}
-              style={StyleSheet.flatten([styles.giftButton, { backgroundColor: theme.surfaceSunken }])}
+              style={StyleSheet.flatten([
+                styles.giftButton,
+                { backgroundColor: theme.surfaceSunken },
+              ])}
             >
               <Icon name="gift" color={theme.accent} size={16} />
               <Text style={[styles.giftButtonText, { color: theme.accent }]}>

@@ -7,7 +7,13 @@ export interface TelegramUpdate {
 
 export interface TelegramMessage {
   chat: { id: number };
-  from?: { id: number; first_name: string; last_name?: string; username?: string; language_code?: string };
+  from?: {
+    id: number;
+    first_name: string;
+    last_name?: string;
+    username?: string;
+    language_code?: string;
+  };
   text?: string;
   contact?: { phone_number: string; user_id?: number };
   successful_payment?: TelegramSuccessfulPayment;

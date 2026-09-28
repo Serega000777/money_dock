@@ -36,7 +36,9 @@ export const usePaywallStore = create<PaywallState>((set) => ({
  * same JSON.parse(error.message) shape OnboardingFlow already relies on. */
 export function openPaywallFromError(error: unknown, fallback?: string): void {
   if (!isPlanLimitError(error)) return;
-  usePaywallStore.getState().open(apiErrorMessage(error, fallback ?? "Эта возможность входит в подписку Pro."));
+  usePaywallStore
+    .getState()
+    .open(apiErrorMessage(error, fallback ?? "Эта возможность входит в подписку Pro."));
 }
 
 const FEATURES = [
@@ -59,7 +61,12 @@ export function PaywallModal() {
   return (
     <BottomSheet visible={visible} onClose={close}>
       <View style={styles.wrap}>
-        <GradientBox colors={theme.accentGradient} diagonal radius={radii.pill} style={styles.badge}>
+        <GradientBox
+          colors={theme.accentGradient}
+          diagonal
+          radius={radii.pill}
+          style={styles.badge}
+        >
           {/* React Native Web's View defaults to position:relative, which is what makes a
               child paint above GradientRect's position:absolute fill — react-native-svg's
               own <Svg> has no such default, so a bare Icon here would render invisible,

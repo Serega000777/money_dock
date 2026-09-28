@@ -28,13 +28,22 @@ export class CategoriesService {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
   async listForUser(userId: string): Promise<Category[]> {
-    const [rows, rules] = await Promise.all([this.db
-      .select()
-      .from(categories)
-      .where(or(isNull(categories.userId), eq(categories.userId, userId))),
-      this.db.select().from(categoryRules).where(and(eq(categoryRules.userId, userId), eq(categoryRules.active, true))),
+    const [rows, rules] = await Promise.all([
+      this.db
+        .select()
+        .from(categories)
+        .where(or(isNull(categories.userId), eq(categories.userId, userId))),
+      this.db
+        .select()
+        .from(categoryRules)
+        .where(and(eq(categoryRules.userId, userId), eq(categoryRules.active, true))),
     ]);
-    return rows.map((row) => toCategory(row, rules.filter((rule) => rule.categoryId === row.id).map((rule) => rule.pattern)));
+    return rows.map((row) =>
+      toCategory(
+        row,
+        rules.filter((rule) => rule.categoryId === row.id).map((rule) => rule.pattern),
+      ),
+    );
   }
 
   async create(userId: string, input: CreateCategoryInput): Promise<Category> {
@@ -56,7 +65,10 @@ export class CategoriesService {
 
     const { aliases, ...categoryInput } = input;
     return this.db.transaction(async (tx) => {
-      const rows = await tx.insert(categories).values({ ...categoryInput, userId }).returning();
+      const rows = await tx
+        .insert(categories)
+        .values({ ...categoryInput, userId })
+        .returning();
       const row = firstOrThrow(rows);
       // Same normalizer CommandsService.parse() matches phrases against, and the one
       // statement-import matching already reads category_rules with (business-rules'

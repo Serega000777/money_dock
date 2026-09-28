@@ -16,13 +16,7 @@ export async function fileToAvatarDataUrl(file: File, size = 256): Promise<strin
   const scale = size / Math.min(bitmap.width, bitmap.height);
   const drawWidth = bitmap.width * scale;
   const drawHeight = bitmap.height * scale;
-  ctx.drawImage(
-    bitmap,
-    (size - drawWidth) / 2,
-    (size - drawHeight) / 2,
-    drawWidth,
-    drawHeight,
-  );
+  ctx.drawImage(bitmap, (size - drawWidth) / 2, (size - drawHeight) / 2, drawWidth, drawHeight);
 
   return canvas.toDataURL("image/jpeg", 0.85);
 }

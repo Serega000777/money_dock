@@ -67,10 +67,7 @@ export function WelcomeStep() {
       <View style={styles.orbRow}>
         <Handwritten text="Твои цели ближе ♡" style={styles.scriptLeft} />
         <GlowOrb name="mic" size={86} />
-        <Handwritten
-          text="Маленькие траты — большие мечты ♡"
-          style={styles.scriptRight}
-        />
+        <Handwritten text="Маленькие траты — большие мечты ♡" style={styles.scriptRight} />
       </View>
 
       <FeatureRow
@@ -259,10 +256,7 @@ export function AccountsStep() {
         </View>
       </GlassCard>
 
-      <Handwritten
-        text="Больше контроля — больше свободы ♡"
-        style={styles.scriptFloatRight}
-      />
+      <Handwritten text="Больше контроля — больше свободы ♡" style={styles.scriptFloatRight} />
 
       <FeatureRow
         items={[
@@ -440,10 +434,7 @@ export function AnalyticsStep() {
       <View style={styles.orbRow}>
         <Handwritten text="Большие цели ближе ♡" style={styles.scriptLeft} />
         <GlowOrb name="chart" size={86} />
-        <Handwritten
-          text="Финансовая свобода — это реальность ♡"
-          style={styles.scriptRight}
-        />
+        <Handwritten text="Финансовая свобода — это реальность ♡" style={styles.scriptRight} />
       </View>
 
       <FeatureRow

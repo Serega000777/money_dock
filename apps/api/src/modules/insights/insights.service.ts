@@ -1,4 +1,11 @@
-import { addDays, averageDailySpend, dayOfMonth, percentChange, startOfDay, startOfMonth } from "@money-dock/business-rules";
+import {
+  addDays,
+  averageDailySpend,
+  dayOfMonth,
+  percentChange,
+  startOfDay,
+  startOfMonth,
+} from "@money-dock/business-rules";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { and, desc, eq, gt, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 
@@ -69,7 +76,9 @@ export class InsightsService {
 
     const [yesterdayExpenseMinor, baselineExpenseMinor, reviewCount, summary] = await Promise.all([
       this.periodExpense(accountIds, yesterdayStart, todayStart),
-      baselineDays > 0 ? this.periodExpense(accountIds, monthStart, yesterdayStart) : Promise.resolve(0),
+      baselineDays > 0
+        ? this.periodExpense(accountIds, monthStart, yesterdayStart)
+        : Promise.resolve(0),
       this.pendingReviewCount(userId),
       this.analytics.getSummary(userId, now),
     ]);
@@ -156,8 +165,7 @@ export class InsightsService {
       // extending `validUntil` on every list-fetch would make an already-read insight
       // that the user dismissed keep resurfacing forever just because it's still true.
       const existingPayload = existing?.payloadJson as
-        | { currentMinor?: number; previousMinor?: number }
-        | undefined;
+        { currentMinor?: number; previousMinor?: number } | undefined;
       if (
         existingPayload &&
         existingPayload.currentMinor === row.totalMinor &&
@@ -249,7 +257,10 @@ export class InsightsService {
   }
 
   private async categoryName(categoryId: string): Promise<string> {
-    const [row] = await this.db.select({ name: categories.name }).from(categories).where(eq(categories.id, categoryId));
+    const [row] = await this.db
+      .select({ name: categories.name })
+      .from(categories)
+      .where(eq(categories.id, categoryId));
     return row?.name ?? "Категория";
   }
 

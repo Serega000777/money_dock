@@ -1,4 +1,9 @@
-import { detectColumns, parseAmountToMinor, parseRowDate, RowParseError } from "@money-dock/business-rules";
+import {
+  detectColumns,
+  parseAmountToMinor,
+  parseRowDate,
+  RowParseError,
+} from "@money-dock/business-rules";
 import { BadRequestException, Injectable, NotImplementedException } from "@nestjs/common";
 import { parse } from "csv-parse/sync";
 
@@ -31,11 +36,15 @@ export class CsvBankProvider implements BankProvider {
   // `async` so the throw rejects the returned promise instead of throwing synchronously
   // at the call site — every BankProvider method is meant to be awaited, real or not.
   async getAuthorizationUrl(): Promise<string> {
-    throw new NotImplementedException("CSV import has no authorization flow — the user uploads a file");
+    throw new NotImplementedException(
+      "CSV import has no authorization flow — the user uploads a file",
+    );
   }
 
   async exchangeAuthorizationCode(): Promise<ConnectionToken> {
-    throw new NotImplementedException("CSV import has no authorization flow — the user uploads a file");
+    throw new NotImplementedException(
+      "CSV import has no authorization flow — the user uploads a file",
+    );
   }
 
   getAccounts(): Promise<ExternalBankAccount[]> {

@@ -91,7 +91,11 @@ describe("Notes and hands-free capture (e2e)", () => {
       .send({ text: "потратил 640 рублей в кафе", source: "voice", clientId: randomUUID() })
       .expect(201);
 
-    expect(res.body).toMatchObject({ amountMinor: 64_000, status: "needs_review", source: "voice" });
+    expect(res.body).toMatchObject({
+      amountMinor: 64_000,
+      status: "needs_review",
+      source: "voice",
+    });
 
     const inbox = await authed("get", "/review-inbox").expect(200);
     const item = inbox.body.find(

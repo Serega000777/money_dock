@@ -6,7 +6,13 @@ import type {
   ListTransactionsQuery,
   UpdateTransactionInput,
 } from "@money-dock/validation";
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 
 import { AuditLogService } from "../../common/audit-log.service";
@@ -25,7 +31,11 @@ type TransactionStatusValue = TransactionRow["status"];
  * ограниченное время"). Past this, the row is still there for audit but `restore` refuses. */
 const UNDO_WINDOW_MS = 5 * 60_000;
 
-function toTransaction(row: TransactionRow, splits: TransactionSplit[] = [], createdByName: string | null = null): Transaction {
+function toTransaction(
+  row: TransactionRow,
+  splits: TransactionSplit[] = [],
+  createdByName: string | null = null,
+): Transaction {
   return {
     id: row.id,
     accountId: row.accountId,
@@ -53,7 +63,9 @@ export class TransactionsService {
     private readonly auditLog: AuditLogService,
   ) {}
 
-  accessibleAccounts(userId: string) { return this.accountsService.list(userId); }
+  accessibleAccounts(userId: string) {
+    return this.accountsService.list(userId);
+  }
 
   /**
    * `internal` is for server-side callers (statement import) that need to record a
@@ -185,13 +197,21 @@ export class TransactionsService {
     // includeArchived: archiving an account is a soft delete (see AccountsService.archive)
     // — its past transactions must stay in the history, same as before accounts were
     // ever shared.
-    const accessibleIds = await this.accountsService.accessibleAccountIds(userId, { includeArchived: true });
+    const accessibleIds = await this.accountsService.accessibleAccountIds(userId, {
+      includeArchived: true,
+    });
     if (accessibleIds.length === 0) return [];
-    const conditions = [isNull(transactions.deletedAt), inArray(transactions.accountId, accessibleIds)];
+    const conditions = [
+      isNull(transactions.deletedAt),
+      inArray(transactions.accountId, accessibleIds),
+    ];
     if (query.accountId) conditions.push(eq(transactions.accountId, query.accountId));
 
-    const rows = await this.db.select({ transaction: transactions, creatorName: users.displayName })
-      .from(transactions).innerJoin(users, eq(users.id, transactions.userId)).where(and(...conditions))
+    const rows = await this.db
+      .select({ transaction: transactions, creatorName: users.displayName })
+      .from(transactions)
+      .innerJoin(users, eq(users.id, transactions.userId))
+      .where(and(...conditions))
       .orderBy(desc(transactions.occurredAt), desc(transactions.id))
       .limit(query.limit)
       .offset(query.offset);
@@ -202,12 +222,7 @@ export class TransactionsService {
     const [row] = await this.db
       .select()
       .from(transactions)
-      .where(
-        and(
-          eq(transactions.id, id),
-          isNull(transactions.deletedAt),
-        ),
-      );
+      .where(and(eq(transactions.id, id), isNull(transactions.deletedAt)));
     if (!row) throw new NotFoundException("Transaction not found");
     await this.accountsService.getAccessible(userId, row.accountId);
 
@@ -228,7 +243,8 @@ export class TransactionsService {
   async update(userId: string, id: string, input: UpdateTransactionInput): Promise<Transaction> {
     const before = await this.getOwned(userId, id);
     const access = await this.accountsService.getAccessible(userId, before.accountId);
-    if (before.createdByUserId !== userId && access.role !== "owner") throw new ForbiddenException("Only the creator or owner can edit this transaction");
+    if (before.createdByUserId !== userId && access.role !== "owner")
+      throw new ForbiddenException("Only the creator or owner can edit this transaction");
     if (input.accountId) await this.accountsService.getWritable(userId, input.accountId);
 
     // Both legs of a transfer have to agree on what they are; flipping one to an expense

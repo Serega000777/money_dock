@@ -97,7 +97,10 @@ describe("Telegram bot webhook (e2e)", () => {
       .select()
       .from(userIdentities)
       .where(
-        and(eq(userIdentities.provider, "telegram"), eq(userIdentities.providerUserId, String(telegramId))),
+        and(
+          eq(userIdentities.provider, "telegram"),
+          eq(userIdentities.providerUserId, String(telegramId)),
+        ),
       );
     expect(identity).toBeDefined();
   });
@@ -129,7 +132,10 @@ describe("Telegram bot webhook (e2e)", () => {
       .select()
       .from(userIdentities)
       .where(
-        and(eq(userIdentities.provider, "telegram"), eq(userIdentities.providerUserId, String(telegramId))),
+        and(
+          eq(userIdentities.provider, "telegram"),
+          eq(userIdentities.providerUserId, String(telegramId)),
+        ),
       );
     expect(identity.phone).toBeNull();
 
@@ -150,7 +156,10 @@ describe("Telegram bot webhook (e2e)", () => {
       .select()
       .from(userIdentities)
       .where(
-        and(eq(userIdentities.provider, "telegram"), eq(userIdentities.providerUserId, String(telegramId))),
+        and(
+          eq(userIdentities.provider, "telegram"),
+          eq(userIdentities.providerUserId, String(telegramId)),
+        ),
       );
     expect(identity.phone).toBe("+79991234567");
   });
@@ -165,11 +174,22 @@ describe("Telegram bot webhook (e2e)", () => {
     expect(await entitlements.getPlan(userId)).toBe("free");
 
     for (const currency of ["XTR", "RUB"]) {
-      await request(app.getHttpServer()).post("/telegram/webhook")
+      await request(app.getHttpServer())
+        .post("/telegram/webhook")
         .set("X-Telegram-Bot-Api-Secret-Token", WEBHOOK_SECRET)
-        .send({ message: { chat: { id: telegramId }, from: { id: telegramId, first_name: "Test" },
-          successful_payment: { currency, total_amount: 1, invoice_payload: `pro_monthly:${userId}`,
-            telegram_payment_charge_id: `invalid-${runPrefix}-${currency}` } } }).expect(200);
+        .send({
+          message: {
+            chat: { id: telegramId },
+            from: { id: telegramId, first_name: "Test" },
+            successful_payment: {
+              currency,
+              total_amount: 1,
+              invoice_payload: `pro_monthly:${userId}`,
+              telegram_payment_charge_id: `invalid-${runPrefix}-${currency}`,
+            },
+          },
+        })
+        .expect(200);
     }
     expect(await entitlements.getPlan(userId)).toBe("free");
 
@@ -192,15 +212,26 @@ describe("Telegram bot webhook (e2e)", () => {
 
     expect(await entitlements.getPlan(userId)).toBe("pro");
     const [first] = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId));
-    const duplicate = await entitlements.applyStarsPayment(userId, `test-charge-${runPrefix}`, 199, 30);
+    const duplicate = await entitlements.applyStarsPayment(
+      userId,
+      `test-charge-${runPrefix}`,
+      199,
+      30,
+    );
     expect(duplicate).toBeNull();
-    const [afterRetry] = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId));
+    const [afterRetry] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.userId, userId));
     expect(afterRetry.expiresAt).toEqual(first.expiresAt);
     const renewed = await entitlements.applyStarsPayment(userId, `renew-${runPrefix}`, 199, 30);
     expect(renewed?.expiresAt?.getTime()).toBe(first.expiresAt!.getTime() + 30 * 86_400_000);
     await entitlements.setPlan(userId, "pro_bank", null);
     await entitlements.applyStarsPayment(userId, `perpetual-${runPrefix}`, 199, 30);
-    const [perpetual] = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId));
+    const [perpetual] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.userId, userId));
     expect(perpetual.plan).toBe("pro_bank");
     expect(perpetual.expiresAt).toBeNull();
   });

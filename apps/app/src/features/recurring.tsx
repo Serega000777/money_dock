@@ -139,7 +139,10 @@ export function CreateRecurringPaymentSheet({
         onChangeText={setName}
         placeholder="Например, Окко"
         placeholderTextColor={theme.textTertiary}
-        style={[sheetStyles.input, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]}
+        style={[
+          sheetStyles.input,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
       />
       <TextInput
         value={amount}
@@ -147,7 +150,10 @@ export function CreateRecurringPaymentSheet({
         placeholder="Сумма в месяц, ₽"
         placeholderTextColor={theme.textTertiary}
         keyboardType="decimal-pad"
-        style={[sheetStyles.input, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]}
+        style={[
+          sheetStyles.input,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
       />
 
       {categories.length > 0 ? (

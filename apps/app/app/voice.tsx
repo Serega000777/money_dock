@@ -55,7 +55,9 @@ export default function Voice() {
             setDraft(null);
             // The paywall modal (opened by useVoiceCapture's own onError) already
             // explains a plan-limit 403 — no need to duplicate that as inline text.
-            setError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать команду"));
+            setError(
+              isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать команду"),
+            );
           },
         },
       );

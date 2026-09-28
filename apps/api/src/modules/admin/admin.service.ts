@@ -57,7 +57,10 @@ export class AdminService {
         .select({ value: sql<number>`coalesce(sum(${starsPayments.amount}), 0)::int` })
         .from(starsPayments)
         .where(gte(starsPayments.createdAt, new Date(now - 30 * DAY_MS))),
-      this.db.select({ createdAt: users.createdAt }).from(users).where(gte(users.createdAt, trendStart)),
+      this.db
+        .select({ createdAt: users.createdAt })
+        .from(users)
+        .where(gte(users.createdAt, trendStart)),
     ]);
 
     const planBreakdown: Record<Plan, number> = { free: 0, pro: 0, pro_bank: 0 };
@@ -100,7 +103,10 @@ export class AdminService {
         .select({ userId: userIdentities.userId })
         .from(userIdentities)
         .where(
-          and(eq(userIdentities.provider, "telegram"), eq(userIdentities.providerUserId, input.query)),
+          and(
+            eq(userIdentities.provider, "telegram"),
+            eq(userIdentities.providerUserId, input.query),
+          ),
         );
       byTelegramId = rows.map((row) => row.userId);
     }

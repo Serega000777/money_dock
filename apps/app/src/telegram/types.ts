@@ -39,7 +39,10 @@ export interface TelegramWebApp {
   offEvent: (event: string, handler: () => void) => void;
   /** Opens Telegram's native Stars payment sheet for an invoice link created via the Bot
    * API's createInvoiceLink. `status` mirrors the successful_payment/failed webhook. */
-  openInvoice?: (url: string, callback: (status: "paid" | "cancelled" | "failed" | "pending") => void) => void;
+  openInvoice?: (
+    url: string,
+    callback: (status: "paid" | "cancelled" | "failed" | "pending") => void,
+  ) => void;
   /** For a t.me link (support/feedback chat) — inside the Mini App's sandboxed WebView, a
    * plain window.open is unreliable, so this is Telegram's own way to hand it to the client. */
   openTelegramLink?: (url: string) => void;

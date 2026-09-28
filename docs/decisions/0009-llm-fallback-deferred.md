@@ -17,7 +17,7 @@ categorization are deterministic by default; an LLM is a fallback for what deter
 can't reach, not a first resort. Every one of the five active steps together already
 covers personal rules, prior behavior, well-known brands, bank-supplied MCCs, and generic
 keywords — a real network call would only fire for merchants that are genuinely novel
-*and* unrecognizable by keyword, which is a narrow, low-frequency case at MVP traffic
+_and_ unrecognizable by keyword, which is a narrow, low-frequency case at MVP traffic
 levels, while every call still costs money and adds latency + an external dependency to
 a request path.
 

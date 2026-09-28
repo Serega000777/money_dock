@@ -77,7 +77,12 @@ export default function Debts() {
       </FadeIn>
 
       <FadeIn index={1}>
-        <GradientBox colors={theme.accentGradient} diagonal radius={radii.lg} style={styles.summary}>
+        <GradientBox
+          colors={theme.accentGradient}
+          diagonal
+          radius={radii.lg}
+          style={styles.summary}
+        >
           <Text style={styles.summaryLabel}>
             {direction === "owed_to_me" ? "Вам должны" : "Вы должны"}
           </Text>
@@ -98,7 +103,9 @@ export default function Debts() {
           <Card style={styles.listCard}>
             {open.map((debt, i) => (
               <View key={debt.id}>
-                {i > 0 ? <View style={[styles.divider, { backgroundColor: theme.border }]} /> : null}
+                {i > 0 ? (
+                  <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                ) : null}
                 <DebtRow
                   debt={debt}
                   onPress={() => setEditing(debt)}
@@ -116,7 +123,9 @@ export default function Debts() {
           <Card style={styles.listCard}>
             {settled.map((debt, i) => (
               <View key={debt.id}>
-                {i > 0 ? <View style={[styles.divider, { backgroundColor: theme.border }]} /> : null}
+                {i > 0 ? (
+                  <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                ) : null}
                 <DebtRow
                   debt={debt}
                   settled
@@ -181,7 +190,8 @@ function DebtRow({
   onSettle: () => void;
 }) {
   const theme = useTheme();
-  const overdue = !settled && Boolean(debt.dueDate) && new Date(debt.dueDate!).getTime() < Date.now();
+  const overdue =
+    !settled && Boolean(debt.dueDate) && new Date(debt.dueDate!).getTime() < Date.now();
 
   return (
     <Pressable style={styles.row} onPress={onPress}>
@@ -247,7 +257,9 @@ function DebtSheet({
   const [name, setName] = useState(debt?.counterpartyName ?? "");
   const [amount, setAmount] = useState(debt ? String(debt.amountMinor / 100) : "");
   const [note, setNote] = useState(debt?.note ?? "");
-  const [dueDate, setDueDate] = useState<Date | null>(debt?.dueDate ? new Date(debt.dueDate) : null);
+  const [dueDate, setDueDate] = useState<Date | null>(
+    debt?.dueDate ? new Date(debt.dueDate) : null,
+  );
   const [pickingDate, setPickingDate] = useState(false);
 
   useEffect(() => {
@@ -282,7 +294,8 @@ function DebtSheet({
     onSuccess: onSaved,
   });
 
-  const canSave = name.trim().length > 0 && Number(amount) > 0 && !create.isPending && !update.isPending;
+  const canSave =
+    name.trim().length > 0 && Number(amount) > 0 && !create.isPending && !update.isPending;
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title={debt ? "Изменить долг" : "Новый долг"}>
@@ -300,7 +313,10 @@ function DebtSheet({
         onChangeText={setName}
         placeholder="Имя"
         placeholderTextColor={theme.textTertiary}
-        style={[sheetStyles.input, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]}
+        style={[
+          sheetStyles.input,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
       />
       <TextInput
         value={amount}
@@ -308,14 +324,20 @@ function DebtSheet({
         placeholder="Сумма, ₽"
         placeholderTextColor={theme.textTertiary}
         keyboardType="decimal-pad"
-        style={[sheetStyles.input, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]}
+        style={[
+          sheetStyles.input,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
       />
       <TextInput
         value={note}
         onChangeText={setNote}
         placeholder="Комментарий (необязательно)"
         placeholderTextColor={theme.textTertiary}
-        style={[sheetStyles.input, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]}
+        style={[
+          sheetStyles.input,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
       />
 
       <Pressable
@@ -323,9 +345,15 @@ function DebtSheet({
         onPress={() => setPickingDate(true)}
       >
         <Icon name="calendar" color={theme.textSecondary} size={16} />
-        <Text style={[styles.dateText, { color: dueDate ? theme.textPrimary : theme.textTertiary }]}>
+        <Text
+          style={[styles.dateText, { color: dueDate ? theme.textPrimary : theme.textTertiary }]}
+        >
           {dueDate
-            ? dueDate.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })
+            ? dueDate.toLocaleDateString("ru-RU", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })
             : "Срок (необязательно)"}
         </Text>
         {dueDate ? (
@@ -381,7 +409,13 @@ const styles = StyleSheet.create({
   listCard: { paddingVertical: spacing.xs, gap: 0 },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 34 + spacing.md },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.md },
-  rowIcon: { width: 34, height: 34, borderRadius: radii.sm, alignItems: "center", justifyContent: "center" },
+  rowIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   rowMain: { flex: 1, gap: 2 },
   rowName: typography.body,
   rowMeta: typography.caption,
@@ -395,7 +429,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingVertical: spacing.sm,
   },
-  addIcon: { width: 34, height: 34, borderRadius: radii.sm, alignItems: "center", justifyContent: "center" },
+  addIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   addLabel: { ...typography.body, fontWeight: "600" },
 
   gap: { height: spacing.md },

@@ -92,7 +92,13 @@ export function BootScreen({ visible }: { visible: boolean }) {
 
       <View style={styles.center}>
         <View style={styles.orbWrap}>
-          <GlowBlob top="-45%" left="-45%" size={ORB * 1.9} color={darkTheme.accent} opacity={0.45} />
+          <GlowBlob
+            top="-45%"
+            left="-45%"
+            size={ORB * 1.9}
+            color={darkTheme.accent}
+            opacity={0.45}
+          />
           {rings.map((ring, i) => (
             <Animated.View
               key={i}
@@ -134,14 +140,18 @@ export function BootScreen({ visible }: { visible: boolean }) {
         <Animated.View
           style={{
             opacity: logo,
-            transform: [{ translateY: logo.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+            transform: [
+              { translateY: logo.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) },
+            ],
           }}
         >
           <AmolaLogo width={168} subColor="#E8D6F5" />
         </Animated.View>
       </View>
 
-      <Text style={[styles.caption, { color: darkTheme.textTertiary }]}>Загружаем ваши финансы…</Text>
+      <Text style={[styles.caption, { color: darkTheme.textTertiary }]}>
+        Загружаем ваши финансы…
+      </Text>
     </Animated.View>
   );
 }

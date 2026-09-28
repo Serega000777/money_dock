@@ -57,7 +57,9 @@ export class TelegramBotService {
     // banner file kept showing the old picture after a deploy. A per-boot query string
     // makes every restart a fresh URL for Telegram; the web container ignores it.
     const banner = config.get("TELEGRAM_BANNER_URL", { infer: true });
-    this.bannerUrl = banner ? `${banner}${banner.includes("?") ? "&" : "?"}v=${Date.now()}` : undefined;
+    this.bannerUrl = banner
+      ? `${banner}${banner.includes("?") ? "&" : "?"}v=${Date.now()}`
+      : undefined;
 
     const origins = parseCorsOrigins(config.get("CORS_ORIGIN", { infer: true }));
     this.miniAppUrl = Array.isArray(origins) ? origins[0] : undefined;
@@ -79,7 +81,8 @@ export class TelegramBotService {
     const command = message.text?.split("@")[0]?.trim().toLowerCase();
     if (command === "/start") return this.handleStart(message);
     if (command === "/terms") return this.handleTerms(message);
-    if (command === "/support" || command === "/paysupport") return this.handlePaymentSupport(message);
+    if (command === "/support" || command === "/paysupport")
+      return this.handlePaymentSupport(message);
     if (message.contact) return this.handleContact(message);
     // Anything else — no command grammar to teach; the share-number keyboard is still up.
   }
@@ -105,20 +108,32 @@ export class TelegramBotService {
   /** Telegram blocks the payment on this for up to 10s. Besides price and payload, bind
    * the payer to the account that created the invoice so a forwarded link cannot activate
    * Pro on somebody else's account. */
-  private paymentUser(payment: { invoice_payload: string; currency: string; total_amount: number }): string | null {
-    const match = /^pro_monthly:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(payment.invoice_payload);
-    return match && payment.currency === "XTR" && payment.total_amount === PRO_MONTHLY_STARS ? match[1]! : null;
+  private paymentUser(payment: {
+    invoice_payload: string;
+    currency: string;
+    total_amount: number;
+  }): string | null {
+    const match =
+      /^pro_monthly:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(
+        payment.invoice_payload,
+      );
+    return match && payment.currency === "XTR" && payment.total_amount === PRO_MONTHLY_STARS
+      ? match[1]!
+      : null;
   }
 
-  private async handlePreCheckoutQuery(query: NonNullable<TelegramUpdate["pre_checkout_query"]>): Promise<void> {
+  private async handlePreCheckoutQuery(
+    query: NonNullable<TelegramUpdate["pre_checkout_query"]>,
+  ): Promise<void> {
     const userId = this.paymentUser(query);
     const ok = Boolean(
       userId &&
-        (await this.entitlements.hasUser(userId)) &&
-        (await this.users.ownsTelegramIdentity(userId, query.from.id)),
+      (await this.entitlements.hasUser(userId)) &&
+      (await this.users.ownsTelegramIdentity(userId, query.from.id)),
     );
     await this.callApiAwaited("answerPreCheckoutQuery", {
-      pre_checkout_query_id: query.id, ok,
+      pre_checkout_query_id: query.id,
+      ok,
       ...(!ok ? { error_message: "Счёт устарел. Откройте Amola и создайте новый платёж." } : {}),
     });
   }
@@ -139,7 +154,12 @@ export class TelegramBotService {
       return;
     }
 
-    const applied = await this.entitlements.applyStarsPayment(userId, payment.telegram_payment_charge_id, payment.total_amount, PRO_MONTHLY_DAYS);
+    const applied = await this.entitlements.applyStarsPayment(
+      userId,
+      payment.telegram_payment_charge_id,
+      payment.total_amount,
+      PRO_MONTHLY_DAYS,
+    );
     if (!applied) return;
 
     this.callApi("sendMessage", {
@@ -227,7 +247,10 @@ export class TelegramBotService {
     // this update through in the first place.
     if (!this.miniAppUrl) {
       this.logger.warn("No CORS_ORIGIN to build a Mini App button from — sending text only");
-      this.callApi("sendMessage", { chat_id: chatId, text: "Готово! Откройте приложение из меню бота." });
+      this.callApi("sendMessage", {
+        chat_id: chatId,
+        text: "Готово! Откройте приложение из меню бота.",
+      });
       return;
     }
     this.callApi("sendMessage", {
@@ -264,10 +287,13 @@ export class TelegramBotService {
       body: JSON.stringify(body),
     })
       .then(async (res) => {
-        if (!res.ok) this.logger.error(`Telegram ${method} failed: ${res.status} ${await res.text()}`);
+        if (!res.ok)
+          this.logger.error(`Telegram ${method} failed: ${res.status} ${await res.text()}`);
       })
       .catch((error: unknown) => {
-        this.logger.error(`Telegram ${method} threw: ${error instanceof Error ? error.message : error}`);
+        this.logger.error(
+          `Telegram ${method} threw: ${error instanceof Error ? error.message : error}`,
+        );
       });
   }
 }

@@ -37,19 +37,40 @@ export class EntitlementsService {
   async applyStarsPayment(userId: string, chargeId: string, amount: number, days: number) {
     return this.db.transaction(async (tx) => {
       // Serialize distinct payments for the same account, including its first subscription.
-      const [user] = await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for("update");
+      const [user] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, userId))
+        .for("update");
       if (!user) throw new Error("Payment account not found");
-      const inserted = await tx.insert(starsPayments).values({ userId, chargeId, amount })
-        .onConflictDoNothing().returning();
+      const inserted = await tx
+        .insert(starsPayments)
+        .values({ userId, chargeId, amount })
+        .onConflictDoNothing()
+        .returning();
       if (!inserted.length) return null;
-      const [current] = await tx.select().from(subscriptions).where(eq(subscriptions.userId, userId));
-      const active = current && current.plan !== "free" && (!current.expiresAt || current.expiresAt.getTime() > Date.now());
+      const [current] = await tx
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.userId, userId));
+      const active =
+        current &&
+        current.plan !== "free" &&
+        (!current.expiresAt || current.expiresAt.getTime() > Date.now());
       const perpetual = active && !current.expiresAt;
-      const expiresAt = perpetual ? null : new Date(Math.max(Date.now(), active ? current.expiresAt!.getTime() : 0) + days * 86_400_000);
+      const expiresAt = perpetual
+        ? null
+        : new Date(
+            Math.max(Date.now(), active ? current.expiresAt!.getTime() : 0) + days * 86_400_000,
+          );
       const plan = active ? current.plan : "pro";
-      await tx.insert(subscriptions).values({ userId, plan, expiresAt }).onConflictDoUpdate({
-        target: subscriptions.userId, set: { plan, expiresAt, updatedAt: new Date() },
-      });
+      await tx
+        .insert(subscriptions)
+        .values({ userId, plan, expiresAt })
+        .onConflictDoUpdate({
+          target: subscriptions.userId,
+          set: { plan, expiresAt, updatedAt: new Date() },
+        });
       return { expiresAt };
     });
   }
@@ -59,7 +80,10 @@ export class EntitlementsService {
     // gift themselves a subscription to use their own product — admin already implies
     // full access everywhere else (AdminGuard), and there's no real billing yet for them
     // to have paid through in the first place.
-    const [account] = await this.db.select({ role: users.role }).from(users).where(eq(users.id, userId));
+    const [account] = await this.db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, userId));
     if (account?.role === "admin") return "pro_bank";
 
     const [row] = await this.db

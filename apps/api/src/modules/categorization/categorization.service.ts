@@ -1,4 +1,8 @@
-import { classifyByKeyword, mccToSystemCategory, normalizeMerchant } from "@money-dock/business-rules";
+import {
+  classifyByKeyword,
+  mccToSystemCategory,
+  normalizeMerchant,
+} from "@money-dock/business-rules";
 import { Inject, Injectable } from "@nestjs/common";
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
@@ -8,12 +12,7 @@ import { categories, categoryRules, merchantAliases, transactions } from "../../
 import { AccountsService } from "../accounts/accounts.service";
 
 export type CategorizationSource =
-  | "user_rule"
-  | "merchant_history"
-  | "global_alias"
-  | "mcc"
-  | "local_classifier"
-  | "uncategorized";
+  "user_rule" | "merchant_history" | "global_alias" | "mcc" | "local_classifier" | "uncategorized";
 
 export interface CategorizationResult {
   categoryId: string | null;
@@ -135,7 +134,10 @@ export class CategorizationService {
    * table is small, so matching in JS is simpler than a fragile SQL LIKE per alias. */
   private async matchGlobalAlias(pattern: string): Promise<CategorizationResult | null> {
     const aliases = await this.db
-      .select({ rawPattern: merchantAliases.rawPattern, categoryId: merchantAliases.defaultCategoryId })
+      .select({
+        rawPattern: merchantAliases.rawPattern,
+        categoryId: merchantAliases.defaultCategoryId,
+      })
       .from(merchantAliases);
     const match = aliases.find((alias) => pattern.includes(alias.rawPattern));
     if (!match?.categoryId) return null;

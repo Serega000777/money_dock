@@ -90,7 +90,10 @@ export function CreateAccountSheet({
         onChangeText={setName}
         placeholder={NAME_HINT[type]}
         placeholderTextColor={theme.textTertiary}
-        style={[sheetStyles.input, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]}
+        style={[
+          sheetStyles.input,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
       />
       <TextInput
         value={balance}
@@ -98,7 +101,10 @@ export function CreateAccountSheet({
         placeholder="Сколько на нём сейчас, ₽ (можно 0)"
         placeholderTextColor={theme.textTertiary}
         keyboardType="decimal-pad"
-        style={[sheetStyles.input, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]}
+        style={[
+          sheetStyles.input,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
       />
 
       {type === "card" ? (

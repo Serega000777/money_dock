@@ -1,6 +1,14 @@
 import { useId } from "react";
 import { Platform } from "react-native";
-import Svg, { Circle, Defs, G, LinearGradient, Path, Stop, Text as SvgText } from "react-native-svg";
+import Svg, {
+  Circle,
+  Defs,
+  G,
+  LinearGradient,
+  Path,
+  Stop,
+  Text as SvgText,
+} from "react-native-svg";
 
 /**
  * The Amola Finance wordmark, drawn from the brand PNG's own geometry rather than typed

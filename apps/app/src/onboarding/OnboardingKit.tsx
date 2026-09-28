@@ -22,13 +22,7 @@ export function OnboardingLogo() {
  * stack keeps it to zero new dependencies and zero external requests (which also keeps
  * the CSP in `+html.tsx` as tight as it is); platforms without one fall back to italic.
  */
-export function Handwritten({
-  text,
-  style,
-}: {
-  text: string;
-  style?: ViewStyle;
-}) {
+export function Handwritten({ text, style }: { text: string; style?: ViewStyle }) {
   return (
     <View style={[styles.scriptWrap, style]} pointerEvents="none">
       <Text style={styles.script}>{text}</Text>
@@ -55,13 +49,7 @@ export function IconBadge({
   style?: ViewStyle;
 }) {
   return (
-    <View
-      style={[
-        styles.badge,
-        { width: size, height: size, borderRadius: size / 3.4 },
-        style,
-      ]}
-    >
+    <View style={[styles.badge, { width: size, height: size, borderRadius: size / 3.4 }, style]}>
       <Icon name={name} color={color} size={iconSize} strokeWidth={1.9} />
     </View>
   );
@@ -73,10 +61,7 @@ export function GlowOrb({ name, size = 96 }: { name: IconName; size?: number }) 
     <View style={[styles.orbWrap, { width: size * 1.7, height: size * 1.7 }]}>
       <GlowBlob top="0%" left="0%" size={size * 1.7} color={ob.glowPink} opacity={0.5} />
       <View
-        style={[
-          styles.orbRing,
-          { width: size * 1.24, height: size * 1.24, borderRadius: size },
-        ]}
+        style={[styles.orbRing, { width: size * 1.24, height: size * 1.24, borderRadius: size }]}
       />
       <GradientBox
         colors={ob.primaryGradient}
@@ -170,12 +155,7 @@ export function ObProgress({ share, height = 8 }: { share: number; height?: numb
   return (
     <View style={[styles.progressTrack, { height, borderRadius: height }]}>
       <View style={{ width: `${Math.max(3, Math.min(100, share * 100))}%` }}>
-        <GradientBox
-          colors={ob.secondaryGradient}
-          horizontal
-          radius={height}
-          style={{ height }}
-        />
+        <GradientBox colors={ob.secondaryGradient} horizontal radius={height} style={{ height }} />
       </View>
     </View>
   );

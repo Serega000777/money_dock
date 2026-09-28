@@ -49,7 +49,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       if (typeof body === "string") {
         message = body;
       } else if (body && typeof body === "object") {
-        const { message: bodyMessage, statusCode: _statusCode, error: _error, ...rest } = body as {
+        const {
+          message: bodyMessage,
+          statusCode: _statusCode,
+          error: _error,
+          ...rest
+        } = body as {
           message?: unknown;
           statusCode?: unknown;
           error?: unknown;

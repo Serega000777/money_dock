@@ -2,7 +2,12 @@ import { z } from "zod";
 
 export const createAccountInviteSchema = z.object({
   role: z.enum(["member", "viewer"]),
-  expiresInHours: z.number().int().positive().max(24 * 365).nullable(),
+  expiresInHours: z
+    .number()
+    .int()
+    .positive()
+    .max(24 * 365)
+    .nullable(),
   maxUses: z.number().int().positive().max(100).nullable(),
 });
 export type CreateAccountInviteInput = z.infer<typeof createAccountInviteSchema>;

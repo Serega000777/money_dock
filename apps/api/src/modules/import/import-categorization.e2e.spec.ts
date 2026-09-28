@@ -110,9 +110,7 @@ describe("Statement import — categorization pipeline (e2e)", () => {
 
   it("falls back to the local keyword classifier when nothing else matches", async () => {
     const restaurantsCategoryId = await categoryIdFor("restaurants");
-    const statement = ["Дата;Сумма;Назначение", "03.09.2026;-300,00;Кафе Уют на районе"].join(
-      "\n",
-    );
+    const statement = ["Дата;Сумма;Назначение", "03.09.2026;-300,00;Кафе Уют на районе"].join("\n");
 
     const res = await authed("post", `/import/preview/${accountId}`)
       .attach("file", Buffer.from(statement, "utf8"), "keyword.csv")

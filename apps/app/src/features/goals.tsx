@@ -75,7 +75,10 @@ export function CreateGoalSheet({
         onChangeText={setName}
         placeholder="Например, Отпуск"
         placeholderTextColor={theme.textTertiary}
-        style={[sheetStyles.input, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]}
+        style={[
+          sheetStyles.input,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
       />
       <TextInput
         value={target}
@@ -83,7 +86,10 @@ export function CreateGoalSheet({
         placeholder="Сколько нужно накопить, ₽"
         placeholderTextColor={theme.textTertiary}
         keyboardType="decimal-pad"
-        style={[sheetStyles.input, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]}
+        style={[
+          sheetStyles.input,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
       />
 
       <Text style={[sheetStyles.label, { color: theme.textSecondary }]}>Иконка</Text>
@@ -167,7 +173,10 @@ export function ContributeGoalSheet({
         placeholder="Сумма, ₽"
         placeholderTextColor={theme.textTertiary}
         keyboardType="decimal-pad"
-        style={[sheetStyles.input, { color: theme.textPrimary, backgroundColor: theme.surfaceSunken }]}
+        style={[
+          sheetStyles.input,
+          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
+        ]}
       />
 
       <SheetSubmit

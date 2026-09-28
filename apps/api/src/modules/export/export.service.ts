@@ -4,7 +4,13 @@ import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { AuditLogService } from "../../common/audit-log.service";
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
-import { categoryRules, notes, reviewItems, transactionSplits, transactions } from "../../db/schema";
+import {
+  categoryRules,
+  notes,
+  reviewItems,
+  transactionSplits,
+  transactions,
+} from "../../db/schema";
 import { AccountsService } from "../accounts/accounts.service";
 import { CategoriesService } from "../categories/categories.service";
 import { EntitlementsService } from "../entitlements/entitlements.service";
@@ -41,7 +47,9 @@ export class ExportService {
           ? this.db
               .select()
               .from(transactions)
-              .where(and(inArray(transactions.accountId, accountIds), isNull(transactions.deletedAt)))
+              .where(
+                and(inArray(transactions.accountId, accountIds), isNull(transactions.deletedAt)),
+              )
               .orderBy(asc(transactions.occurredAt))
           : Promise.resolve([]),
         this.db

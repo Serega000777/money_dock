@@ -6,7 +6,9 @@ export const shortcutCredentials = pgTable(
   "shortcut_credentials",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     tokenHash: text("token_hash").notNull(),
     name: text("name").notNull().default("iPhone"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

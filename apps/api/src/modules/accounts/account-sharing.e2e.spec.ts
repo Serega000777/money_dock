@@ -39,7 +39,12 @@ describe("Shared accounts (e2e)", () => {
     return { token: res.body.accessToken as string, userId: res.body.user.id as string };
   }
 
-  async function joinViaInvite(accountId: string, ownerToken: string, role: "member" | "viewer", memberToken: string) {
+  async function joinViaInvite(
+    accountId: string,
+    ownerToken: string,
+    role: "member" | "viewer",
+    memberToken: string,
+  ) {
     const invite = await authed("post", `/accounts/${accountId}/invites`, ownerToken)
       .send({ role, expiresInHours: 24, maxUses: 1 })
       .expect(201);
@@ -80,7 +85,11 @@ describe("Shared accounts (e2e)", () => {
     expect(created.body.createdByUserId).toBe(member.userId);
 
     // Owner shows up in the shared account's transaction list too.
-    const listedForOwner = await authed("get", `/transactions?accountId=${account.body.id}`, owner.token).expect(200);
+    const listedForOwner = await authed(
+      "get",
+      `/transactions?accountId=${account.body.id}`,
+      owner.token,
+    ).expect(200);
     expect(listedForOwner.body.map((t: { id: string }) => t.id)).toContain(created.body.id);
 
     // Owner can edit a transaction they didn't create.
@@ -90,7 +99,11 @@ describe("Shared accounts (e2e)", () => {
 
     // Owner can delete it too, and the deletion actually takes effect.
     await authed("delete", `/transactions/${created.body.id}`, owner.token).expect(200);
-    const listedAfterDelete = await authed("get", `/transactions?accountId=${account.body.id}`, owner.token).expect(200);
+    const listedAfterDelete = await authed(
+      "get",
+      `/transactions?accountId=${account.body.id}`,
+      owner.token,
+    ).expect(200);
     expect(listedAfterDelete.body.map((t: { id: string }) => t.id)).not.toContain(created.body.id);
   });
 
@@ -105,7 +118,9 @@ describe("Shared accounts (e2e)", () => {
     await joinViaInvite(account.body.id, owner.token, "viewer", viewer.token);
 
     const accounts = await authed("get", "/accounts", viewer.token).expect(200);
-    expect(accounts.body.find((a: { id: string }) => a.id === account.body.id)?.role).toBe("viewer");
+    expect(accounts.body.find((a: { id: string }) => a.id === account.body.id)?.role).toBe(
+      "viewer",
+    );
 
     await authed("post", "/transactions", viewer.token)
       .send({
@@ -168,10 +183,19 @@ describe("Shared accounts (e2e)", () => {
     const member = await newUser();
 
     const account = await authed("post", "/accounts", owner.token)
-      .send({ type: "card", name: "Единственный владелец", currency: "RUB", initialBalanceMinor: 0 })
+      .send({
+        type: "card",
+        name: "Единственный владелец",
+        currency: "RUB",
+        initialBalanceMinor: 0,
+      })
       .expect(201);
     await joinViaInvite(account.body.id, owner.token, "member", member.token);
 
-    await authed("delete", `/accounts/${account.body.id}/members/${owner.userId}`, owner.token).expect(400);
+    await authed(
+      "delete",
+      `/accounts/${account.body.id}/members/${owner.userId}`,
+      owner.token,
+    ).expect(400);
   });
 });

@@ -87,12 +87,8 @@ describe("Savings goals (e2e)", () => {
       .send({ name: "Подушка", targetMinor: 100_000_00, currency: "RUB" })
       .expect(201);
 
-    await authed("post", `/goals/${goal.body.id}/contribute`)
-      .send({ amountMinor: -1 })
-      .expect(400);
-    await authed("post", `/goals/${goal.body.id}/contribute`)
-      .send({ amountMinor: 0 })
-      .expect(400);
+    await authed("post", `/goals/${goal.body.id}/contribute`).send({ amountMinor: -1 }).expect(400);
+    await authed("post", `/goals/${goal.body.id}/contribute`).send({ amountMinor: 0 }).expect(400);
 
     const unchanged = await authed("get", "/goals").expect(200);
     const row = unchanged.body.find((g: { id: string }) => g.id === goal.body.id);

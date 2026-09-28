@@ -17,7 +17,10 @@ const KEYWORD_RULES: ReadonlyArray<{ systemCode: string; keywords: readonly stri
   { systemCode: "health", keywords: ["аптека", "клиника", "больница", "pharmacy", "clinic"] },
   { systemCode: "housing", keywords: ["жкх", "квартплата", "коммунальные", "аренда квартиры"] },
   { systemCode: "entertainment", keywords: ["кинотеатр", "театр", "концерт", "cinema"] },
-  { systemCode: "communication", keywords: ["связь", "мобильная связь", "интернет-провайдер", "telecom"] },
+  {
+    systemCode: "communication",
+    keywords: ["связь", "мобильная связь", "интернет-провайдер", "telecom"],
+  },
 ];
 
 /** Returns a system category code for a generic keyword match, or null. */

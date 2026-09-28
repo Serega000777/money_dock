@@ -5,7 +5,14 @@ import { and, eq, inArray, isNull, or } from "drizzle-orm";
 
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
-import { accounts, categories, categoryRules, reviewItems, transactions, users } from "../../db/schema";
+import {
+  accounts,
+  categories,
+  categoryRules,
+  reviewItems,
+  transactions,
+  users,
+} from "../../db/schema";
 import { CategorizationService } from "../categorization/categorization.service";
 import { EntitlementsService } from "../entitlements/entitlements.service";
 import { TransactionsService } from "../transactions/transactions.service";
@@ -87,16 +94,23 @@ export class CommandsService {
     );
 
     await this.db.transaction(async (tx) => {
-      await tx.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, transaction.id)).for("update");
-      const [existing] = await tx.select({ id: reviewItems.id }).from(reviewItems)
+      await tx
+        .select({ id: transactions.id })
+        .from(transactions)
+        .where(eq(transactions.id, transaction.id))
+        .for("update");
+      const [existing] = await tx
+        .select({ id: reviewItems.id })
+        .from(reviewItems)
         .where(eq(reviewItems.transactionId, transaction.id));
-      if (!existing && transaction.status === "needs_review") await tx.insert(reviewItems).values({
-        userId,
-        transactionId: transaction.id,
-        reason: "unconfirmed_capture",
-        confidence: Math.round(draft.confidence * 100),
-        suggestedJson: draft.categoryId ? { categoryId: draft.categoryId } : null,
-      });
+      if (!existing && transaction.status === "needs_review")
+        await tx.insert(reviewItems).values({
+          userId,
+          transactionId: transaction.id,
+          reason: "unconfirmed_capture",
+          confidence: Math.round(draft.confidence * 100),
+          suggestedJson: draft.categoryId ? { categoryId: draft.categoryId } : null,
+        });
     });
 
     return transaction;
@@ -126,7 +140,10 @@ export class CommandsService {
 
     const userAccounts = await this.accountsForUser(userId);
 
-    const [user] = await this.db.select({ timezone: users.timezone }).from(users).where(eq(users.id, userId));
+    const [user] = await this.db
+      .select({ timezone: users.timezone })
+      .from(users)
+      .where(eq(users.id, userId));
 
     // Same normalizer categories.service.ts writes category_rules.pattern with (and the
     // one statement-import matching already reads it with) — a hand-rolled duplicate
@@ -134,20 +151,42 @@ export class CommandsService {
     // could never match. A pattern under 2 characters is excluded: a single letter would
     // match almost any phrase, hijacking the category for input that isn't about it.
     const normalized = normalizeMerchant(text);
-    const customMatches = await this.db.select({ id: categories.id, name: categories.name, type: categories.type, pattern: categoryRules.pattern })
-      .from(categoryRules).innerJoin(categories, eq(categories.id, categoryRules.categoryId))
-      .where(and(eq(categoryRules.userId, userId), eq(categoryRules.active, true), eq(categories.userId, userId)));
+    const customMatches = await this.db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        type: categories.type,
+        pattern: categoryRules.pattern,
+      })
+      .from(categoryRules)
+      .innerJoin(categories, eq(categories.id, categoryRules.categoryId))
+      .where(
+        and(
+          eq(categoryRules.userId, userId),
+          eq(categoryRules.active, true),
+          eq(categories.userId, userId),
+        ),
+      );
     const custom = customMatches
       .filter((row) => row.pattern.length >= 2)
       .sort((a, b) => b.pattern.length - a.pattern.length)
       .find((row) => normalized.includes(row.pattern));
 
-    if (custom && custom.type !== "both" && !parsed.matched.includes("type")) parsed.type = custom.type;
+    if (custom && custom.type !== "both" && !parsed.matched.includes("type"))
+      parsed.type = custom.type;
 
     const allAccounts = await this.db
       .select()
       .from(accounts)
-      .where(and(isNull(accounts.archivedAt), inArray(accounts.id, userAccounts.map((a) => a.id))));
+      .where(
+        and(
+          isNull(accounts.archivedAt),
+          inArray(
+            accounts.id,
+            userAccounts.map((a) => a.id),
+          ),
+        ),
+      );
 
     // Prefer the account type the user named; otherwise fall back to their first account.
     const account =
@@ -163,8 +202,15 @@ export class CommandsService {
     // classifier) run over the whole phrase — "яндекс такси" or "вкусвилл" are brands
     // the parser deliberately doesn't know; and finally "Другое", so the draft always
     // proposes *some* category for the user to accept or swap in the confirmation card.
-    let category = custom ? { id: custom.id, name: custom.name } : parsed.categoryCode ? await this.systemCategory(userId, parsed.categoryCode) : null;
-    if (custom) { matched.push("category"); confidence = Math.max(confidence, custom.type === "both" ? 0.86 : 0.96); }
+    let category = custom
+      ? { id: custom.id, name: custom.name }
+      : parsed.categoryCode
+        ? await this.systemCategory(userId, parsed.categoryCode)
+        : null;
+    if (custom) {
+      matched.push("category");
+      confidence = Math.max(confidence, custom.type === "both" ? 0.86 : 0.96);
+    }
     if (!category && parsed.type === "expense") {
       const guessed = await this.categorization.categorize(userId, text);
       if (guessed.categoryId) {
@@ -207,8 +253,15 @@ export class CommandsService {
   }
 
   private localDaysAgo(daysAgo: number, timezone: string): Date {
-    const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" });
-    const parts = Object.fromEntries(formatter.formatToParts(new Date()).map((part) => [part.type, part.value]));
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const parts = Object.fromEntries(
+      formatter.formatToParts(new Date()).map((part) => [part.type, part.value]),
+    );
     const noonUtc = new Date(`${parts.year}-${parts.month}-${parts.day}T12:00:00.000Z`);
     noonUtc.setUTCDate(noonUtc.getUTCDate() - daysAgo);
     return noonUtc;
@@ -237,7 +290,9 @@ export class CommandsService {
     const [row] = await this.db
       .select({ id: categories.id, name: categories.name })
       .from(categories)
-      .where(and(eq(categories.id, id), or(isNull(categories.userId), eq(categories.userId, userId))));
+      .where(
+        and(eq(categories.id, id), or(isNull(categories.userId), eq(categories.userId, userId))),
+      );
     return row ?? null;
   }
 }

@@ -84,7 +84,9 @@ describe("Admin panel (e2e)", () => {
     expect(stats.body.signupsByDay).toHaveLength(14);
     expect(stats.body.signupsByDay.at(-1).count).toBeGreaterThanOrEqual(2);
 
-    const found = await authed("get", "/admin/users?query=AdminE2E&limit=50", adminToken).expect(200);
+    const found = await authed("get", "/admin/users?query=AdminE2E&limit=50", adminToken).expect(
+      200,
+    );
     expect(found.body.map((u: { id: string }) => u.id)).toContain(plainUserId);
     const match = found.body.find((u: { id: string }) => u.id === plainUserId);
     expect(match.plan).toBe("free");
