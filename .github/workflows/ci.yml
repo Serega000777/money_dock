@@ -29,6 +29,7 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/money_dock
       CORS_ORIGIN: http://localhost:3000
       TELEGRAM_BOT_TOKEN: ci-placeholder
+      GEMINI_API_KEY: ci-placeholder
       JWT_ACCESS_SECRET: ci-placeholder-access-secret-32-characters-min
     steps:
       - uses: actions/checkout@v4
