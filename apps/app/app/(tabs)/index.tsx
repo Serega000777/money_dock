@@ -10,7 +10,7 @@ import type {
 } from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, router } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
@@ -141,7 +141,7 @@ export default function Home() {
   // The iOS fallback: WebKit has never implemented SpeechRecognition, so a held press
   // there records audio instead and sends the clip to the server to be transcribed.
   const recorder = useAudioRecorder();
-  const releaseRecording = useCallback(async () => {
+  const releaseRecording = async () => {
     const clip = await recorder.stop();
     if (!clip) return;
     setVoiceError(null);
@@ -152,12 +152,15 @@ export default function Home() {
           isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось распознать речь"),
         ),
     });
-    // `recorder`/`voice.transcribe` are stable for the life of the screen.
-  }, []);
+  };
   const voiceSupported = speech.supported || recorder.supported;
-  const voiceListening = speech.supported ? speech.listening : recorder.recording;
-  const voiceStart = speech.supported ? speech.start : recorder.start;
-  const voiceStop = speech.supported ? speech.stop : releaseRecording;
+  // MediaRecorder is reliable across Telegram's iOS/Android WebViews; Web Speech is a
+  // last fallback for browsers that cannot record. This also keeps the confirmation
+  // flow identical across phones.
+  const useRecorder = recorder.supported;
+  const voiceListening = useRecorder ? recorder.recording : speech.listening;
+  const voiceStart = useRecorder ? recorder.start : speech.start;
+  const voiceStop = useRecorder ? releaseRecording : speech.stop;
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: () => apiClient.categories.list(),

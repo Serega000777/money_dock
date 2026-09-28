@@ -77,7 +77,7 @@ export default function Voice() {
   // The iOS fallback: WebKit has never implemented SpeechRecognition, so a held press
   // there records audio instead and sends the clip to the server to be transcribed.
   const recorder = useAudioRecorder();
-  const releaseRecording = useCallback(async () => {
+  const releaseRecording = async () => {
     const clip = await recorder.stop();
     if (!clip) return;
     voice.transcribe.mutate(clip, {
@@ -90,8 +90,13 @@ export default function Voice() {
         setError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось распознать речь"));
       },
     });
-    // `recorder`/`voice.transcribe` are stable for the life of the screen.
-  }, []);
+  };
+
+  // Prefer recording + server transcription on every platform where MediaRecorder is
+  // available. Android Web Speech can also start successfully and then never produce a
+  // result inside Telegram's WebView; the recorded path behaves the same on iOS,
+  // Android, and the future native builds. Browser recognition remains a last fallback.
+  const useRecorder = recorder.supported;
 
   const voiceLeft =
     entitlements && entitlements.limits.voice >= 0
@@ -106,17 +111,17 @@ export default function Voice() {
         <FadeIn index={0}>
           <View style={styles.micWrap}>
             <PulseRing
-              active={speech.supported ? speech.listening : recorder.recording}
+              active={useRecorder ? recorder.recording : speech.listening}
               color={theme.accent}
               size={MIC_SIZE}
             />
             <Pressable
-              onPressIn={speech.supported ? speech.start : recorder.start}
-              onPressOut={speech.supported ? speech.stop : releaseRecording}
+              onPressIn={useRecorder ? recorder.start : speech.start}
+              onPressOut={useRecorder ? releaseRecording : speech.stop}
             >
               <GradientBox
                 colors={
-                  (speech.supported ? speech.listening : recorder.recording)
+                  (useRecorder ? recorder.recording : speech.listening)
                     ? [theme.negative, theme.accent]
                     : theme.accentGradient
                 }
@@ -132,7 +137,7 @@ export default function Voice() {
             <Text style={[styles.micHint, { color: theme.textSecondary }]}>
               {voice.transcribe.isPending
                 ? "Распознаю…"
-                : (speech.supported ? speech.listening : recorder.recording)
+                : (useRecorder ? recorder.recording : speech.listening)
                   ? "Говорите…"
                   : "Удерживайте и говорите"}
             </Text>

@@ -47,7 +47,16 @@ const envSchema = z
     // audio on an unsupported client fails with a clear "unavailable" error instead of
     // the whole app refusing to boot.
     GEMINI_API_KEY: z.string().min(1).optional(),
-    GEMINI_MODEL: z.string().min(1).default("gemini-3.5-transcribe"),
+    // General multimodal generateContent is available to ordinary Gemini API keys and
+    // accepts short inline audio. The dedicated transcription model/Interactions API is
+    // access-restricted for some projects and previously made iPhone voice input fail
+    // with 403 even though the same key could use regular Gemini models.
+    GEMINI_MODEL: z.string().min(1).default("gemini-3.8-flash"),
+    // Preferred production STT provider. `gpt-transcribe` accepts mp4/m4a/webm/wav and
+    // is reached through the dedicated multipart transcription endpoint. Gemini stays
+    // available as a fallback for installations that already configured it.
+    OPENAI_API_KEY: z.string().min(1).optional(),
+    OPENAI_TRANSCRIPTION_MODEL: z.string().min(1).default("gpt-transcribe"),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && parseCorsOrigins(env.CORS_ORIGIN) === "*") {

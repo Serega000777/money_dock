@@ -207,7 +207,7 @@ describe("Voice/text commands + entitlements (e2e)", () => {
     function mockGemini(text: string) {
       return jest.spyOn(global, "fetch").mockResolvedValue({
         ok: true,
-        json: async () => ({ output_text: text }),
+        json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }),
       } as Response);
     }
 
@@ -221,7 +221,7 @@ describe("Voice/text commands + entitlements (e2e)", () => {
       expect(res.body).toMatchObject({ type: "expense", amountMinor: 50_000 });
       expect(res.body.categoryName).toBe("Кафе и рестораны");
       expect(gemini).toHaveBeenCalledWith(
-        "https://generativelanguage.googleapis.com/v1beta/interactions",
+        expect.stringContaining(":generateContent"),
         expect.objectContaining({
           method: "POST",
           headers: expect.objectContaining({ "x-goog-api-key": expect.any(String) }),
@@ -253,7 +253,7 @@ describe("Voice/text commands + entitlements (e2e)", () => {
     it("surfaces a clear error when Gemini has nothing to say, instead of crashing", async () => {
       jest.spyOn(global, "fetch").mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ steps: [] }),
+        json: async () => ({ candidates: [] }),
       } as Response);
 
       await authed("post", "/commands/transcribe")
@@ -270,11 +270,11 @@ describe("Voice/text commands + entitlements (e2e)", () => {
 
       await authed("post", "/commands/transcribe")
         .attach("audio", Buffer.from("x"), "clip.webm")
-        .expect(500);
+        .expect(503);
     });
 
     it("reports a provider credential problem as temporarily unavailable", async () => {
-      jest.spyOn(global, "fetch").mockResolvedValueOnce({
+      jest.spyOn(global, "fetch").mockResolvedValue({
         ok: false,
         status: 403,
         text: async () => "permission denied",
@@ -283,6 +283,30 @@ describe("Voice/text commands + entitlements (e2e)", () => {
       await authed("post", "/commands/transcribe")
         .attach("audio", Buffer.from("x"), "clip.webm")
         .expect(503);
+    });
+
+    it("falls back to the stable model alias when the configured model is unavailable", async () => {
+      const gemini = jest
+        .spyOn(global, "fetch")
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          text: async () => "model unavailable",
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            candidates: [{ content: { parts: [{ text: "Доход 5000 зарплата" }] } }],
+          }),
+        } as Response);
+
+      const res = await authed("post", "/commands/transcribe")
+        .attach("audio", Buffer.from("fake-audio-bytes"), "clip.webm")
+        .expect(200);
+
+      expect(res.body).toMatchObject({ type: "income", amountMinor: 500_000 });
+      expect(gemini).toHaveBeenCalledTimes(2);
+      expect(gemini.mock.calls[1]?.[0]).toContain("gemini-flash-latest");
     });
   });
 });
