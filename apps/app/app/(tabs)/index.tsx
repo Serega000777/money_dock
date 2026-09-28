@@ -131,7 +131,10 @@ export default function Home() {
         onSuccess: (result) => setVoiceDraft(result),
         // The paywall modal (opened by useVoiceCapture's own onError) already explains
         // a plan-limit 403 — no need to duplicate that as inline text.
-        onError: (e) => setVoiceError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать команду")),
+        onError: (e) =>
+          setVoiceError(
+            isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать команду"),
+          ),
       },
     );
   });
@@ -144,7 +147,10 @@ export default function Home() {
     setVoiceError(null);
     voice.transcribe.mutate(clip, {
       onSuccess: (result) => setVoiceDraft(result),
-      onError: (e) => setVoiceError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось распознать речь")),
+      onError: (e) =>
+        setVoiceError(
+          isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось распознать речь"),
+        ),
     });
     // `recorder`/`voice.transcribe` are stable for the life of the screen.
   }, []);
@@ -631,8 +637,8 @@ export default function Home() {
                   </Text>
                   <Text style={[styles.tipHint, { color: theme.textSecondary }]}>
                     До цели «{affordableGoal.name}» осталось{" "}
-                    {formatMinor(affordableGoal.targetMinor - affordableGoal.savedMinor)} ₽ — в
-                    этом месяце свободно {formatMinor(freeMinor)} ₽, бюджет позволяет закрыть её
+                    {formatMinor(affordableGoal.targetMinor - affordableGoal.savedMinor)} ₽ — в этом
+                    месяце свободно {formatMinor(freeMinor)} ₽, бюджет позволяет закрыть её
                     полностью.
                   </Text>
                 </View>
@@ -693,8 +699,8 @@ export default function Home() {
               ))}
               {(recurringPayments ?? []).length === 0 ? (
                 <Text style={[styles.listEmpty, { color: theme.textSecondary }]}>
-                  Аренда, подписки, кредит — добавьте, чтобы ничего не забыть и видеть,
-                  сколько уходит каждый месяц.
+                  Аренда, подписки, кредит — добавьте, чтобы ничего не забыть и видеть, сколько
+                  уходит каждый месяц.
                 </Text>
               ) : null}
               <PressableScale style={styles.listAddRow} onPress={() => setAddingPayment(true)}>
@@ -722,8 +728,8 @@ export default function Home() {
               ))}
               {(goals ?? []).length === 0 ? (
                 <Text style={[styles.listEmpty, { color: theme.textSecondary }]}>
-                  Отпуск, подушка безопасности, новый телефон — поставьте цель и
-                  откладывайте на неё понемногу.
+                  Отпуск, подушка безопасности, новый телефон — поставьте цель и откладывайте на неё
+                  понемногу.
                 </Text>
               ) : null}
               <PressableScale style={styles.listAddRow} onPress={() => setAddingGoal(true)}>
@@ -764,9 +770,7 @@ export default function Home() {
             onChange={setVoiceDraft}
             saving={voice.save.isPending}
             onDiscard={() => setVoiceDraft(null)}
-            onSave={() =>
-              voice.save.mutate(voiceDraft, { onSuccess: () => setVoiceDraft(null) })
-            }
+            onSave={() => voice.save.mutate(voiceDraft, { onSuccess: () => setVoiceDraft(null) })}
           />
         ) : null}
       </BottomSheet>
@@ -827,27 +831,41 @@ function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
           bank={account.bank as Bank}
           last4={account.cardLast4}
           compact
-            fillStyle={{ top: 0, right: 0, bottom: 0, left: 0 }}
+          fillStyle={{ top: 0, right: 0, bottom: 0, left: 0 }}
         />
       ) : !vivid && theme.decorGlow ? (
         <GlowBlob top="-25%" left="55%" size={140} color={theme.decorGlow} opacity={0.35} />
       ) : null}
-      <View style={styles.accountTop}>
-        <View style={[styles.accountIcon, { backgroundColor: iconBg }]}>
-          <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={iconColor} size={18} />
+      {!bankArt ? (
+        <View style={styles.accountTop}>
+          <View style={[styles.accountIcon, { backgroundColor: iconBg }]}>
+            <Icon name={ACCOUNT_TYPE_ICON[account.type]} color={iconColor} size={18} />
+          </View>
+          <View style={styles.accountTopText}>
+            <Text style={[styles.accountName, { color: nameColor }]} numberOfLines={1}>
+              {account.name}
+            </Text>
+            <Text style={[styles.accountMeta, { color: metaColor }]} numberOfLines={1}>
+              {account.currency}
+            </Text>
+          </View>
         </View>
-        <View style={styles.accountTopText}>
-          <Text style={[styles.accountName, { color: nameColor }]} numberOfLines={1}>
-            {account.name}
-          </Text>
-          <Text style={[styles.accountMeta, { color: metaColor }]} numberOfLines={1}>
-            {account.currency}
-          </Text>
-        </View>
+      ) : (
+        <View />
+      )}
+      <View style={styles.bankCardFooter}>
+        <Text style={[styles.accountBalance, { color: balanceColor }]} numberOfLines={1}>
+          {formatMinor(account.currentBalanceMinor)} ₽
+        </Text>
+        {bankArt ? (
+          <View style={styles.bankAccountMeta}>
+            <Text style={[styles.bankAccountName, { color: nameColor }]} numberOfLines={1}>
+              {account.name}
+            </Text>
+            <Text style={[styles.accountMeta, { color: metaColor }]}>{account.currency}</Text>
+          </View>
+        ) : null}
       </View>
-      <Text style={[styles.accountBalance, { color: balanceColor }]} numberOfLines={1}>
-        {formatMinor(account.currentBalanceMinor)} ₽
-      </Text>
     </Card>
   );
 }
@@ -884,7 +902,9 @@ function MandatoryRow({
   onPay,
 }: {
   payment: RecurringPayment;
-  category: { id: string; color: string | null; systemCode: string | null; icon: string | null } | undefined;
+  category:
+    | { id: string; color: string | null; systemCode: string | null; icon: string | null }
+    | undefined;
   onPay: () => void;
 }) {
   const theme = useTheme();
@@ -1099,6 +1119,14 @@ const styles = StyleSheet.create({
     padding: 14,
     overflow: "hidden",
   },
+  bankCardFooter: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  bankAccountMeta: { maxWidth: "46%", alignItems: "flex-end" },
+  bankAccountName: { ...typography.caption, fontWeight: "700" },
   accountTop: { flexDirection: "row", alignItems: "center", gap: 8 },
   accountIcon: {
     width: 32,

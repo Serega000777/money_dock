@@ -1,8 +1,17 @@
 import type { Bank } from "@money-dock/shared-types";
 import { useId } from "react";
-import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import {
+  Image,
+  StyleSheet,
+  View,
+  type ImageStyle,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import Svg, {
+  Circle,
   Defs,
+  G,
   LinearGradient,
   Path,
   RadialGradient,
@@ -98,21 +107,58 @@ const BANK_STYLE: Record<
 const W = 300;
 const H = 176;
 
+/**
+ * The supplied artwork is intentionally used verbatim.  It includes a little scene
+ * around the physical card, so each frame below maps the card rectangle in the source
+ * image to this component's bounds.  Keeping the original files (rather than tracing
+ * their logos and light effects in SVG) is what makes the home tile and picker match
+ * the references pixel-for-pixel.
+ */
+const REFERENCE_ART: Partial<Record<Bank, { file: string; frame: ImageStyle }>> = {
+  bank_russia: {
+    file: "bank-russia.png",
+    frame: { left: "-14.0%", top: "-24.4%", width: "127.9%", height: "153.2%" },
+  },
+  gazprombank: {
+    file: "gazprombank.png",
+    frame: { left: "-14.2%", top: "-28.5%", width: "128.4%", height: "162.1%" },
+  },
+  ozon: {
+    file: "ozon.png",
+    frame: { left: "-15.6%", top: "-27.3%", width: "131.4%", height: "161.1%" },
+  },
+  vtb: {
+    file: "vtb.png",
+    frame: { left: "-16.3%", top: "-30.0%", width: "132.8%", height: "164.6%" },
+  },
+  alfa: {
+    file: "alfa.png",
+    frame: { left: "-17.4%", top: "-28.6%", width: "135.5%", height: "164.6%" },
+  },
+  sber: {
+    file: "sber.png",
+    frame: { left: "-18.7%", top: "-30.9%", width: "137.3%", height: "167.1%" },
+  },
+};
+
 /** The big, semi-transparent institutional mark bleeding off the bottom-right corner —
  * every reference card has one. Simplified silhouettes, not the real logos (see the
  * comment above BANK_STYLE). */
 function BankWatermark({ bank, color }: { bank: Bank; color: string }) {
-  const s = { fill: "none", stroke: color, strokeWidth: 3, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, opacity: 0.5 };
+  const s = {
+    fill: "none",
+    stroke: color,
+    strokeWidth: 3,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    opacity: 0.5,
+  };
   switch (bank) {
     case "sber":
       return <Path d="M222 118l14 16 34-42" {...s} strokeWidth={9} />;
     case "alfa":
       return (
-        <Path
-          d="M246 78l34 68h-16l-6-13h-24l-6 13h-16zm0 20-8 17h16z"
-          fill={color}
-          opacity={0.5}
-        />
+        <Path d="M246 78l34 68h-16l-6-13h-24l-6 13h-16zm0 20-8 17h16z" fill={color} opacity={0.5} />
       );
     case "vtb":
       return (
@@ -145,6 +191,100 @@ function BankWatermark({ bank, color }: { bank: Bank; color: string }) {
   }
 }
 
+function BankMark({ bank, color }: { bank: Bank; color: string }) {
+  switch (bank) {
+    case "sber":
+      return (
+        <G>
+          <Circle cx="42" cy="35" r="15" fill="none" stroke={color} strokeWidth="4" />
+          <Path
+            d="M31 35l9 8 16-17"
+            fill="none"
+            stroke={color}
+            strokeWidth="4"
+            strokeLinecap="round"
+          />
+        </G>
+      );
+    case "alfa":
+      return (
+        <G>
+          <Path d="M27 50l15-34 15 34h-9l-3-8h-8l-3 8zm13-16h3l-2-6z" fill={color} />
+          <Rect x="27" y="54" width="30" height="4" fill={color} />
+        </G>
+      );
+    case "vtb":
+      return (
+        <G fill={color}>
+          <Path d="M25 22h35l-5 7H23z" />
+          <Path d="M22 33h31l-5 7H20z" />
+          <Path d="M19 44h27l-5 7H17z" />
+        </G>
+      );
+    case "tinkoff":
+      return (
+        <G>
+          <Path
+            d="M25 18h34v24c0 10-7 15-17 19-10-4-17-9-17-19z"
+            fill="none"
+            stroke={color}
+            strokeWidth="3"
+          />
+          <SvgText x="42" y="48" textAnchor="middle" fontSize="22" fontWeight="900" fill={color}>
+            T
+          </SvgText>
+        </G>
+      );
+    case "bank_russia":
+      return (
+        <G>
+          <Circle cx="42" cy="36" r="18" fill="none" stroke={color} strokeWidth="3" />
+          <Path
+            d="M31 42l11-16 11 16M35 35h14M42 26v22"
+            fill="none"
+            stroke={color}
+            strokeWidth="2"
+          />
+        </G>
+      );
+    case "gazprombank":
+      return (
+        <G>
+          <Circle cx="42" cy="36" r="18" fill="none" stroke={color} strokeWidth="3" />
+          <Path
+            d="M30 32c12-8 24-5 27 4M28 39c13-7 24-3 27 3M31 46c10-4 17-2 21 1"
+            fill="none"
+            stroke={color}
+            strokeWidth="2.6"
+            strokeLinecap="round"
+          />
+        </G>
+      );
+    case "ozon":
+    default:
+      return null;
+  }
+}
+
+function CardPattern({ bank, color }: { bank: Bank; color: string }) {
+  if (bank === "alfa") {
+    return (
+      <G fill="none" stroke={color} opacity={0.55}>
+        <Path d="M208 -10L112 186" strokeWidth="18" />
+        <Path d="M264 -10L168 186" strokeWidth="18" />
+        <Path d="M320 -10L224 186" strokeWidth="18" />
+      </G>
+    );
+  }
+  return (
+    <G fill="none" stroke={color} opacity={0.68}>
+      <Path d="M306 8C223 24 194 74 145 184" strokeWidth="2" />
+      <Path d="M310 58C245 68 217 110 181 184" strokeWidth="2" />
+      <Path d="M312 111C268 119 240 145 216 184" strokeWidth="2" />
+    </G>
+  );
+}
+
 export function BankCardArt({
   bank,
   last4,
@@ -161,6 +301,20 @@ export function BankCardArt({
    * right: -14, bottom: -14, left: -14 }` for 14px padding). */
   fillStyle?: StyleProp<ViewStyle>;
 }) {
+  const reference = REFERENCE_ART[bank];
+  if (reference) {
+    return (
+      <View style={[StyleSheet.absoluteFill, styles.referenceViewport, fillStyle]}>
+        <Image
+          accessibilityIgnoresInvertColors
+          resizeMode="stretch"
+          source={{ uri: `/bank-cards/${reference.file}?v=20260928` }}
+          style={[styles.referenceImage, reference.frame]}
+        />
+      </View>
+    );
+  }
+
   const style = BANK_STYLE[bank];
   const id = `bank${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const glowId = `${id}glow`;
@@ -188,6 +342,7 @@ export function BankCardArt({
         </Defs>
         <Rect x="0" y="0" width={W} height={H} rx="18" fill={`url(#${id})`} />
         <Rect x="0" y="0" width={W} height={H} rx="18" fill={`url(#${glowId})`} />
+        <CardPattern bank={bank} color={style.glow} />
         <BankWatermark bank={bank} color={style.glow} />
         <Rect
           x="1.5"
@@ -201,44 +356,30 @@ export function BankCardArt({
           opacity="0.95"
         />
 
-        {compact ? (
-          // AccountTile already draws its own icon (top-left) and balance (bottom-left)
-          // over this art, so the wordmark sits alone in the one corner nothing else
-          // uses — bottom-right — small enough not to compete with either.
-          <SvgText
-            x={W - 13}
-            y={H - 14}
-            textAnchor="end"
-            fontSize={15}
-            fontWeight="800"
-            letterSpacing={bank === "tinkoff" ? 0.4 : 0.2}
-            fill={style.labelColor}
-            opacity={0.9}
-          >
-            {style.label}
-          </SvgText>
-        ) : (
+        <BankMark bank={bank} color={style.labelColor} />
+        <SvgText
+          x={bank === "ozon" ? 24 : 70}
+          y="45"
+          fontSize={style.label.length > 11 ? 17 : 22}
+          fontWeight="800"
+          letterSpacing={bank === "tinkoff" ? 0.5 : 0.2}
+          fill={style.labelColor}
+        >
+          {style.label}
+        </SvgText>
+        <Rect x="25" y="70" width="34" height="24" rx="5" fill={style.chip} opacity={0.92} />
+        <Path d="M25 82H59M42 70V94" stroke={style.colors[1]} strokeWidth="1" opacity={0.5} />
+        <Path
+          d="M70 76c5 5 5 13 0 18M76 72c8 8 8 20 0 28"
+          stroke={style.labelColor}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          fill="none"
+          opacity={0.8}
+        />
+
+        {!compact ? (
           <>
-            <Rect x="24" y="28" width="34" height="24" rx="5" fill={style.chip} opacity={0.9} />
-            <Path d="M24 40H58M41 28V52" stroke={style.colors[1]} strokeWidth="1" opacity={0.5} />
-            <Path
-              d="M70 34c5 5 5 13 0 18M76 30c8 8 8 20 0 28"
-              stroke={style.labelColor}
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              fill="none"
-              opacity={0.85}
-            />
-            <SvgText
-              x="24"
-              y={H - 60}
-              fontSize={24}
-              fontWeight="800"
-              letterSpacing={bank === "tinkoff" ? 0.5 : 0.3}
-              fill={style.labelColor}
-            >
-              {style.label}
-            </SvgText>
             <SvgText
               x="24"
               y={H - 26}
@@ -251,11 +392,21 @@ export function BankCardArt({
               {last4 ? `•••• ${last4}` : "•••• ••••"}
             </SvgText>
           </>
-        )}
+        ) : null}
       </Svg>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  referenceViewport: {
+    borderRadius: 18,
+    overflow: "hidden",
+  },
+  referenceImage: {
+    position: "absolute",
+  },
+});
 
 export const BANK_LABEL: Record<Bank, string> = {
   sber: "СБЕР",

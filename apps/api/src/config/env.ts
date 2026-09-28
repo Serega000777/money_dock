@@ -44,7 +44,7 @@ const envSchema = z
     // audio on an unsupported client fails with a clear "unavailable" error instead of
     // the whole app refusing to boot.
     GEMINI_API_KEY: z.string().min(1).optional(),
-    GEMINI_MODEL: z.string().min(1).default("gemini-2.0-flash"),
+    GEMINI_MODEL: z.string().min(1).default("gemini-3.5-transcribe"),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === "production" && parseCorsOrigins(env.CORS_ORIGIN) === "*") {

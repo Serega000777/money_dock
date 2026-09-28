@@ -21,6 +21,14 @@ type RecognitionCtor = new () => SpeechRecognitionLike;
 
 function getRecognitionCtor(): RecognitionCtor | null {
   if (Platform.OS !== "web" || typeof window === "undefined") return null;
+  // Safari may expose webkitSpeechRecognition on recent iOS versions, but it is not a
+  // dependable capability inside Telegram's WKWebView: start() can succeed and never
+  // deliver result/error/end. Prefer our MediaRecorder → server transcription path on
+  // every iPhone/iPad so the UI cannot remain in a fake listening state.
+  const ios =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (ios) return null;
   const w = window as unknown as {
     SpeechRecognition?: RecognitionCtor;
     webkitSpeechRecognition?: RecognitionCtor;

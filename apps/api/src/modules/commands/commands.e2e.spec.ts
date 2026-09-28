@@ -207,12 +207,12 @@ describe("Voice/text commands + entitlements (e2e)", () => {
     function mockGemini(text: string) {
       return jest.spyOn(global, "fetch").mockResolvedValue({
         ok: true,
-        json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }),
+        json: async () => ({ output_text: text }),
       } as Response);
     }
 
     it("turns a recorded clip into the same kind of draft parse() returns", async () => {
-      mockGemini("Потратил 500 рублей на кофе");
+      const gemini = mockGemini("Потратил 500 рублей на кофе");
 
       const res = await authed("post", "/commands/transcribe")
         .attach("audio", Buffer.from("fake-audio-bytes"), "clip.webm")
@@ -220,6 +220,13 @@ describe("Voice/text commands + entitlements (e2e)", () => {
 
       expect(res.body).toMatchObject({ type: "expense", amountMinor: 50_000 });
       expect(res.body.categoryName).toBe("Кафе и рестораны");
+      expect(gemini).toHaveBeenCalledWith(
+        "https://generativelanguage.googleapis.com/v1beta/interactions",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({ "x-goog-api-key": expect.any(String) }),
+        }),
+      );
     });
 
     it("meters it as voice, same as the browser-recognized path", async () => {
@@ -246,7 +253,7 @@ describe("Voice/text commands + entitlements (e2e)", () => {
     it("surfaces a clear error when Gemini has nothing to say, instead of crashing", async () => {
       jest.spyOn(global, "fetch").mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ candidates: [] }),
+        json: async () => ({ steps: [] }),
       } as Response);
 
       await authed("post", "/commands/transcribe")
@@ -264,6 +271,18 @@ describe("Voice/text commands + entitlements (e2e)", () => {
       await authed("post", "/commands/transcribe")
         .attach("audio", Buffer.from("x"), "clip.webm")
         .expect(500);
+    });
+
+    it("reports a provider credential problem as temporarily unavailable", async () => {
+      jest.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        text: async () => "permission denied",
+      } as Response);
+
+      await authed("post", "/commands/transcribe")
+        .attach("audio", Buffer.from("x"), "clip.webm")
+        .expect(503);
     });
   });
 });

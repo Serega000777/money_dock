@@ -19,7 +19,8 @@ const PROMPT =
   "nothing at all.";
 
 interface GeminiResponse {
-  candidates?: { content?: { parts?: { text?: string }[] } }[];
+  output_text?: string;
+  steps?: { content?: { type?: string; text?: string }[] }[];
 }
 
 /**
@@ -37,38 +38,40 @@ export class TranscriptionService {
   async transcribe(audio: Buffer, mimeType: string): Promise<string> {
     const apiKey = this.config.get("GEMINI_API_KEY", { infer: true });
     if (!apiKey) {
-      throw new ServiceUnavailableException(
-        "Голосовой ввод сейчас недоступен на этом устройстве",
-      );
+      throw new ServiceUnavailableException("Голосовой ввод сейчас недоступен на этом устройстве");
     }
     const model = this.config.get("GEMINI_MODEL", { infer: true });
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: PROMPT },
-                { inline_data: { mime_type: mimeType, data: audio.toString("base64") } },
-              ],
-            },
-          ],
-          generationConfig: { temperature: 0 },
-        }),
-      },
-    );
+    // Gemini retired generateContent for the model Claude originally wired here. The
+    // current Interactions API has a dedicated transcription model and accepts short
+    // audio clips inline, which is exactly this endpoint's workload.
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        model,
+        system_instruction: PROMPT,
+        input: [{ type: "audio", data: audio.toString("base64"), mime_type: mimeType }],
+      }),
+    });
 
     if (!res.ok) {
-      this.logger.error(`Gemini transcription failed: ${res.status} ${await res.text()}`);
+      const details = (await res.text()).slice(0, 500);
+      this.logger.error(`Gemini transcription failed: ${res.status} ${details}`);
+      if (res.status === 401 || res.status === 403) {
+        throw new ServiceUnavailableException("Сервис распознавания речи требует настройки");
+      }
       throw new InternalServerErrorException("Не удалось распознать речь");
     }
 
     const body = (await res.json()) as GeminiResponse;
-    const text = body.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const text =
+      body.output_text?.trim() ??
+      body.steps
+        ?.flatMap((step) => step.content ?? [])
+        .find((content) => content.type === "text")
+        ?.text?.trim() ??
+      "";
     if (!text) throw new BadRequestException("Не удалось расслышать сумму");
     return text;
   }
