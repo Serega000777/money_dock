@@ -1,4 +1,4 @@
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 
 import type { TelegramWebApp } from "../telegram/types";
 
@@ -9,7 +9,10 @@ import type { TelegramWebApp } from "../telegram/types";
  * when it's available and falls back to normal web navigation in a plain browser.
  */
 export function openExternalLink(url: string, webApp: TelegramWebApp | null): void {
-  if (Platform.OS !== "web") return;
+  if (Platform.OS !== "web") {
+    void Linking.openURL(url);
+    return;
+  }
 
   if (url.startsWith("mailto:")) {
     if (webApp?.openLink) webApp.openLink(url);

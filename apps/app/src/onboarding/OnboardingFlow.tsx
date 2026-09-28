@@ -10,6 +10,7 @@ import { useAuthStore } from "../auth/authStore";
 import { Icon, type IconName } from "../ui/Icon";
 import { Text } from "../ui/Text";
 import { PressableScale } from "../ui/primitives";
+import { openExternalLink } from "../utils/externalLink";
 
 import { OnboardingBackground } from "./OnboardingBackground";
 import {
@@ -238,7 +239,8 @@ function AuthStep({
   const social = async (provider: "telegram" | "yandex" | "vk") => {
     setError(null);
     if (provider === "telegram") {
-      setNotice("Откройте Amola из Telegram, чтобы войти через него автоматически.");
+      openExternalLink("https://t.me/amola_finance_bot/amola", null);
+      setNotice("В Telegram вход выполнится автоматически при открытии Mini App.");
       return;
     }
     setBusy(true);
@@ -335,7 +337,7 @@ function AuthStep({
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </GlassCard>
 
-      <PrimaryButton label={loginMode ? "Войти" : "Зарегистрироваться"} onPress={submit} />
+      <PrimaryButton label="Вход по телефону — скоро" onPress={submit} />
 
       {Platform.OS === "ios" ? (
         <AppleAuthentication.AppleAuthenticationButton
