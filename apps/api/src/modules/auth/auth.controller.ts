@@ -1,5 +1,7 @@
 import type { AuthTokens, User } from "@money-dock/shared-types";
 import {
+  appleAuthSchema,
+  type AppleAuthInput,
   oauthCodeAuthSchema,
   refreshSchema,
   telegramAuthSchema,
@@ -27,6 +29,16 @@ export class AuthController {
     @Body(new ZodValidationPipe(telegramAuthSchema)) body: TelegramAuthInput,
   ): Promise<{ user: User } & AuthTokens> {
     const { user, tokens } = await this.auth.loginWithTelegram(body.initData);
+    return { user, ...tokens };
+  }
+
+  @Throttle(AUTH_THROTTLE)
+  @HttpCode(HttpStatus.OK)
+  @Post("apple")
+  async apple(
+    @Body(new ZodValidationPipe(appleAuthSchema)) body: AppleAuthInput,
+  ): Promise<{ user: User } & AuthTokens> {
+    const { user, tokens } = await this.auth.loginWithApple(body);
     return { user, ...tokens };
   }
 

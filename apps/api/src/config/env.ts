@@ -29,6 +29,9 @@ const envSchema = z
     // by default: a deployment with no admin configured just has no admin panel access,
     // never an open one.
     ADMIN_TELEGRAM_IDS: z.string().default(""),
+    // Audience of Sign in with Apple identity tokens. For the native app this is the
+    // bundle identifier; keeping it configurable also supports a future web Service ID.
+    APPLE_CLIENT_ID: z.string().min(1).default("app.amola.finance"),
     // A plain public HTTPS image URL sent with the /start welcome message. Optional on
     // purpose: there is no house banner asset to ship a default for, and inventing a
     // placeholder would just be something to notice and replace later. Unset = a

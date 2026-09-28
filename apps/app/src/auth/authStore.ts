@@ -1,3 +1,4 @@
+import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { create } from "zustand";
 
@@ -8,12 +9,26 @@ interface AuthState {
   /** The silent Telegram login gave up — the boot screen steps aside for the demo-mode
    * home instead of spinning forever. */
   loginFailed: boolean;
+  hydrated: boolean;
   setTokens: (tokens: { accessToken: string; refreshToken: string; userId: string }) => void;
   setLoginFailed: () => void;
   clear: () => void;
 }
 
 const LEGACY_STORAGE_KEY = "money-dock-auth";
+const NATIVE_STORAGE_KEY = "amola.auth.session";
+
+type StoredSession = Pick<AuthState, "accessToken" | "refreshToken" | "userId">;
+
+function persistNative(session: StoredSession | null): void {
+  if (Platform.OS === "web") return;
+  const operation = session
+    ? SecureStore.setItemAsync(NATIVE_STORAGE_KEY, JSON.stringify(session), {
+        keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+      })
+    : SecureStore.deleteItemAsync(NATIVE_STORAGE_KEY);
+  void operation.catch(() => undefined);
+}
 
 /**
  * Earlier builds persisted both tokens — including a 30-day refresh token — in
@@ -43,7 +58,37 @@ export const useAuthStore = create<AuthState>((set) => ({
   refreshToken: null,
   userId: null,
   loginFailed: false,
-  setTokens: (tokens) => set({ ...tokens, loginFailed: false }),
+  hydrated: Platform.OS === "web",
+  setTokens: (tokens) => {
+    persistNative(tokens);
+    set({ ...tokens, loginFailed: false, hydrated: true });
+  },
   setLoginFailed: () => set({ loginFailed: true }),
-  clear: () => set({ accessToken: null, refreshToken: null, userId: null, loginFailed: false }),
+  clear: () => {
+    persistNative(null);
+    set({
+      accessToken: null,
+      refreshToken: null,
+      userId: null,
+      loginFailed: false,
+      hydrated: true,
+    });
+  },
 }));
+
+export async function hydrateAuth(): Promise<void> {
+  if (Platform.OS === "web" || useAuthStore.getState().hydrated) return;
+  try {
+    const raw = await SecureStore.getItemAsync(NATIVE_STORAGE_KEY);
+    if (raw) {
+      const stored = JSON.parse(raw) as StoredSession;
+      if (stored.accessToken && stored.refreshToken && stored.userId) {
+        useAuthStore.setState({ ...stored, hydrated: true });
+        return;
+      }
+    }
+  } catch {
+    // A corrupt/inaccessible Keychain entry must not prevent a fresh sign-in.
+  }
+  useAuthStore.setState({ hydrated: true });
+}

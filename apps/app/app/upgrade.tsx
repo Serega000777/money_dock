@@ -2,7 +2,7 @@ import { radii, spacing, typography } from "@money-dock/design-tokens";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
 import { useTelegram } from "../src/telegram/TelegramProvider";
@@ -115,7 +115,8 @@ export default function Upgrade() {
           <Card style={styles.doneCard}>
             <Icon name="check" color={theme.positive} size={22} strokeWidth={2.2} />
             <Text style={[styles.doneText, { color: theme.textPrimary }]}>
-                Оплата получена. Проверяем активацию Pro… Если проверка задержалась, вернитесь в кабинет чуть позже.
+              Оплата получена. Проверяем активацию Pro… Если проверка задержалась, вернитесь в
+              кабинет чуть позже.
             </Text>
             <PressableScale onPress={() => router.back()}>
               <Text style={[styles.doneBack, { color: theme.accent }]}>Вернуться</Text>
@@ -125,21 +126,35 @@ export default function Upgrade() {
       ) : (
         <FadeIn index={2}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Способ оплаты</Text>
-          <Card style={styles.methodsCard}>
-            <PaymentRow
-              icon="star"
-              label="Telegram Stars"
-              hint={pricing ? `${pricing.starsMonthly} ⭐` : undefined}
-              busy={busy}
-              onPress={canPayWithStars ? () => buyWithStars.mutate() : undefined}
-            />
-            <PaymentRow icon="bank" label="СБП" soon />
-            <PaymentRow icon="card" label="Картой" soon />
-            <PaymentRow icon="wallet" label="Yandex Pay" soon />
-            <PaymentRow icon="wallet" label="Tinkoff Pay" soon />
-          </Card>
+          {Platform.OS === "ios" ? (
+            <Card style={styles.storeKitNotice}>
+              <Icon name="card" color={theme.textPrimary} size={22} />
+              <View style={styles.storeKitText}>
+                <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>
+                  Покупка через App Store
+                </Text>
+                <Text style={[styles.hint, { color: theme.textTertiary }]}>
+                  Будет доступна после подключения подписки Amola Pro в App Store Connect.
+                </Text>
+              </View>
+            </Card>
+          ) : (
+            <Card style={styles.methodsCard}>
+              <PaymentRow
+                icon="star"
+                label="Telegram Stars"
+                hint={pricing ? `${pricing.starsMonthly} ⭐` : undefined}
+                busy={busy}
+                onPress={canPayWithStars ? () => buyWithStars.mutate() : undefined}
+              />
+              <PaymentRow icon="bank" label="СБП" soon />
+              <PaymentRow icon="card" label="Картой" soon />
+              <PaymentRow icon="wallet" label="Yandex Pay" soon />
+              <PaymentRow icon="wallet" label="Tinkoff Pay" soon />
+            </Card>
+          )}
 
-          {!canPayWithStars ? (
+          {Platform.OS !== "ios" && !canPayWithStars ? (
             <Text style={[styles.hint, { color: theme.textTertiary }]}>
               Оплата Stars доступна внутри Telegram — откройте Amola через бота.
             </Text>
@@ -183,7 +198,9 @@ function PaymentRow({
         <Pill label="Скоро" color={theme.textSecondary} background={theme.surfaceSunken} />
       ) : (
         <>
-          {hint ? <Text style={[styles.rowHint, { color: theme.textTertiary }]}>{hint}</Text> : null}
+          {hint ? (
+            <Text style={[styles.rowHint, { color: theme.textTertiary }]}>{hint}</Text>
+          ) : null}
           <Icon name="chevron" color={theme.textTertiary} size={18} />
         </>
       )}
@@ -192,7 +209,12 @@ function PaymentRow({
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: "center", paddingVertical: spacing.xl, paddingHorizontal: spacing.lg, gap: 4 },
+  hero: {
+    alignItems: "center",
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    gap: 4,
+  },
   heroBadge: {
     width: 56,
     height: 56,
@@ -215,8 +237,16 @@ const styles = StyleSheet.create({
 
   sectionTitle: { ...typography.overline, textTransform: "uppercase", marginBottom: spacing.xs },
   methodsCard: { paddingVertical: spacing.xs, gap: 0 },
+  storeKitNotice: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  storeKitText: { flex: 1 },
   row: { flexDirection: "row", alignItems: "center", paddingVertical: spacing.md, gap: spacing.md },
-  rowIcon: { width: 34, height: 34, borderRadius: radii.sm, alignItems: "center", justifyContent: "center" },
+  rowIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   rowLabel: { ...typography.body, flex: 1 },
   rowHint: typography.callout,
 

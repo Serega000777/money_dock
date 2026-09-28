@@ -103,6 +103,8 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
     auth: {
       loginWithTelegram: (initData: string) =>
         post<{ user: User } & AuthTokens>("/auth/telegram", { initData }),
+      loginWithApple: (identityToken: string, displayName?: string) =>
+        post<{ user: User } & AuthTokens>("/auth/apple", { identityToken, displayName }),
       devLogin: () => post<{ user: User } & AuthTokens>("/auth/dev-login"),
       /** Scaffold — the server returns 501 until a real Yandex OAuth app is wired. */
       loginWithYandex: (code: string, redirectUri: string) =>
@@ -136,13 +138,27 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       /** Soft delete — the account is archived, not dropped, so history stays intact. */
       remove: (id: string) => request<void>(`/accounts/${id}`, { method: "DELETE" }),
       members: (id: string) => request<AccountMember[]>(`/accounts/${id}/members`),
-      createInvite: (id: string, input: { role: "member" | "viewer"; expiresInHours: number | null; maxUses: number | null }) =>
-        post<{ id: string; token: string; role: string; expiresAt: string | null }>(`/accounts/${id}/invites`, input),
-      revokeInvite: (id: string, inviteId: string) => request<void>(`/accounts/${id}/invites/${inviteId}`, { method: "DELETE" }),
-      updateMember: (id: string, memberId: string, role: "owner" | "member" | "viewer") => request<void>(`/accounts/${id}/members/${memberId}`, { method: "PATCH", body: JSON.stringify({ role }) }),
-      removeMember: (id: string, memberId: string) => request<void>(`/accounts/${id}/members/${memberId}`, { method: "DELETE" }),
-      invitePreview: (token: string) => request<AccountInvitePreview>(`/accounts/invites/${encodeURIComponent(token)}/preview`),
-      acceptInvite: (token: string) => post<Account>(`/accounts/invites/${encodeURIComponent(token)}/accept`),
+      createInvite: (
+        id: string,
+        input: { role: "member" | "viewer"; expiresInHours: number | null; maxUses: number | null },
+      ) =>
+        post<{ id: string; token: string; role: string; expiresAt: string | null }>(
+          `/accounts/${id}/invites`,
+          input,
+        ),
+      revokeInvite: (id: string, inviteId: string) =>
+        request<void>(`/accounts/${id}/invites/${inviteId}`, { method: "DELETE" }),
+      updateMember: (id: string, memberId: string, role: "owner" | "member" | "viewer") =>
+        request<void>(`/accounts/${id}/members/${memberId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ role }),
+        }),
+      removeMember: (id: string, memberId: string) =>
+        request<void>(`/accounts/${id}/members/${memberId}`, { method: "DELETE" }),
+      invitePreview: (token: string) =>
+        request<AccountInvitePreview>(`/accounts/invites/${encodeURIComponent(token)}/preview`),
+      acceptInvite: (token: string) =>
+        post<Account>(`/accounts/invites/${encodeURIComponent(token)}/accept`),
     },
 
     categories: {
@@ -158,8 +174,21 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
     },
 
     shortcutCredentials: {
-      list: () => request<Array<{ id: string; name: string; createdAt: string; lastUsedAt: string | null; revokedAt: string | null }>>("/shortcut-credentials"),
-      create: (name = "iPhone") => post<{ id: string; token: string; name: string; createdAt: string }>("/shortcut-credentials", { name }),
+      list: () =>
+        request<
+          Array<{
+            id: string;
+            name: string;
+            createdAt: string;
+            lastUsedAt: string | null;
+            revokedAt: string | null;
+          }>
+        >("/shortcut-credentials"),
+      create: (name = "iPhone") =>
+        post<{ id: string; token: string; name: string; createdAt: string }>(
+          "/shortcut-credentials",
+          { name },
+        ),
       revoke: (id: string) => request<void>(`/shortcut-credentials/${id}`, { method: "DELETE" }),
     },
 
@@ -330,7 +359,8 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
        * text — the path a client with no SpeechRecognition (every iOS browser) needs. */
       transcribe: async (audio: Blob): Promise<CommandDraft> => {
         const form = new FormData();
-        form.append("audio", audio, "clip.webm");
+        const extension = audio.type.includes("mp4") || audio.type.includes("m4a") ? "m4a" : "webm";
+        form.append("audio", audio, `clip.${extension}`);
         // Multipart can't go through request(): setting Content-Type by hand would drop
         // the boundary. The 401-refresh handling is mirrored here instead.
         const upload = (token: string | null | undefined) =>

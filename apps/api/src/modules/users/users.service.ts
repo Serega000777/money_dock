@@ -74,6 +74,44 @@ export class UsersService {
     });
   }
 
+  async findOrCreateByAppleIdentity(input: {
+    subject: string;
+    displayName?: string;
+    email?: string;
+  }): Promise<User> {
+    const [existing] = await this.db
+      .select({ user: users })
+      .from(userIdentities)
+      .innerJoin(users, eq(users.id, userIdentities.userId))
+      .where(
+        and(eq(userIdentities.provider, "apple"), eq(userIdentities.providerUserId, input.subject)),
+      );
+
+    if (existing) return toUser(existing.user);
+
+    return this.db.transaction(async (tx) => {
+      const createdUser = firstOrThrow(
+        await tx
+          .insert(users)
+          .values({
+            displayName: input.displayName?.trim() || input.email?.split("@")[0] || "Пользователь",
+            locale: "ru",
+          })
+          .returning(),
+      );
+
+      await tx.insert(userIdentities).values({
+        userId: createdUser.id,
+        provider: "apple",
+        providerUserId: input.subject,
+        email: input.email,
+        verifiedAt: new Date(),
+      });
+
+      return toUser(createdUser);
+    });
+  }
+
   /** The bot's /start flow asks for a phone number via Telegram's own "share contact"
    * button (see TelegramBotService), which itself calls `findOrCreateByTelegramIdentity`
    * first — chatting with the bot is a valid registration path on its own, same as
@@ -85,7 +123,10 @@ export class UsersService {
       .update(userIdentities)
       .set({ phone })
       .where(
-        and(eq(userIdentities.provider, "telegram"), eq(userIdentities.providerUserId, providerUserId)),
+        and(
+          eq(userIdentities.provider, "telegram"),
+          eq(userIdentities.providerUserId, providerUserId),
+        ),
       );
   }
 
@@ -141,7 +182,12 @@ export class UsersService {
    */
   async deleteAccount(userId: string): Promise<void> {
     await this.getById(userId);
-    await this.auditLog.record({ userId, action: "account.delete", entityType: "user", entityId: userId });
+    await this.auditLog.record({
+      userId,
+      action: "account.delete",
+      entityType: "user",
+      entityId: userId,
+    });
     this.logger.warn(`Account deleted: user=${userId}`);
     await this.db.delete(users).where(eq(users.id, userId));
   }

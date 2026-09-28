@@ -69,6 +69,13 @@ describe("Auth + ownership (e2e)", () => {
       .expect(401);
   });
 
+  it("rejects a forged Sign in with Apple token", async () => {
+    await request(app.getHttpServer())
+      .post("/auth/apple")
+      .send({ identityToken: "not.a.signed-apple-token" })
+      .expect(401);
+  });
+
   it("rejects requests to protected routes without a token", async () => {
     await request(app.getHttpServer()).get("/users/me").expect(401);
   });

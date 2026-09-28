@@ -3,21 +3,58 @@
     "name": "Amola Finance",
     "slug": "amola-finance",
     "scheme": "amola",
+    "icon": "./assets/icon.png",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "plugins": ["expo-router", "expo-status-bar", "expo-splash-screen", "expo-font"],
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-splash-screen",
+      "expo-font",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Amola использует микрофон, чтобы распознать и подготовить операцию для вашего подтверждения.",
+          "recordAudioAndroid": true,
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
+        }
+      ],
+      "expo-secure-store",
+      "expo-apple-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Amola открывает медиатеку только когда вы выбираете фото профиля.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-asset"
+    ],
     "web": {
       "bundler": "metro",
       "output": "static"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.amola.finance"
+      "bundleIdentifier": "app.amola.finance",
+      "buildNumber": "1",
+      "usesAppleSignIn": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
-      "package": "app.amola.finance"
+      "package": "app.amola.finance",
+      "versionCode": 1
+    },
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0320"
     }
   }
 }

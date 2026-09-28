@@ -1,4 +1,5 @@
 import type { TextScaleName } from "@money-dock/design-tokens";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { create } from "zustand";
 
@@ -44,7 +45,10 @@ function load(): Settings {
 }
 
 function save(settings: Settings): void {
-  if (Platform.OS !== "web") return;
+  if (Platform.OS !== "web") {
+    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(settings)).catch(() => undefined);
+    return;
+  }
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
@@ -74,5 +78,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 }));
 
 export function hydrateSettings(): void {
-  useSettingsStore.setState(load());
+  if (Platform.OS === "web") {
+    useSettingsStore.setState(load());
+    return;
+  }
+  void AsyncStorage.getItem(STORAGE_KEY)
+    .then((raw) => {
+      if (raw)
+        useSettingsStore.setState({ ...defaults, ...(JSON.parse(raw) as Partial<Settings>) });
+    })
+    .catch(() => undefined);
 }

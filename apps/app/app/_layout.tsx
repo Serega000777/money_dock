@@ -11,6 +11,7 @@ import { AuthProvider } from "../src/auth/AuthProvider";
 import { useAuthStore } from "../src/auth/authStore";
 import { PaywallModal } from "../src/features/paywall";
 import { OnboardingFlow } from "../src/onboarding/OnboardingFlow";
+import { hydrateOnboarding, useOnboardingStore } from "../src/onboarding/onboardingStore";
 import { TelegramProvider, useTelegram } from "../src/telegram/TelegramProvider";
 import { hydrateSettings } from "../src/theme/settingsStore";
 import { useTheme } from "../src/theme/useTheme";
@@ -35,16 +36,22 @@ function BootGate() {
   const { isInsideTelegram, startParam } = useTelegram();
   const accessToken = useAuthStore((state) => state.accessToken);
   const loginFailed = useAuthStore((state) => state.loginFailed);
+  const authHydrated = useAuthStore((state) => state.hydrated);
+  const onboardingHydrated = useOnboardingStore((state) => state.hydrated);
   const [booted, setBooted] = useState(false);
   useEffect(() => setBooted(true), []);
   useEffect(() => {
     if (!accessToken || !startParam?.startsWith("budget_inv_")) return;
-    router.replace({ pathname: "/invite", params: { token: startParam.slice("budget_inv_".length) } });
+    router.replace({
+      pathname: "/invite",
+      params: { token: startParam.slice("budget_inv_".length) },
+    });
   }, [accessToken, startParam]);
 
   const signedIn = Boolean(accessToken);
-  const booting = !booted || (isInsideTelegram && !signedIn && !loginFailed);
-  const showOnboarding = booted && !isInsideTelegram && !signedIn;
+  const ready = booted && authHydrated && onboardingHydrated;
+  const booting = !ready || (isInsideTelegram && !signedIn && !loginFailed);
+  const showOnboarding = ready && !isInsideTelegram && !signedIn;
 
   return (
     <>
@@ -92,7 +99,10 @@ function ThemedStack() {
 }
 
 export default function RootLayout() {
-  useEffect(hydrateSettings, []);
+  useEffect(() => {
+    hydrateSettings();
+    hydrateOnboarding();
+  }, []);
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>

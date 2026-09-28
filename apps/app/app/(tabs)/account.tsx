@@ -1,6 +1,7 @@
 import type { TextScaleName } from "@money-dock/design-tokens";
 import { radii, spacing, typography } from "@money-dock/design-tokens";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import { Link, router, type Href } from "expo-router";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
@@ -22,14 +23,7 @@ import { GradientBox } from "../../src/ui/Gradient";
 import { Icon, type IconName } from "../../src/ui/Icon";
 import { Text } from "../../src/ui/Text";
 import { categoryColor, categoryIcon } from "../../src/ui/categoryVisual";
-import {
-  Card,
-  FadeIn,
-  Pill,
-  PressableScale,
-  Screen,
-  Segmented,
-} from "../../src/ui/primitives";
+import { Card, FadeIn, Pill, PressableScale, Screen, Segmented } from "../../src/ui/primitives";
 import { fileToAvatarDataUrl } from "../../src/utils/avatar";
 import { openExternalLink } from "../../src/utils/externalLink";
 import { formatMinor } from "../../src/utils/format";
@@ -116,6 +110,22 @@ export default function Account() {
     },
     onError: (e: Error) => setAvatarError(e.message),
   });
+  const pickNativeAvatar = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.55,
+      base64: true,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (!asset?.base64) {
+      setAvatarError("Не удалось обработать изображение");
+      return;
+    }
+    updateAvatar.mutate(`data:${asset.mimeType ?? "image/jpeg"};base64,${asset.base64}`);
+  };
   const invalidatePayments = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ["recurring-payments"] }),
@@ -142,7 +152,10 @@ export default function Account() {
         <Card style={styles.profile}>
           <PressableScale
             accessibilityLabel="Изменить фото профиля"
-            onPress={() => Platform.OS === "web" && avatarInputRef.current?.click()}
+            onPress={() => {
+              if (Platform.OS === "web") avatarInputRef.current?.click();
+              else void pickNativeAvatar();
+            }}
           >
             {me?.avatarUrl ? (
               <Image source={{ uri: me.avatarUrl }} style={styles.avatar} />
@@ -158,7 +171,12 @@ export default function Account() {
                 </View>
               </GradientBox>
             )}
-            <View style={[styles.avatarBadge, { backgroundColor: theme.surface, borderColor: theme.background }]}>
+            <View
+              style={[
+                styles.avatarBadge,
+                { backgroundColor: theme.surface, borderColor: theme.background },
+              ]}
+            >
               <Icon name="camera" color={theme.textSecondary} size={13} strokeWidth={1.8} />
             </View>
           </PressableScale>
@@ -186,13 +204,20 @@ export default function Account() {
               {name}
             </Text>
             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-              {isInsideTelegram ? "Вход через Telegram" : "Демо-режим"} ·{" "}
-              {me?.baseCurrency ?? "RUB"}
+              {isInsideTelegram
+                ? "Вход через Telegram"
+                : Platform.OS === "ios"
+                  ? "Вход через Apple"
+                  : "Вход в приложение"}{" "}
+              · {me?.baseCurrency ?? "RUB"}
             </Text>
           </View>
           {entitlements?.plan === "free" ? (
             <PressableScale
-              style={StyleSheet.flatten([styles.planBadge, { backgroundColor: theme.surfaceSunken }])}
+              style={StyleSheet.flatten([
+                styles.planBadge,
+                { backgroundColor: theme.surfaceSunken },
+              ])}
               onPress={() => router.push("/upgrade")}
             >
               <Icon name="crown" color={theme.accent} size={12} />
@@ -223,7 +248,7 @@ export default function Account() {
 
       <FadeIn index={2}>
         <Section title="Автоматизация">
-          <NavRow href="/quick-entry" icon="bolt" label="Быстрый ввод" hint="Apple Shortcuts" />
+          <NavRow href="/quick-entry" icon="bolt" label="Быстрый ввод" hint="iOS и Android" />
         </Section>
       </FadeIn>
 
@@ -257,7 +282,10 @@ export default function Account() {
                 // easy to miss entirely.
                 <Link href={{ pathname: "/account-sharing", params: { id: account.id } }} asChild>
                   <PressableScale
-                    style={StyleSheet.flatten([styles.shareButton, { backgroundColor: theme.accentSoft }])}
+                    style={StyleSheet.flatten([
+                      styles.shareButton,
+                      { backgroundColor: theme.accentSoft },
+                    ])}
                   >
                     <Icon name="person" color={theme.accent} size={14} />
                     <Text style={[styles.shareButtonText, { color: theme.accent }]}>Участники</Text>
@@ -663,5 +691,4 @@ const styles = StyleSheet.create({
   settingLabel: typography.caption,
 
   soon: { ...typography.caption, paddingVertical: spacing.md, lineHeight: 19 },
-
 });

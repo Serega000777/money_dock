@@ -601,7 +601,7 @@ function CategoryTransactions({
   if (sorted.length === 0) {
     return (
       <Text style={[styles.categoryEmpty, { color: theme.textSecondary }]}>
-        В этой категории пока нет трат за период
+        В этой категории пока нет операций за период
       </Text>
     );
   }
@@ -635,8 +635,14 @@ function CategoryTransactions({
                 })}
               </Text>
             </View>
-            <Text style={[styles.categoryAmount, { color: theme.textPrimary }]}>
-              −{formatMinor(tx.amountMinor)} ₽
+            <Text
+              style={[
+                styles.categoryAmount,
+                { color: tx.type === "income" ? theme.positive : theme.textPrimary },
+              ]}
+            >
+              {tx.type === "income" ? "+" : "−"}
+              {formatMinor(tx.amountMinor)} ₽
             </Text>
             <Icon name="chevron" color={theme.textTertiary} size={14} />
           </Pressable>

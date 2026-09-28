@@ -1,6 +1,7 @@
 import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type { ImportPreview } from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as DocumentPicker from "expo-document-picker";
 import { Stack, router } from "expo-router";
 import { useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
@@ -36,9 +37,9 @@ export default function Import() {
   const account = accounts?.[0];
 
   const upload = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({ blob, name }: { blob: Blob; name: string }) => {
       if (!account) throw new Error("Сначала нужно добавить счёт");
-      return apiClient.imports.preview(account.id, file, file.name);
+      return apiClient.imports.preview(account.id, blob, name);
     },
     onSuccess: (result) => {
       setError(null);
@@ -49,6 +50,19 @@ export default function Import() {
       setError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать файл"));
     },
   });
+
+  const pickNativeFile = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["text/csv", "text/comma-separated-values", "application/csv"],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (!asset) return;
+    const response = await fetch(asset.uri);
+    upload.mutate({ blob: await response.blob(), name: asset.name });
+  };
 
   const commit = useMutation({
     mutationFn: (jobId: string) => apiClient.imports.commit(jobId),
@@ -84,14 +98,18 @@ export default function Import() {
           style={{ display: "none" }}
           onChange={(event) => {
             const file = event.target.files?.[0];
-            if (file) upload.mutate(file);
+            if (file) upload.mutate({ blob: file, name: file.name });
           }}
         />
       ) : null}
 
       <FadeIn index={1}>
         <PressableScale
-          onPress={() => !upload.isPending && account && inputRef.current?.click()}
+          onPress={() => {
+            if (upload.isPending || !account) return;
+            if (Platform.OS === "web") inputRef.current?.click();
+            else void pickNativeFile();
+          }}
           style={StyleSheet.flatten([
             styles.dropzone,
             { borderColor: theme.borderStrong, backgroundColor: theme.surface },

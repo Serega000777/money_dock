@@ -1,5 +1,5 @@
 import type { AuthTokens, User } from "@money-dock/shared-types";
-import type { OAuthCodeAuthInput } from "@money-dock/validation";
+import type { AppleAuthInput, OAuthCodeAuthInput } from "@money-dock/validation";
 import {
   Injectable,
   NotFoundException,
@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 import { AuditLogService } from "../../common/audit-log.service";
 import { parseAdminTelegramIds, type Env } from "../../config/env";
@@ -19,6 +20,7 @@ import { verifyTelegramInitData } from "./telegram-init-data";
 
 /** Stable fake Telegram id so repeated dev logins land on the same demo user. */
 const DEV_TELEGRAM_ID = 10_000_000_001;
+const APPLE_KEYS = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
 
 @Injectable()
 export class AuthService {
@@ -46,12 +48,34 @@ export class AuthService {
     return this.issueSession(user, "telegram");
   }
 
+  async loginWithApple(input: AppleAuthInput): Promise<{ user: User; tokens: AuthTokens }> {
+    let claims: Awaited<ReturnType<typeof jwtVerify>>["payload"];
+    try {
+      ({ payload: claims } = await jwtVerify(input.identityToken, APPLE_KEYS, {
+        issuer: "https://appleid.apple.com",
+        audience: this.config.get("APPLE_CLIENT_ID", { infer: true }),
+      }));
+    } catch {
+      throw new UnauthorizedException("Apple identity token is invalid");
+    }
+
+    if (!claims.sub) throw new UnauthorizedException("Apple identity token has no subject");
+    const user = await this.users.findOrCreateByAppleIdentity({
+      subject: claims.sub,
+      displayName: input.displayName,
+      email: typeof claims.email === "string" ? claims.email : undefined,
+    });
+    return this.issueSession(user, "apple");
+  }
+
   /** Grants `admin` on first login from a Telegram id listed in ADMIN_TELEGRAM_IDS — see
    * the schema comment on `users.role`. Cheap no-op for everyone else and for every login
    * after the first (already admin, or never will be). */
   private async promoteIfAdmin(user: User, telegramId: number): Promise<User> {
     if (user.role === "admin") return user;
-    if (!parseAdminTelegramIds(this.config.get("ADMIN_TELEGRAM_IDS", { infer: true })).has(telegramId)) {
+    if (
+      !parseAdminTelegramIds(this.config.get("ADMIN_TELEGRAM_IDS", { infer: true })).has(telegramId)
+    ) {
       return user;
     }
     await this.users.promoteToAdmin(user.id);
@@ -135,7 +159,12 @@ export class AuthService {
   async logout(refreshToken: string): Promise<void> {
     const userId = await this.sessions.revoke(refreshToken);
     if (userId) {
-      await this.auditLog.record({ userId, action: "auth.logout", entityType: "user", entityId: userId });
+      await this.auditLog.record({
+        userId,
+        action: "auth.logout",
+        entityType: "user",
+        entityId: userId,
+      });
     }
   }
 }

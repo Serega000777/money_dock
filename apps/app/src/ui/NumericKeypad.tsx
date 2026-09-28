@@ -1,5 +1,6 @@
 import { radii, spacing, typography } from "@money-dock/design-tokens";
-import { StyleSheet, View } from "react-native";
+import * as Haptics from "expo-haptics";
+import { Platform, StyleSheet, View } from "react-native";
 
 import { useTelegram } from "../telegram/TelegramProvider";
 import { useTheme } from "../theme/useTheme";
@@ -28,6 +29,8 @@ export function NumericKeypad({ onKey }: { onKey: (key: (typeof KEYS)[number]) =
               // The same light tap iOS's own number pad gives — Telegram's bridge is the
               // only way to get it from a Mini App at all (no web equivalent exists).
               webApp?.HapticFeedback?.impactOccurred("light");
+              if (Platform.OS !== "web")
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               onKey(key);
             }}
             accessibilityLabel={key === "back" ? "Стереть" : key}

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { apiClient } from "../api/client";
 import { useTelegram } from "../telegram/TelegramProvider";
 
-import { useAuthStore } from "./authStore";
+import { hydrateAuth, useAuthStore } from "./authStore";
 
 /**
  * Signs in as soon as possible when running inside a real Telegram Mini App — the launch
@@ -17,10 +17,16 @@ import { useAuthStore } from "./authStore";
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { initData, isInsideTelegram } = useTelegram();
   const accessToken = useAuthStore((state) => state.accessToken);
+  const hydrated = useAuthStore((state) => state.hydrated);
   const setTokens = useAuthStore((state) => state.setTokens);
   const setLoginFailed = useAuthStore((state) => state.setLoginFailed);
 
   useEffect(() => {
+    void hydrateAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
     if (accessToken) return;
     if (!isInsideTelegram || !initData) return;
 
@@ -45,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [isInsideTelegram, initData, accessToken, setTokens, setLoginFailed]);
+  }, [isInsideTelegram, initData, accessToken, hydrated, setTokens, setLoginFailed]);
 
   return <>{children}</>;
 }

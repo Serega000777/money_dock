@@ -1,10 +1,12 @@
 import { ApiError } from "@money-dock/api-client";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useState } from "react";
-import { ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { apiClient } from "../api/client";
 import { signInDemo } from "../auth/AuthProvider";
+import { useAuthStore } from "../auth/authStore";
 import { Icon, type IconName } from "../ui/Icon";
 import { Text } from "../ui/Text";
 import { PressableScale } from "../ui/primitives";
@@ -89,7 +91,11 @@ export function OnboardingFlow() {
                 onPress={() => (index + 1 < AUTH_INDEX ? setIndex(index + 1) : goToAuth(false))}
               />
               {index === 0 ? (
-                <FooterLink prefix="Уже есть аккаунт?" label="Войти" onPress={() => goToAuth(true)} />
+                <FooterLink
+                  prefix="Уже есть аккаунт?"
+                  label="Войти"
+                  onPress={() => goToAuth(true)}
+                />
               ) : null}
             </>
           ) : (
@@ -135,7 +141,11 @@ function FooterLink({
 /* ---------------------------------------------------------------- registration */
 
 function formatPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, "").replace(/^8/, "7").replace(/^([^7])/, "7$1").slice(0, 11);
+  const digits = raw
+    .replace(/\D/g, "")
+    .replace(/^8/, "7")
+    .replace(/^([^7])/, "7$1")
+    .slice(0, 11);
   if (digits.length <= 1) return digits ? "+7" : "";
   const rest = digits.slice(1);
   const parts = [rest.slice(0, 3), rest.slice(3, 6), rest.slice(6, 8), rest.slice(8, 10)];
@@ -162,6 +172,46 @@ function AuthStep({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const setTokens = useAuthStore((state) => state.setTokens);
+
+  const apple = async () => {
+    setError(null);
+    setNotice(null);
+    setBusy(true);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) throw new Error("Apple did not return an identity token");
+      const displayName = [credential.fullName?.givenName, credential.fullName?.familyName]
+        .filter(Boolean)
+        .join(" ");
+      const result = await apiClient.auth.loginWithApple(
+        credential.identityToken,
+        displayName || undefined,
+      );
+      setTokens({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        userId: result.user.id,
+      });
+    } catch (caught) {
+      if (
+        typeof caught === "object" &&
+        caught !== null &&
+        "code" in caught &&
+        caught.code === "ERR_REQUEST_CANCELED"
+      ) {
+        return;
+      }
+      setNotice(caught instanceof ApiError ? apiMessage(caught) : "Не удалось войти с Apple.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = () => {
     setNotice(null);
@@ -287,6 +337,16 @@ function AuthStep({
 
       <PrimaryButton label={loginMode ? "Войти" : "Зарегистрироваться"} onPress={submit} />
 
+      {Platform.OS === "ios" ? (
+        <AppleAuthentication.AppleAuthenticationButton
+          buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+          cornerRadius={14}
+          style={styles.appleButton}
+          onPress={() => void apple()}
+        />
+      ) : null}
+
       <View style={styles.socialBlock}>
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
@@ -301,7 +361,7 @@ function AuthStep({
         </View>
       </View>
 
-      <GhostButton label="Продолжить без регистрации" onPress={guest} />
+      {__DEV__ ? <GhostButton label="Продолжить без регистрации" onPress={guest} /> : null}
 
       {notice ? (
         <View style={styles.notice}>
@@ -311,10 +371,7 @@ function AuthStep({
 
       <View style={styles.scriptRowBottom}>
         <Handwritten text="Больше возможностей вместе ♡" style={styles.scriptTiltLeft} />
-        <Handwritten
-          text="Финансовая свобода начинается здесь ♡"
-          style={styles.scriptTiltRight}
-        />
+        <Handwritten text="Финансовая свобода начинается здесь ♡" style={styles.scriptTiltRight} />
       </View>
 
       <FooterLink
@@ -381,19 +438,19 @@ function SocialButton({
     // wrapper for the three buttons to share the row.
     <View style={styles.socialSlot}>
       <PressableScale onPress={onPress} style={styles.social}>
-      <View style={styles.socialMark}>
-        {provider === "telegram" ? (
-          <Icon name="telegram" color="#FFFFFF" size={20} />
-        ) : (
-          <Text style={styles.socialMarkText}>{provider === "yandex" ? "Я" : "VK"}</Text>
-        )}
-      </View>
-      <Text style={styles.socialLabel}>{label}</Text>
-      {soon ? (
-        <View style={styles.soonBadge}>
-          <Text style={styles.soonText}>скоро</Text>
+        <View style={styles.socialMark}>
+          {provider === "telegram" ? (
+            <Icon name="telegram" color="#FFFFFF" size={20} />
+          ) : (
+            <Text style={styles.socialMarkText}>{provider === "yandex" ? "Я" : "VK"}</Text>
+          )}
         </View>
-      ) : null}
+        <Text style={styles.socialLabel}>{label}</Text>
+        {soon ? (
+          <View style={styles.soonBadge}>
+            <Text style={styles.soonText}>скоро</Text>
+          </View>
+        ) : null}
       </PressableScale>
     </View>
   );
@@ -475,6 +532,7 @@ const styles = StyleSheet.create({
   error: { color: "#FF7DB4", fontSize: 12 },
 
   socialBlock: { gap: 12 },
+  appleButton: { width: "100%", height: 52 },
   dividerRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: ob.cardBorder },
   dividerText: { color: ob.textMuted, fontSize: 11.5 },
