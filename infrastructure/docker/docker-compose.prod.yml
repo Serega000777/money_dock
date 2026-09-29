@@ -51,6 +51,11 @@ services:
       # Powers server-side voice transcription (iOS has no SpeechRecognition API).
       # Unset = the transcribe endpoint returns 503, voice input stays broken on iPhone.
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      # Preferred STT provider; Gemini remains an automatic fallback. Keeping both
+      # values server-only prevents either credential from entering the web bundle.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_TRANSCRIPTION_MODEL: ${OPENAI_TRANSCRIPTION_MODEL:-gpt-transcribe}
 
   web:
     build:
