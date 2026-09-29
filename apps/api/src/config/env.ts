@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const optionalSecret = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().min(1).optional(),
+);
+
 const envSchema = z
   .object({
     /**
@@ -46,7 +51,7 @@ const envSchema = z
     // the Web Speech API's SpeechRecognition interface. Optional: without it, recording
     // audio on an unsupported client fails with a clear "unavailable" error instead of
     // the whole app refusing to boot.
-    GEMINI_API_KEY: z.string().min(1).optional(),
+    GEMINI_API_KEY: optionalSecret,
     // General multimodal generateContent is available to ordinary Gemini API keys and
     // accepts short inline audio. The dedicated transcription model/Interactions API is
     // access-restricted for some projects and previously made iPhone voice input fail
@@ -55,7 +60,7 @@ const envSchema = z
     // Preferred production STT provider. `gpt-transcribe` accepts mp4/m4a/webm/wav and
     // is reached through the dedicated multipart transcription endpoint. Gemini stays
     // available as a fallback for installations that already configured it.
-    OPENAI_API_KEY: z.string().min(1).optional(),
+    OPENAI_API_KEY: optionalSecret,
     OPENAI_TRANSCRIPTION_MODEL: z.string().min(1).default("gpt-transcribe"),
   })
   .superRefine((env, ctx) => {
