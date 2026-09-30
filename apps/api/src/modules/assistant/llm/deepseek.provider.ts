@@ -25,16 +25,21 @@ export class DeepSeekProvider implements LlmProvider {
     const startedAt = Date.now();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 25_000);
+    const baseUrl = this.config.get("DEEPSEEK_BASE_URL", { infer: true }).replace(/\/$/, "");
+    const authScheme = this.config.get("DEEPSEEK_AUTH_SCHEME", { infer: true });
     try {
-      const response = await fetch("https://api.deepseek.com/chat/completions", {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `${authScheme === "api-key" ? "Api-Key" : "Bearer"} ${key}`,
+          "Content-Type": "application/json",
+        },
         signal: controller.signal,
         body: JSON.stringify({
           model: this.config.get("DEEPSEEK_MODEL", { infer: true }),
           messages,
           response_format: { type: "json_object" },
-          thinking: { type: "disabled" },
+          ...(baseUrl.includes("api.deepseek.com") ? { thinking: { type: "disabled" } } : {}),
           temperature: 0,
           max_tokens: 500,
         }),
@@ -63,4 +68,3 @@ export class DeepSeekProvider implements LlmProvider {
     }
   }
 }
-

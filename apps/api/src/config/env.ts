@@ -60,6 +60,8 @@ const envSchema = z
     AI_FALLBACK_PROVIDER: z.enum(["gigachat", "disabled"]).default("gigachat"),
     DEEPSEEK_API_KEY: optionalSecret,
     DEEPSEEK_MODEL: z.string().min(1).default("deepseek-flash"),
+    DEEPSEEK_BASE_URL: z.string().url().default("https://api.deepseek.com"),
+    DEEPSEEK_AUTH_SCHEME: z.enum(["bearer", "api-key"]).default("bearer"),
     GIGACHAT_AUTHORIZATION_KEY: optionalSecret,
     GIGACHAT_SCOPE: z
       .enum(["GIGACHAT_API_PERS", "GIGACHAT_API_B2B", "GIGACHAT_API_CORP"])
