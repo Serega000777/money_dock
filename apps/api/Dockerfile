@@ -11,6 +11,7 @@ RUN pnpm --filter @money-dock/api deploy /out --prod
 
 FROM base AS runtime
 ENV NODE_ENV=production
+RUN apk add --no-cache ffmpeg
 # The image applies its own migrations on boot (see CMD) — this is where they live here.
 ENV MIGRATIONS_DIR=/app/infrastructure/migrations
 WORKDIR /app

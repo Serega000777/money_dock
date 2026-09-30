@@ -3,15 +3,15 @@ import { Module } from "@nestjs/common";
 import { CategorizationModule } from "../categorization/categorization.module";
 import { EntitlementsModule } from "../entitlements/entitlements.module";
 import { TransactionsModule } from "../transactions/transactions.module";
+import { SpeechModule } from "../speech/speech.module";
 
 import { CommandsController } from "./commands.controller";
 import { CommandsService } from "./commands.service";
-import { TranscriptionService } from "./transcription.service";
 
 @Module({
-  imports: [CategorizationModule, EntitlementsModule, TransactionsModule],
+  imports: [CategorizationModule, EntitlementsModule, TransactionsModule, SpeechModule],
   controllers: [CommandsController],
-  providers: [CommandsService, TranscriptionService],
+  providers: [CommandsService],
   exports: [CommandsService],
 })
 export class CommandsModule {}

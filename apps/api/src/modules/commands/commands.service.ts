@@ -17,7 +17,7 @@ import { CategorizationService } from "../categorization/categorization.service"
 import { EntitlementsService } from "../entitlements/entitlements.service";
 import { TransactionsService } from "../transactions/transactions.service";
 
-import { TranscriptionService } from "./transcription.service";
+import { SpeechService } from "../speech/speech.service";
 
 export interface CommandDraft {
   type: "expense" | "income";
@@ -55,7 +55,7 @@ export class CommandsService {
     private readonly entitlements: EntitlementsService,
     private readonly transactions: TransactionsService,
     private readonly categorization: CategorizationService,
-    private readonly transcription: TranscriptionService,
+    private readonly speech: SpeechService,
   ) {}
 
   /**
@@ -121,7 +121,7 @@ export class CommandsService {
    * implemented `SpeechRecognition`. Voice quota is charged exactly once, inside the
    * `parse()` call below — transcribing itself isn't metered separately. */
   async parseAudio(userId: string, audio: Buffer, mimeType: string): Promise<CommandDraft> {
-    const text = await this.transcription.transcribe(audio, mimeType);
+    const { text } = await this.speech.transcribe(audio, mimeType);
     return this.parse(userId, text, "voice");
   }
 

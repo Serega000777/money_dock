@@ -182,3 +182,20 @@ describe("parseCommand — the examples from the product spec", () => {
     expect(result).toMatchObject({ type: "income", amountMinor: 5_000_000 });
   });
 });
+
+describe("parseCommand — Amola financial voice normalization", () => {
+  it("parses conservative Russian finance slang without an LLM", () => {
+    expect(parseCommand("Закинь вчера пятёрик на бенз")).toMatchObject({
+      type: "expense",
+      amountMinor: 500_000,
+      categoryCode: "fuel",
+      daysAgo: 1,
+    });
+  });
+
+  it("does not turn a period in an analytics question into an expense", () => {
+    expect(() => parseCommand("Сколько потратил за 30 дней?")).toThrow(
+      "Финансовый вопрос нельзя сохранить как операцию",
+    );
+  });
+});

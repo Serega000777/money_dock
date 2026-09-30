@@ -62,6 +62,11 @@ function plural(count: number, one: string, few: string, many: string): string {
   return many;
 }
 
+function looksLikeAssistantQuestion(value: string): boolean {
+  const text = value.toLowerCase().replace(/ё/g, "е").trim();
+  return /\?$/.test(text) || /^(сколько|покажи|какой|какая|какие|сравни|как там|что будет)/.test(text);
+}
+
 /** The server sends facts + a template key, never a finished sentence (spec §20) — this
  * is the one place that turns `category_growth` into the RU text from the product doc's
  * own mockup ("доставка еды выросла на 4 800 ₽ за 30 дней"). */
@@ -131,10 +136,15 @@ export default function Home() {
         onSuccess: (result) => setVoiceDraft(result),
         // The paywall modal (opened by useVoiceCapture's own onError) already explains
         // a plan-limit 403 — no need to duplicate that as inline text.
-        onError: (e) =>
+        onError: (e) => {
+          if (looksLikeAssistantQuestion(transcript) && !isPlanLimitError(e)) {
+            router.push({ pathname: "/assistant", params: { prompt: transcript } });
+            return;
+          }
           setVoiceError(
             isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать команду"),
-          ),
+          );
+        },
       },
     );
   });

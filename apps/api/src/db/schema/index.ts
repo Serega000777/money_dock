@@ -1,6 +1,7 @@
 export * from "./accounts";
 export * from "./account-members";
 export * from "./audit-logs";
+export * from "./assistant";
 export * from "./categories";
 export * from "./category-rules";
 export * from "./debts";

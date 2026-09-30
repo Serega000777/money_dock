@@ -13,6 +13,7 @@ import { DbModule } from "./db/db.module";
 import { AccountsModule } from "./modules/accounts/accounts.module";
 import { AdminModule } from "./modules/admin/admin.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
+import { AssistantModule } from "./modules/assistant/assistant.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { BankingModule } from "./modules/banking/banking.module";
 import { CategoriesModule } from "./modules/categories/categories.module";
@@ -64,6 +65,7 @@ import { UsersModule } from "./modules/users/users.module";
     ExportModule,
     DemoModule,
     AnalyticsModule,
+    AssistantModule,
     InsightsModule,
     HealthModule,
   ],

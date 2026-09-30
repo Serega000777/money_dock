@@ -46,6 +46,25 @@ const envSchema = z
     // Signs short-lived access JWTs. Refresh tokens are opaque random strings, hashed at
     // rest (see SessionsService) — they need no signing secret of their own.
     JWT_ACCESS_SECRET: z.string().min(32),
+    // Active speech pipeline. OpenAI/Gemini variables below are retained only for
+    // rollback compatibility; the production runtime uses Yandex SpeechKit.
+    SPEECH_PROVIDER: z.enum(["yandex", "disabled"]).default("yandex"),
+    YANDEX_SPEECHKIT_API_KEY: optionalSecret,
+    YANDEX_FOLDER_ID: optionalSecret,
+    YANDEX_SPEECHKIT_MODEL: z.string().min(1).default("general"),
+    ASSISTANT_ENABLED: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true"),
+    AI_PROVIDER: z.enum(["deepseek"]).default("deepseek"),
+    AI_FALLBACK_PROVIDER: z.enum(["gigachat", "disabled"]).default("gigachat"),
+    DEEPSEEK_API_KEY: optionalSecret,
+    DEEPSEEK_MODEL: z.string().min(1).default("deepseek-flash"),
+    GIGACHAT_AUTHORIZATION_KEY: optionalSecret,
+    GIGACHAT_SCOPE: z
+      .enum(["GIGACHAT_API_PERS", "GIGACHAT_API_B2B", "GIGACHAT_API_CORP"])
+      .default("GIGACHAT_API_PERS"),
+    GIGACHAT_MODEL: z.string().min(1).default("GigaChat-2"),
     // Powers server-side speech-to-text (TranscriptionService) for clients with no
     // client-side recognizer — notably every iOS browser, since WebKit has never shipped
     // the Web Speech API's SpeechRecognition interface. Optional: without it, recording

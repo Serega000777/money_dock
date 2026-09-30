@@ -98,6 +98,6 @@ docs/
 категоризация (алиасы/MCC/keyword), Insights, контракт `BankProvider`, редактирование
 операций, регулярные платежи («Обязательные расходы») и цели накоплений (`/goals`),
 онбординг и экран регистрации для отдельного приложения, юридические документы (152-ФЗ).
-Впереди: Yandex ID / VK ID (серверные заглушки уже есть), регистрация по телефону,
-Telegram-уведомления, подключение банков по API, admin-панель, LLM fallback для
-категоризации (ADR 0009).
+В работе: Amola Assistant и Financial Voice Engine — Yandex SpeechKit, deterministic-first
+router, DeepSeek primary и GigaChat fallback, серверные pending actions с подтверждением
+(ADR 0010). Впереди: Yandex ID / VK ID, регистрация по телефону, уведомления и банки по API.

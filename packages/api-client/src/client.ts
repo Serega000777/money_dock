@@ -5,6 +5,10 @@ import type {
   AdminStats,
   AdminUserSummary,
   AnalyticsSummary,
+  AssistantAction,
+  AssistantConversation,
+  AssistantMessage,
+  AssistantResponse,
   AuthTokens,
   Bank,
   Category,
@@ -328,6 +332,40 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
 
     analytics: {
       summary: () => request<AnalyticsSummary>("/analytics/summary"),
+    },
+
+    assistant: {
+      createConversation: (title?: string) =>
+        post<AssistantConversation>("/assistant/conversations", { title }),
+      listConversations: () => request<AssistantConversation[]>("/assistant/conversations"),
+      getConversation: (id: string) =>
+        request<AssistantConversation>(`/assistant/conversations/${id}`),
+      listMessages: (id: string) =>
+        request<AssistantMessage[]>(`/assistant/conversations/${id}/messages`),
+      sendMessage: (id: string, text: string, inputType: "text" | "voice" = "text") =>
+        post<AssistantResponse>(`/assistant/conversations/${id}/messages`, { text, inputType }),
+      sendVoice: async (conversationId: string, audio: Blob): Promise<AssistantResponse> => {
+        const form = new FormData();
+        const extension = audio.type.includes("mp4") || audio.type.includes("m4a") ? "m4a" : "webm";
+        form.append("conversationId", conversationId);
+        form.append("audio", audio, `assistant.${extension}`);
+        const upload = (token: string | null | undefined) =>
+          fetch(`${baseUrl}/assistant/voice`, {
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            body: form,
+          });
+        let res = await upload(getAccessToken?.());
+        if (res.status === 401) {
+          const refreshed = await refreshOnce();
+          if (refreshed) res = await upload(refreshed);
+        }
+        if (!res.ok) throw new ApiError(res.status, await res.text());
+        return (await res.json()) as AssistantResponse;
+      },
+      confirmAction: (id: string) =>
+        post<AssistantAction>(`/assistant/actions/${id}/confirm`),
+      cancelAction: (id: string) => post<AssistantAction>(`/assistant/actions/${id}/cancel`),
     },
 
     insights: {

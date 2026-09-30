@@ -248,6 +248,7 @@ export default function Account() {
 
       <FadeIn index={2}>
         <Section title="Автоматизация">
+          <NavRow href="/assistant" icon="sparkle" label="Amola Assistant" hint="текст и голос" />
           <NavRow href="/quick-entry" icon="bolt" label="Быстрый ввод" hint="iOS и Android" />
         </Section>
       </FadeIn>

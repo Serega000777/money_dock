@@ -1,11 +1,13 @@
 import { createHmac } from "node:crypto";
 
+import { BadRequestException, ServiceUnavailableException } from "@nestjs/common";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 
 import { AppModule } from "../../app.module";
 import { EntitlementsService } from "../entitlements/entitlements.service";
+import { SpeechService } from "../speech/speech.service";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const runPrefix = Math.floor(Math.random() * 1_000_000);
@@ -30,6 +32,7 @@ describe("Voice/text commands + entitlements (e2e)", () => {
   let entitlements: EntitlementsService;
   let token: string;
   let userId: string;
+  let speech: SpeechService;
 
   const authed = (method: "get" | "post", path: string) =>
     request(app.getHttpServer())[method](path).set("Authorization", `Bearer ${token}`);
@@ -49,6 +52,7 @@ describe("Voice/text commands + entitlements (e2e)", () => {
     app = moduleRef.createNestApplication();
     await app.init();
     entitlements = app.get(EntitlementsService);
+    speech = app.get(SpeechService);
 
     const login = await newUser();
     token = login.accessToken;
@@ -204,15 +208,12 @@ describe("Voice/text commands + entitlements (e2e)", () => {
   describe("transcribe — the iOS path (no client-side SpeechRecognition)", () => {
     afterEach(() => jest.restoreAllMocks());
 
-    function mockGemini(text: string) {
-      return jest.spyOn(global, "fetch").mockResolvedValue({
-        ok: true,
-        json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }),
-      } as Response);
+    function mockSpeech(text: string) {
+      return jest.spyOn(speech, "transcribe").mockResolvedValue({ text, provider: "yandex" });
     }
 
     it("turns a recorded clip into the same kind of draft parse() returns", async () => {
-      const gemini = mockGemini("Потратил 500 рублей на кофе");
+      const yandex = mockSpeech("Потратил 500 рублей на кофе");
 
       const res = await authed("post", "/commands/transcribe")
         .attach("audio", Buffer.from("fake-audio-bytes"), "clip.webm")
@@ -220,18 +221,12 @@ describe("Voice/text commands + entitlements (e2e)", () => {
 
       expect(res.body).toMatchObject({ type: "expense", amountMinor: 50_000 });
       expect(res.body.categoryName).toBe("Кафе и рестораны");
-      expect(gemini).toHaveBeenCalledWith(
-        expect.stringContaining(":generateContent"),
-        expect.objectContaining({
-          method: "POST",
-          headers: expect.objectContaining({ "x-goog-api-key": expect.any(String) }),
-        }),
-      );
+      expect(yandex).toHaveBeenCalledWith(expect.any(Buffer), expect.stringContaining("webm"));
     });
 
     it("meters it as voice, same as the browser-recognized path", async () => {
       const fresh = await newUser();
-      mockGemini("потратил 100");
+      mockSpeech("потратил 100");
 
       await request(app.getHttpServer())
         .post("/commands/transcribe")
@@ -250,23 +245,18 @@ describe("Voice/text commands + entitlements (e2e)", () => {
       await authed("post", "/commands/transcribe").expect(400);
     });
 
-    it("surfaces a clear error when Gemini has nothing to say, instead of crashing", async () => {
-      jest.spyOn(global, "fetch").mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ candidates: [] }),
-      } as Response);
+    it("surfaces a clear error when SpeechKit has nothing to say, instead of crashing", async () => {
+      jest.spyOn(speech, "transcribe").mockRejectedValueOnce(new BadRequestException("no speech"));
 
       await authed("post", "/commands/transcribe")
         .attach("audio", Buffer.from("silence"), "clip.webm")
         .expect(400);
     });
 
-    it("surfaces a clear error when Gemini itself fails", async () => {
-      jest.spyOn(global, "fetch").mockResolvedValueOnce({
-        ok: false,
-        status: 503,
-        text: async () => "upstream unavailable",
-      } as Response);
+    it("surfaces a clear error when SpeechKit itself fails", async () => {
+      jest
+        .spyOn(speech, "transcribe")
+        .mockRejectedValueOnce(new ServiceUnavailableException("upstream unavailable"));
 
       await authed("post", "/commands/transcribe")
         .attach("audio", Buffer.from("x"), "clip.webm")
@@ -274,39 +264,14 @@ describe("Voice/text commands + entitlements (e2e)", () => {
     });
 
     it("reports a provider credential problem as temporarily unavailable", async () => {
-      jest.spyOn(global, "fetch").mockResolvedValue({
-        ok: false,
-        status: 403,
-        text: async () => "permission denied",
-      } as Response);
+      jest
+        .spyOn(speech, "transcribe")
+        .mockRejectedValueOnce(new ServiceUnavailableException("provider unavailable"));
 
       await authed("post", "/commands/transcribe")
         .attach("audio", Buffer.from("x"), "clip.webm")
         .expect(503);
     });
 
-    it("falls back to the stable model alias when the configured model is unavailable", async () => {
-      const gemini = jest
-        .spyOn(global, "fetch")
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 404,
-          text: async () => "model unavailable",
-        } as Response)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            candidates: [{ content: { parts: [{ text: "Доход 5000 зарплата" }] } }],
-          }),
-        } as Response);
-
-      const res = await authed("post", "/commands/transcribe")
-        .attach("audio", Buffer.from("fake-audio-bytes"), "clip.webm")
-        .expect(200);
-
-      expect(res.body).toMatchObject({ type: "income", amountMinor: 500_000 });
-      expect(gemini).toHaveBeenCalledTimes(2);
-      expect(gemini.mock.calls[1]?.[0]).toContain("gemini-flash-latest");
-    });
   });
 });

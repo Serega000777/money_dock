@@ -54,7 +54,16 @@ const INCOME_WORDS = [
   "подарили",
   "продал",
 ];
-const EXPENSE_WORDS = ["потрат", "трат", "расход", "купил", "заплатил", "оплатил", "потратил"];
+const EXPENSE_WORDS = [
+  "потрат",
+  "трат",
+  "расход",
+  "купил",
+  "заплатил",
+  "оплатил",
+  "потратил",
+  "отдал",
+];
 
 /**
  * Category hints keyed by the system_code seeded in the categories table, split by
@@ -201,8 +210,31 @@ export class CommandParseError extends Error {
   }
 }
 
-function normalize(input: string): string {
-  return input.toLowerCase().replace(/ё/g, "ё").replace(/\s+/g, " ").trim();
+/** Conservative finance-specific normalization. Ambiguous slang (for example
+ * "пятак" or "двушка") is deliberately not expanded: the confirmation screen cannot
+ * protect a user from a wildly wrong amount if the parser pretends to be certain. */
+export function normalizeFinancialCommand(input: string): string {
+  return input
+    .toLowerCase()
+    // JavaScript's `\b` is ASCII-only, so explicit Cyrillic boundaries are required.
+    .replace(/(?<![а-яё])пят[её]рик(?![а-яё])/g, "5000")
+    .replace(/(?<![а-яё])косар(?:ь|я|ей)?(?![а-яё])/g, "1000")
+    .replace(/(?<![а-яё])тыщ(?:а|у|и|ей)?(?![а-яё])/g, "1000")
+    .replace(/(?<![а-яё])бенз(?![а-яё])/g, "бензин")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Questions contain plenty of numbers ("за 30 дней", "в августе 2025"), but those
+ * numbers are periods, not transaction amounts. The request router uses this before
+ * invoking the transaction parser, and parseCommand also fails closed for direct calls. */
+export function isFinancialQuestion(input: string): boolean {
+  const text = input.toLowerCase().replace(/ё/g, "е").trim();
+  return (
+    /\?$/.test(text) ||
+    /^(сколько|покажи|какой|какая|какие|что будет|на что|сравни|как там|как идут)/.test(text) ||
+    /сколько\s+(?:я\s+)?(?:потрат|заработ|получ|можно)/.test(text)
+  );
 }
 
 /** "две тысячи пятьсот" → 2500. Returns null when no spelled-out number is present. */
@@ -291,8 +323,10 @@ function firstKeywordMatch<T extends string>(
  * everything else degrades into a lower confidence score for the user to confirm.
  */
 export function parseCommand(input: string): ParsedCommand {
-  const text = normalize(input);
+  const text = normalizeFinancialCommand(input);
   if (!text) throw new CommandParseError("Пустая команда");
+  if (isFinancialQuestion(text))
+    throw new CommandParseError("Финансовый вопрос нельзя сохранить как операцию");
 
   const amountMinor = extractAmountMinor(text);
   if (amountMinor === null) throw new CommandParseError("Не удалось расслышать сумму");
