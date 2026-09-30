@@ -150,6 +150,8 @@ clientId, note? }`. Создаёт две связанные строки, не 
 Распознавание речи использует локальный Web Speech fast path там, где он стабилен.
 Записанные iOS/Android/WebView-клипы обрабатывает общий `SpeechService` через Yandex
 SpeechKit. Аудио конвертируется во временном каталоге и удаляется сразу после STT.
+`POST /speech/transcribe` возвращает только transcript/provider metadata и ничего не
+записывает — главный микрофон после этого выбирает быстрый CommandDraft или Assistant.
 
 ## Amola Assistant
 
@@ -160,6 +162,7 @@ SpeechKit. Аудио конвертируется во временном ка�
 - `POST /assistant/conversations/:id/messages` — единый text pipeline;
 - `POST /assistant/voice` — multipart `audio` + `conversationId`, затем тот же pipeline;
 - `POST /assistant/actions/:id/confirm|cancel` — клиент передаёт только action ID.
+- `PATCH /assistant/actions/:id` — безопасно меняет поля ожидающей транзакции до confirm.
 
 Простые транзакции и базовые аналитические вопросы обрабатываются без LLM. Write-запрос
 возвращает `pending` action и не меняет финансы до подтверждения. DeepSeek используется

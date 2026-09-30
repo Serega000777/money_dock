@@ -12,6 +12,7 @@ import { Text } from "../src/ui/Text";
 import { Card, PressableScale, Screen } from "../src/ui/primitives";
 import { formatMinor } from "../src/utils/format";
 import { useAudioRecorder } from "../src/voice/useAudioRecorder";
+import { useSpeechRecognition } from "../src/voice/useSpeechRecognition";
 
 const QUICK_PROMPTS = [
   "Сколько я потратил в этом месяце?",
@@ -22,7 +23,7 @@ const QUICK_PROMPTS = [
 
 export default function AssistantScreen() {
   const theme = useTheme();
-  const { prompt } = useLocalSearchParams<{ prompt?: string }>();
+  const { prompt, inputType } = useLocalSearchParams<{ prompt?: string; inputType?: "text" | "voice" }>();
   const queryClient = useQueryClient();
   const recorder = useAudioRecorder();
   const listRef = useRef<FlatList>(null);
@@ -79,6 +80,13 @@ export default function AssistantScreen() {
     onError: () =>
       setError("Голосовой ввод временно недоступен. Можно ввести команду текстом."),
   });
+  const localSpeech = useSpeechRecognition((transcript) => {
+    if (!conversationId) return;
+    void apiClient.assistant.sendMessage(conversationId, transcript, "voice").then(async (response) => {
+      setAction(response.action);
+      await refresh();
+    }).catch(() => setError("Не удалось обработать голосовую команду."));
+  });
   const confirm = useMutation({
     mutationFn: (id: string) => apiClient.assistant.confirmAction(id),
     onSuccess: async (updated) => {
@@ -106,8 +114,13 @@ export default function AssistantScreen() {
   useEffect(() => {
     if (!conversationId || !prompt || initialPromptSent.current) return;
     initialPromptSent.current = true;
-    submit(prompt);
-  }, [conversationId, prompt]);
+    if (inputType === "voice") {
+      void apiClient.assistant.sendMessage(conversationId, prompt, "voice").then(async (response) => {
+        setAction(response.action);
+        await refresh();
+      }).catch(() => setError("Не удалось обработать голосовую команду."));
+    } else submit(prompt);
+  }, [conversationId, inputType, prompt]);
   const items = messages.data ?? [];
 
   return (
@@ -145,7 +158,7 @@ export default function AssistantScreen() {
         />
       )}
 
-      {action ? <ActionCard action={action} busy={confirm.isPending || cancel.isPending} onConfirm={() => confirm.mutate(action.id)} onCancel={() => cancel.mutate(action.id)} /> : null}
+      {action ? <ActionCard action={action} busy={confirm.isPending || cancel.isPending} onConfirm={() => confirm.mutate(action.id)} onCancel={() => cancel.mutate(action.id)} onUpdated={setAction} /> : null}
       {error || recorder.error ? <Text style={[styles.error, { color: theme.negative }]}>{error ?? recorder.error}</Text> : null}
 
       <Card style={styles.composer}>
@@ -158,9 +171,9 @@ export default function AssistantScreen() {
           style={[styles.input, { color: theme.textPrimary }]}
           returnKeyType="send"
         />
-        {recorder.supported ? (
-          <PressableScale onPressIn={recorder.start} onPressOut={() => void releaseRecording()} style={StyleSheet.flatten([styles.circleButton, { backgroundColor: recorder.recording ? theme.negative : theme.accentSoft }])}>
-            <Icon name="mic" color={recorder.recording ? "#FFFFFF" : theme.accent} size={21} />
+        {recorder.supported || localSpeech.supported ? (
+          <PressableScale onPressIn={localSpeech.supported ? localSpeech.start : recorder.start} onPressOut={localSpeech.supported ? localSpeech.stop : () => void releaseRecording()} style={StyleSheet.flatten([styles.circleButton, { backgroundColor: recorder.recording || localSpeech.listening ? theme.negative : theme.accentSoft }])}>
+            <Icon name="mic" color={recorder.recording || localSpeech.listening ? "#FFFFFF" : theme.accent} size={21} />
           </PressableScale>
         ) : null}
         <PressableScale onPress={() => submit()} style={StyleSheet.flatten([styles.circleButton, { backgroundColor: text.trim() ? theme.accent : theme.surfaceSunken }])}>
@@ -171,8 +184,9 @@ export default function AssistantScreen() {
   );
 }
 
-function ActionCard({ action, busy, onConfirm, onCancel }: { action: AssistantAction; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
+function ActionCard({ action, busy, onConfirm, onCancel, onUpdated }: { action: AssistantAction; busy: boolean; onConfirm: () => void; onCancel: () => void; onUpdated: (action: AssistantAction) => void }) {
   const theme = useTheme();
+  const [editing, setEditing] = useState(false);
   const preview = action.preview;
   const transactions = Array.isArray(preview.transactions)
     ? (preview.transactions as Array<Record<string, unknown>>)
@@ -186,10 +200,34 @@ function ActionCard({ action, busy, onConfirm, onCancel }: { action: AssistantAc
           0,
         );
   const amount = amountMinor > 0 ? formatMinor(amountMinor) : "—";
+  const [amountText, setAmountText] = useState(amountMinor > 0 ? String(amountMinor / 100) : "");
+  const [type, setType] = useState<"expense" | "income">(preview.type === "income" ? "income" : "expense");
+  const [occurredAt, setOccurredAt] = useState(typeof preview.occurredAt === "string" ? preview.occurredAt : new Date().toISOString());
+  const [categoryId, setCategoryId] = useState<string | null>(typeof preview.categoryId === "string" ? preview.categoryId : null);
+  const categories = useQuery({ queryKey: ["categories"], queryFn: () => apiClient.categories.list(), enabled: editing });
+  const update = useMutation({
+    mutationFn: () => apiClient.assistant.updateAction(action.id, {
+      amountMinor: Math.round(Number(amountText.replace(",", ".")) * 100),
+      type,
+      occurredAt,
+      categoryId,
+    }),
+    onSuccess: (updated) => { onUpdated(updated); setEditing(false); },
+  });
   return (
     <Card style={styles.actionCard}>
       <Text style={[styles.actionTitle, { color: theme.textPrimary }]}>{action.status === "completed" ? "✓ Добавлено" : action.status === "cancelled" ? "Отменено" : "Подтвердить операцию"}</Text>
       <Text style={[styles.actionAmount, { color: theme.textPrimary }]}>{amount} ₽</Text>
+      {editing ? <View style={styles.editBox}>
+        <View style={styles.actionButtons}>
+          <PressableScale onPress={() => setType("expense")} style={StyleSheet.flatten([styles.actionButton, { backgroundColor: type === "expense" ? theme.accent : theme.surfaceSunken }])}><Text style={{ color: type === "expense" ? theme.onAccent : theme.textPrimary }}>Расход</Text></PressableScale>
+          <PressableScale onPress={() => setType("income")} style={StyleSheet.flatten([styles.actionButton, { backgroundColor: type === "income" ? theme.accent : theme.surfaceSunken }])}><Text style={{ color: type === "income" ? theme.onAccent : theme.textPrimary }}>Доход</Text></PressableScale>
+        </View>
+        <TextInput value={amountText} onChangeText={setAmountText} keyboardType="decimal-pad" placeholder="Сумма" placeholderTextColor={theme.textTertiary} style={[styles.editInput, { color: theme.textPrimary, borderColor: theme.border }]} />
+        <TextInput value={occurredAt.slice(0, 10)} onChangeText={(value) => setOccurredAt(`${value}T12:00:00.000Z`)} placeholder="ГГГГ-ММ-ДД" placeholderTextColor={theme.textTertiary} style={[styles.editInput, { color: theme.textPrimary, borderColor: theme.border }]} />
+        <View style={styles.categoryChips}>{(categories.data ?? []).filter((item) => item.type === type || item.type === "both").map((item) => <Pressable key={item.id} onPress={() => setCategoryId(item.id)} style={[styles.categoryChip, { backgroundColor: categoryId === item.id ? theme.accent : theme.surfaceSunken }]}><Text style={{ color: categoryId === item.id ? theme.onAccent : theme.textPrimary }}>{item.name}</Text></Pressable>)}</View>
+        <PressableScale disabled={update.isPending || !Number(amountText)} onPress={() => update.mutate()} style={StyleSheet.flatten([styles.actionButton, { backgroundColor: theme.accent }])}><Text style={{ color: theme.onAccent }}>Сохранить изменения</Text></PressableScale>
+      </View> : null}
       {transactions.length > 0 ? (
         transactions.map((transaction, index) => (
           <Text key={index} style={[styles.actionMeta, { color: theme.textSecondary }]}>
@@ -200,6 +238,7 @@ function ActionCard({ action, busy, onConfirm, onCancel }: { action: AssistantAc
         <Text style={[styles.actionMeta, { color: theme.textSecondary }]}>{String(preview.categoryName ?? "Другое")} · {String(preview.accountName ?? "Счёт")}</Text>
       )}
       {action.status === "pending" ? <View style={styles.actionButtons}>
+        {action.tool === "create_transaction" || action.tool === "update_transaction" ? <PressableScale disabled={busy} onPress={() => setEditing((value) => !value)} style={StyleSheet.flatten([styles.actionButton, { backgroundColor: theme.surfaceSunken }])}><Text style={{ color: theme.textSecondary }}>Изменить</Text></PressableScale> : null}
         <PressableScale disabled={busy} onPress={onCancel} style={StyleSheet.flatten([styles.actionButton, { backgroundColor: theme.surfaceSunken }])}><Text style={{ color: theme.textSecondary }}>Отмена</Text></PressableScale>
         <PressableScale disabled={busy} onPress={onConfirm} style={StyleSheet.flatten([styles.actionButton, { backgroundColor: theme.accent }])}><Text style={{ color: theme.onAccent }}>Добавить</Text></PressableScale>
       </View> : null}
@@ -232,4 +271,8 @@ const styles = StyleSheet.create({
   actionMeta: { ...typography.caption },
   actionButtons: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
   actionButton: { flex: 1, alignItems: "center", padding: spacing.sm, borderRadius: radii.md },
+  editBox: { gap: spacing.sm, marginTop: spacing.sm },
+  editInput: { borderWidth: 1, borderRadius: radii.md, padding: spacing.sm },
+  categoryChips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  categoryChip: { borderRadius: radii.pill, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
 });

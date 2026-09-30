@@ -115,5 +115,30 @@ describe("Amola Assistant (e2e)", () => {
       .set("Authorization", `Bearer ${foreignToken}`)
       .expect(404);
   });
-});
 
+  it("edits a pending draft before confirmation and can later update and delete it", async () => {
+    const conversation = await request(app.getHttpServer()).post("/assistant/conversations").set("Authorization", `Bearer ${token}`).send({}).expect(201);
+    const draft = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Кофе 410" }).expect(201);
+    const edited = await request(app.getHttpServer()).patch(`/assistant/actions/${draft.body.action.id}`).set("Authorization", `Bearer ${token}`).send({ amountMinor: 42_000, type: "expense" }).expect(200);
+    expect(edited.body.preview.amountMinor).toBe(42_000);
+    await request(app.getHttpServer()).post(`/assistant/actions/${draft.body.action.id}/confirm`).set("Authorization", `Bearer ${token}`).expect(200);
+
+    const update = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Поменяй последнюю трату на 1700" }).expect(201);
+    expect(update.body.action.tool).toBe("update_transaction");
+    await request(app.getHttpServer()).post(`/assistant/actions/${update.body.action.id}/confirm`).set("Authorization", `Bearer ${token}`).expect(200);
+
+    const remove = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Удали последнюю покупку" }).expect(201);
+    expect(remove.body.action.tool).toBe("delete_transaction");
+    await request(app.getHttpServer()).post(`/assistant/actions/${remove.body.action.id}/confirm`).set("Authorization", `Bearer ${token}`).expect(200);
+  });
+
+  it("creates multi-transaction and recurring drafts and supports goal reads", async () => {
+    const conversation = await request(app.getHttpServer()).post("/assistant/conversations").set("Authorization", `Bearer ${token}`).send({}).expect(201);
+    const multi = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Сегодня кофе 300 и бензин 4000" }).expect(201);
+    expect(multi.body.action.tool).toBe("create_multiple_transactions");
+    const recurring = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Добавь аренду 45000 первого числа" }).expect(201);
+    expect(recurring.body.action.tool).toBe("create_recurring_payment");
+    const goals = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Как идут мои цели?" }).expect(201);
+    expect(goals.body.message.content).toContain("Цел");
+  });
+});

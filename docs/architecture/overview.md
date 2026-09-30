@@ -47,6 +47,13 @@ amola-finance/            (репозиторий на GitHub пока назы�
 все сразу. Исключение: `DbModule` помечен `@Global()` (даёт `DATABASE` и
 `AuditLogService` без явного импорта), как и `AuthModule` (экспортирует `JwtAuthGuard`) —
 оба инфраструктурные, не доменная логика.
+`AssistantModule` оркестрирует существующие доменные сервисы: простые команды и
+аналитические вопросы идут через детерминированный Amola Voice Engine, сложный язык —
+через DeepSeek с последовательным fallback на GigaChat. Любая запись сначала становится
+pending action и исполняется только после подтверждения. Общий `SpeechModule` использует
+Yandex SpeechKit, когда локальный browser SpeechRecognition недоступен. LLM не получает
+SQL и не считает деньги.
+
 `BankingModule` — частный случай: он не владеет таблицами и не экспортирует HTTP-роуты,
 только контракт `BankProvider` + два MVP-адаптера (`ManualBankProvider`,
 `CsvBankProvider`), готовых для будущего потребителя.
@@ -79,7 +86,7 @@ Analytics Engine, safe-to-spend, Insights (`InsightsService`), категори�
 | 3 (готово)     | analytics engine, safe-to-spend, главный экран                                                                                                                                                                                                                                |
 | 4 (готово)     | import framework, dedup, Review Inbox, user rules                                                                                                                                                                                                                             |
 | 5 (готово)     | voice pipeline, rule-based parser, entitlements                                                                                                                                                                                                                               |
-| 6 (в процессе) | заметки, безопасный захват (Siri/виджет), export, delete account, soft-delete транзакций, единый error envelope, audit-логи, insights/финансовый директор, категоризация (global alias/MCC/keyword), banking-контракт — сделаны; admin, notifications, LLM fallback — впереди |
+| 6 (в процессе) | заметки, Siri/виджет, export, delete account, soft-delete, audit-логи, insights, категоризация, banking и Assistant с DeepSeek/GigaChat/Yandex STT — сделаны; notifications — впереди |
 | 7 (в процессе) | STRIDE threat model, structured HTTP access-логи с correlationId, backup/restore процедура сделаны; см. «Блокеры релиза» в `docs/security/threat-model.md` для остального                                                                                                     |
 
 Не переходим к следующему этапу, пока не выполнены критерии текущего (тесты зелёные,

@@ -62,6 +62,14 @@ export class RecurringPaymentsService {
     if (deleted.length === 0) throw new NotFoundException("Recurring payment not found");
   }
 
+  async update(userId: string, id: string, input: Partial<CreateRecurringPaymentInput>): Promise<RecurringPayment> {
+    const [current] = await this.db.select().from(recurringPayments).where(and(eq(recurringPayments.id, id), eq(recurringPayments.userId, userId)));
+    if (!current) throw new NotFoundException("Recurring payment not found");
+    if (input.accountId) await this.accountsService.getWritable(userId, input.accountId);
+    const rows = await this.db.update(recurringPayments).set(input).where(and(eq(recurringPayments.id, id), eq(recurringPayments.userId, userId))).returning();
+    return toRecurringPayment(firstOrThrow(rows));
+  }
+
   /** Logs today's payment as a real transaction and stamps `lastPaidAt` — being monthly
    * and calendar-anchored (`dueDay`), there's no date to roll forward like a
    * week/year interval would need; next month's due day is already implied. */

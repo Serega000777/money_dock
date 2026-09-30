@@ -155,13 +155,22 @@ export default function Home() {
     const clip = await recorder.stop();
     if (!clip) return;
     setVoiceError(null);
-    voice.transcribe.mutate(clip, {
-      onSuccess: (result) => setVoiceDraft(result),
-      onError: (e) =>
-        setVoiceError(
-          isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось распознать речь"),
-        ),
-    });
+    try {
+      const { text } = await apiClient.speech.transcribe(clip);
+      if (looksLikeAssistantQuestion(text)) {
+        router.push({ pathname: "/assistant", params: { prompt: text, inputType: "voice" } });
+        return;
+      }
+      voice.parse.mutate(
+        { value: text, source: "voice" },
+        {
+          onSuccess: (result) => setVoiceDraft(result),
+          onError: (e) => setVoiceError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать команду")),
+        },
+      );
+    } catch (e) {
+      setVoiceError(apiErrorMessage(e, "Не удалось распознать речь"));
+    }
   };
   const voiceSupported = speech.supported || recorder.supported;
   // MediaRecorder is reliable across Telegram's iOS/Android WebViews; Web Speech is a

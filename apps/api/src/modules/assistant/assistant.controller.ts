@@ -2,10 +2,12 @@ import type { AssistantAction, AssistantConversation, AssistantMessage, Assistan
 import {
   createAssistantConversationSchema,
   sendAssistantMessageSchema,
+  updateAssistantActionSchema,
   type CreateAssistantConversationInput,
   type SendAssistantMessageInput,
+  type UpdateAssistantActionInput,
 } from "@money-dock/validation";
-import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Param, Post, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Throttle } from "@nestjs/throttler";
 
@@ -76,6 +78,16 @@ export class AssistantController {
     if (!file) throw new BadRequestException("Аудио не приложено");
     const { text } = await this.speech.transcribe(file.buffer, file.mimetype);
     return this.assistant.sendMessage(user.id, conversationId, text, "voice");
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Patch("actions/:id")
+  updateAction(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param("id") id: string,
+    @Body(new ZodValidationPipe(updateAssistantActionSchema)) body: UpdateAssistantActionInput,
+  ): Promise<AssistantAction> {
+    return this.assistant.updateAction(user.id, id, body);
   }
 
   @HttpCode(HttpStatus.OK)

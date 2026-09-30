@@ -24,6 +24,7 @@ import type {
   RecurringPayment,
   ReviewInboxItem,
   SavingsGoal,
+  SpeechTranscriptionResult,
   Transaction,
   User,
 } from "@money-dock/shared-types";
@@ -334,6 +335,26 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       summary: () => request<AnalyticsSummary>("/analytics/summary"),
     },
 
+    speech: {
+      transcribe: async (audio: Blob): Promise<SpeechTranscriptionResult> => {
+        const form = new FormData();
+        const extension = audio.type.includes("mp4") || audio.type.includes("m4a") ? "m4a" : "webm";
+        form.append("audio", audio, `speech.${extension}`);
+        const upload = (token: string | null | undefined) => fetch(`${baseUrl}/speech/transcribe`, {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          body: form,
+        });
+        let res = await upload(getAccessToken?.());
+        if (res.status === 401) {
+          const refreshed = await refreshOnce();
+          if (refreshed) res = await upload(refreshed);
+        }
+        if (!res.ok) throw new ApiError(res.status, await res.text());
+        return (await res.json()) as SpeechTranscriptionResult;
+      },
+    },
+
     assistant: {
       createConversation: (title?: string) =>
         post<AssistantConversation>("/assistant/conversations", { title }),
@@ -365,7 +386,19 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
       },
       confirmAction: (id: string) =>
         post<AssistantAction>(`/assistant/actions/${id}/confirm`),
-      cancelAction: (id: string) => post<AssistantAction>(`/assistant/actions/${id}/cancel`),
+        cancelAction: (id: string) => post<AssistantAction>(`/assistant/actions/${id}/cancel`),
+        updateAction: (id: string, input: {
+          amountMinor?: number;
+          type?: "expense" | "income";
+          categoryId?: string | null;
+          accountId?: string;
+          occurredAt?: string;
+          note?: string;
+        }) => request<AssistantAction>(`/assistant/actions/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        }),
     },
 
     insights: {

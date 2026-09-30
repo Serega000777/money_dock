@@ -70,6 +70,12 @@ export class GoalsService {
     if (deleted.length === 0) throw new NotFoundException("Goal not found");
   }
 
+  async update(userId: string, id: string, input: Partial<CreateGoalInput>): Promise<SavingsGoal> {
+    await this.getOwned(userId, id);
+    const rows = await this.db.update(savingsGoals).set({ ...input, updatedAt: new Date() }).where(and(eq(savingsGoals.id, id), eq(savingsGoals.userId, userId))).returning();
+    return toGoal(firstOrThrow(rows));
+  }
+
   private async getOwned(userId: string, id: string): Promise<GoalRow> {
     const [row] = await this.db
       .select()

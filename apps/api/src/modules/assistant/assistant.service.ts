@@ -5,6 +5,8 @@ import type {
   AssistantResponse,
   CurrencyCode,
 } from "@money-dock/shared-types";
+import { addDays, startOfDay, startOfMonth, startOfPreviousMonth } from "@money-dock/business-rules";
+import type { UpdateAssistantActionInput } from "@money-dock/validation";
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
@@ -20,8 +22,13 @@ import {
 } from "../../db/schema";
 import { AnalyticsService } from "../analytics/analytics.service";
 import { CommandsService, type CommandDraft } from "../commands/commands.service";
+import { CategoriesService } from "../categories/categories.service";
 import { EntitlementsService } from "../entitlements/entitlements.service";
+import { GoalsService } from "../goals/goals.service";
+import { InsightsService } from "../insights/insights.service";
+import { RecurringPaymentsService } from "../recurring-payments/recurring-payments.service";
 import { TransactionsService } from "../transactions/transactions.service";
+import { UsersService } from "../users/users.service";
 import { LlmRouterService } from "./llm/llm-router.service";
 
 interface CreateTransactionArguments {
@@ -51,13 +58,19 @@ export class AssistantService {
     @Inject(DATABASE) private readonly db: Database,
     private readonly analytics: AnalyticsService,
     private readonly commands: CommandsService,
+    private readonly categories: CategoriesService,
     private readonly entitlements: EntitlementsService,
+    private readonly goals: GoalsService,
+    private readonly insights: InsightsService,
+    private readonly recurring: RecurringPaymentsService,
     private readonly transactions: TransactionsService,
+    private readonly users: UsersService,
     private readonly config: ConfigService<Env, true>,
     private readonly llm: LlmRouterService,
   ) {}
 
   async createConversation(userId: string, title?: string): Promise<AssistantConversation> {
+    this.ensureEnabled();
     const [row] = await this.db
       .insert(assistantConversations)
       .values({ userId, title: title ?? "Новый разговор" })
@@ -66,6 +79,7 @@ export class AssistantService {
   }
 
   async listConversations(userId: string): Promise<AssistantConversation[]> {
+    this.ensureEnabled();
     const rows = await this.db
       .select()
       .from(assistantConversations)
@@ -99,8 +113,7 @@ export class AssistantService {
     text: string,
     inputType: "text" | "voice",
   ): Promise<AssistantResponse> {
-    if (!this.config.get("ASSISTANT_ENABLED", { infer: true }))
-      throw new BadRequestException("Amola Assistant временно отключён");
+    this.ensureEnabled();
     await this.ownedConversation(userId, conversationId);
     if (inputType === "voice") await this.entitlements.consume(userId, "voice");
     await this.db.insert(assistantMessages).values({
@@ -171,6 +184,53 @@ export class AssistantService {
         : claimed.tool === "create_multiple_transactions"
           ? this.readMultipleCreateArguments(claimed.argumentsJson)
           : null;
+      if (claimed.tool === "update_transaction") {
+        const args = claimed.argumentsJson as { transactionId: string; changes: UpdateAssistantActionInput };
+        const { categoryId, ...rest } = args.changes;
+        await this.transactions.update(userId, args.transactionId, {
+          ...rest,
+          categoryId: categoryId ?? undefined,
+        });
+        return this.completeAction(claimed.id, { transactionIds: [args.transactionId] });
+      }
+      if (claimed.tool === "delete_transaction") {
+        const args = claimed.argumentsJson as { transactionId: string };
+        await this.transactions.remove(userId, args.transactionId);
+        return this.completeAction(claimed.id, { transactionIds: [args.transactionId] });
+      }
+      if (claimed.tool === "create_recurring_payment") {
+        const payment = await this.recurring.create(userId, claimed.argumentsJson as Parameters<RecurringPaymentsService["create"]>[1]);
+        return this.completeAction(claimed.id, { recurringPaymentId: payment.id });
+      }
+      if (claimed.tool === "cancel_recurring_payment") {
+        const args = claimed.argumentsJson as { recurringPaymentId: string };
+        await this.recurring.remove(userId, args.recurringPaymentId);
+        return this.completeAction(claimed.id, { recurringPaymentId: args.recurringPaymentId });
+      }
+      if (claimed.tool === "update_recurring_payment") {
+        const args = claimed.argumentsJson as { recurringPaymentId: string; changes: Parameters<RecurringPaymentsService["update"]>[2] };
+        await this.recurring.update(userId, args.recurringPaymentId, args.changes);
+        return this.completeAction(claimed.id, { recurringPaymentId: args.recurringPaymentId });
+      }
+      if (claimed.tool === "create_goal") {
+        const goal = await this.goals.create(userId, claimed.argumentsJson as Parameters<GoalsService["create"]>[1]);
+        return this.completeAction(claimed.id, { goalId: goal.id });
+      }
+      if (claimed.tool === "contribute_goal") {
+        const args = claimed.argumentsJson as { goalId: string; amountMinor: number };
+        await this.goals.contribute(userId, args.goalId, { amountMinor: args.amountMinor });
+        return this.completeAction(claimed.id, { goalId: args.goalId });
+      }
+      if (claimed.tool === "update_goal") {
+        const args = claimed.argumentsJson as { goalId: string; changes: Parameters<GoalsService["update"]>[2] };
+        await this.goals.update(userId, args.goalId, args.changes);
+        return this.completeAction(claimed.id, { goalId: args.goalId });
+      }
+      if (claimed.tool === "delete_goal") {
+        const args = claimed.argumentsJson as { goalId: string };
+        await this.goals.remove(userId, args.goalId);
+        return this.completeAction(claimed.id, { goalId: args.goalId });
+      }
       if (!argsList) throw new BadRequestException("Неизвестное действие ассистента");
       const transactionIds: string[] = [];
       for (const [index, args] of argsList.entries()) {
@@ -205,6 +265,26 @@ export class AssistantService {
     }
   }
 
+  async updateAction(userId: string, actionId: string, changes: UpdateAssistantActionInput): Promise<AssistantAction> {
+    const action = await this.ownedAction(userId, actionId);
+    if (action.status !== "pending") throw new BadRequestException("Можно менять только ожидающее действие");
+    if (!['create_transaction', 'update_transaction'].includes(action.tool))
+      throw new BadRequestException("Это действие нельзя редактировать");
+    const current = action.argumentsJson as Record<string, unknown>;
+    const argumentsJson = action.tool === "update_transaction"
+      ? { ...current, changes: { ...(current.changes as Record<string, unknown>), ...changes } }
+      : { ...current, ...changes };
+    if (changes.accountId) await this.transactions.accessibleAccounts(userId).then((items) => {
+      if (!items.some((item) => item.id === changes.accountId)) throw new NotFoundException("Счёт не найден");
+    });
+    const previewJson = { ...(action.previewJson as Record<string, unknown>), ...changes };
+    const [updated] = await this.db.update(assistantPendingActions)
+      .set({ argumentsJson, previewJson })
+      .where(and(eq(assistantPendingActions.id, actionId), eq(assistantPendingActions.userId, userId), eq(assistantPendingActions.status, "pending")))
+      .returning();
+    return this.mapAction(updated!);
+  }
+
   async cancelAction(userId: string, actionId: string): Promise<AssistantAction> {
     const action = await this.ownedAction(userId, actionId);
     if (action.status === "cancelled") return this.mapAction(action);
@@ -225,6 +305,32 @@ export class AssistantService {
 
   private async routeDeterministically(userId: string, conversationId: string, text: string) {
     const normalized = text.toLowerCase().replace(/ё/g, "е");
+    const conversation = await this.ownedConversation(userId, conversationId);
+    const context = (conversation.contextJson ?? {}) as { currentTotalMinor?: number; previousTotalMinor?: number; currentLabel?: string; previousLabel?: string; activeCategoryId?: string; activeCategoryName?: string };
+    const monthNames = ["январ", "феврал", "март", "апрел", "ма[йя]", "июн", "июл", "август", "сентябр", "октябр", "ноябр", "декабр"];
+    const monthIndex = monthNames.findIndex((name) => new RegExp(name).test(normalized));
+    if (monthIndex >= 0 && /сколько|потрат|расход|^а\s/.test(normalized)) {
+      const now = new Date();
+      const year = monthIndex > now.getUTCMonth() ? now.getUTCFullYear() - 1 : now.getUTCFullYear();
+      const from = new Date(Date.UTC(year, monthIndex, 1));
+      const to = new Date(Date.UTC(year, monthIndex + 1, 1));
+      const rows = await this.transactions.list(userId, { limit: 200, offset: 0 });
+      const categories = await this.categories.listForUser(userId);
+      const mentionedCategory = categories.find((item) =>
+        normalized.includes(item.name.toLowerCase()) ||
+        (/машин|авто|бенз/.test(normalized) && /авто|топлив/.test(item.name.toLowerCase())),
+      );
+      const activeCategoryId = mentionedCategory?.id ?? (/^а\s/.test(normalized) ? context.activeCategoryId : undefined);
+      const activeCategoryName = mentionedCategory?.name ?? (/^а\s/.test(normalized) ? context.activeCategoryName : undefined);
+      const total = rows.filter((item) => item.type === "expense" && (!activeCategoryId || item.categoryId === activeCategoryId) && new Date(item.occurredAt) >= from && new Date(item.occurredAt) < to).reduce((sum, item) => sum + item.amountMinor, 0);
+      const label = from.toLocaleDateString("ru-RU", { month: "long", year: "numeric", timeZone: "UTC" });
+      await this.db.update(assistantConversations).set({ contextJson: { previousTotalMinor: context.currentTotalMinor, previousLabel: context.currentLabel, currentTotalMinor: total, currentLabel: label, activeCategoryId, activeCategoryName } }).where(and(eq(assistantConversations.id, conversationId), eq(assistantConversations.userId, userId)));
+      return { content: `Расходы${activeCategoryName ? ` в категории «${activeCategoryName}»` : ""} за ${label}: ${this.money(total)}.`, action: null };
+    }
+    if (/^сравни\.?$/.test(normalized) && context.currentTotalMinor !== undefined && context.previousTotalMinor !== undefined) {
+      const delta = context.currentTotalMinor - context.previousTotalMinor;
+      return { content: `${context.currentLabel}: ${this.money(context.currentTotalMinor)}, ${context.previousLabel}: ${this.money(context.previousTotalMinor)}. ${delta >= 0 ? "Больше" : "Меньше"} на ${this.money(Math.abs(delta))}.`, action: null };
+    }
     if (/баланс|сколько.*(?:на счет|денег)/.test(normalized)) {
       const summary = await this.analytics.getSummary(userId);
       return { content: `Общий баланс: ${this.money(summary.totalBalanceMinor)}.`, action: null };
@@ -249,6 +355,122 @@ export class AssistantService {
         content: `Прогноз баланса к концу месяца: ${this.money(summary.monthEndForecastMinor)}.`,
         action: null,
       };
+    }
+    if (/сколько.*(?:потрат|расход).*(?:сегодня|вчера|недел|последн.*дн)|сколько.*(?:заработ|доход)|в среднем.*трат|сравни.*месяц/.test(normalized)) {
+      const rows = await this.transactions.list(userId, { limit: 200, offset: 0 });
+      const now = new Date();
+      const timezone = (await this.users.getById(userId)).timezone;
+      let from = startOfMonth(now, timezone);
+      let to = now;
+      let label = "в этом месяце";
+      if (/сегодня/.test(normalized)) { from = startOfDay(now, timezone); label = "сегодня"; }
+      else if (/вчера/.test(normalized)) { to = startOfDay(now, timezone); from = addDays(to, -1); label = "вчера"; }
+      else if (/две недели|14\s*дн/.test(normalized)) { from = addDays(now, -14); label = "за последние две недели"; }
+      else if (/недел/.test(normalized)) { from = addDays(now, -7); label = "за неделю"; }
+      else if (/прошл.*месяц/.test(normalized)) { from = startOfPreviousMonth(now, timezone); to = startOfMonth(now, timezone); label = "в прошлом месяце"; }
+      const type = /заработ|доход/.test(normalized) ? "income" : "expense";
+      const selected = rows.filter((item) => item.type === type && new Date(item.occurredAt) >= from && new Date(item.occurredAt) < to);
+      const total = selected.reduce((sum, item) => sum + item.amountMinor, 0);
+      if (/сравни.*месяц/.test(normalized)) {
+        const currentStart = startOfMonth(now, timezone);
+        const previousStart = startOfPreviousMonth(now, timezone);
+        const current = rows.filter((item) => item.type === "expense" && new Date(item.occurredAt) >= currentStart).reduce((sum, item) => sum + item.amountMinor, 0);
+        const previous = rows.filter((item) => item.type === "expense" && new Date(item.occurredAt) >= previousStart && new Date(item.occurredAt) < currentStart).reduce((sum, item) => sum + item.amountMinor, 0);
+        const delta = current - previous;
+        return { content: `В этом месяце ${this.money(current)}, в прошлом — ${this.money(previous)}. ${delta >= 0 ? "Больше" : "Меньше"} на ${this.money(Math.abs(delta))}.`, action: null };
+      }
+      if (/в среднем/.test(normalized)) {
+        const days = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / 86_400_000));
+        return { content: `Средние расходы ${label}: ${this.money(Math.round(total / days))} в день.`, action: null };
+      }
+      return { content: `${type === "income" ? "Доход" : "Расходы"} ${label}: ${this.money(total)}.`, action: null };
+    }
+    if (/на что.*(?:больше|больше всего)|топ.*категор/.test(normalized)) {
+      const rows = await this.transactions.list(userId, { limit: 200, offset: 0 });
+      const totals = new Map<string, number>();
+      for (const row of rows.filter((item) => item.type === "expense")) {
+        const key = row.categoryId ?? "Другое";
+        totals.set(key, (totals.get(key) ?? 0) + row.amountMinor);
+      }
+      const top = [...totals.entries()].sort((a, b) => b[1] - a[1])[0];
+      return { content: top ? `Больше всего расходов в ведущей категории: ${this.money(top[1])}.` : "Расходов пока нет.", action: null };
+    }
+    if (/самая большая покупка|крупн.*(?:покуп|трат)/.test(normalized)) {
+      const rows = await this.transactions.list(userId, { limit: 200, offset: 0 });
+      const largest = rows.filter((item) => item.type === "expense").sort((a, b) => b.amountMinor - a.amountMinor)[0];
+      return { content: largest ? `Самая большая покупка: ${this.money(largest.amountMinor)}${largest.merchant ? ` — ${largest.merchant}` : ""}.` : "Расходов пока нет.", action: null };
+    }
+    if (/обязательн.*платеж|платеж.*вперед/.test(normalized)) {
+      const payments = await this.recurring.list(userId);
+      return { content: payments.length ? `Обязательных платежей: ${payments.length}. Ближайшие: ${payments.slice(0, 3).map((p) => `${p.name} — ${this.money(p.amountMinor)}`).join(", ")}.` : "Обязательных платежей пока нет.", action: null };
+    }
+    if (/как.*(?:цель|цели)|покажи.*цели/.test(normalized)) {
+      const goals = await this.goals.list(userId);
+      return { content: goals.length ? goals.map((goal) => `${goal.name}: ${this.money(goal.savedMinor)} из ${this.money(goal.targetMinor)}`).join("\n") : "Целей пока нет.", action: null };
+    }
+    if (/на что.*обратить внимание|инсайт|совет/.test(normalized)) {
+      const items = await this.insights.listInsights(userId);
+      return { content: items.length ? `Есть ${items.length} финансовых наблюдений. Откройте аналитику, чтобы посмотреть детали.` : "Сейчас критичных финансовых изменений не обнаружено.", action: null };
+    }
+    const recent = await this.transactions.list(userId, { limit: 20, offset: 0 });
+    if (/удал[иь].*(?:последн|покуп|трат)/.test(normalized)) {
+      const target = recent.find((item) => item.type === "expense");
+      if (!target) return { content: "Не нашёл расход, который можно удалить.", action: null };
+      return this.createPendingAction(userId, conversationId, "delete_transaction", { transactionId: target.id }, { type: target.type, amountMinor: target.amountMinor, occurredAt: target.occurredAt, merchant: target.merchant }, "Удалить эту операцию?", "high");
+    }
+    const updateMatch = normalized.match(/(?:поменяй|измени).*(?:последн|трат|покуп).*?на\s+(\d[\d\s]*)/);
+    if (updateMatch) {
+      const target = recent.find((item) => item.type === "expense");
+      if (!target) return { content: "Не нашёл расход, который можно изменить.", action: null };
+      const amountMinor = Number(updateMatch[1]!.replace(/\s/g, "")) * 100;
+      return this.createPendingAction(userId, conversationId, "update_transaction", { transactionId: target.id, changes: { amountMinor } }, { type: target.type, amountMinor, occurredAt: target.occurredAt, merchant: target.merchant }, `Изменить сумму последней траты на ${this.money(amountMinor)}?`, "high");
+    }
+    const recurringMatch = normalized.match(/(?:добавь|создай).*(?:аренд|платеж).*?(\d[\d\s]*).*?(?:первого|1[- ]?го)/);
+    if (recurringMatch) {
+      const account = (await this.transactions.accessibleAccounts(userId))[0];
+      if (!account) return { content: "Сначала добавьте счёт.", action: null };
+      const amountMinor = Number(recurringMatch[1]!.replace(/\s/g, "")) * 100;
+      return this.createPendingAction(userId, conversationId, "create_recurring_payment", { accountId: account.id, name: normalized.includes("аренд") ? "Аренда" : "Обязательный платёж", amountMinor, currency: account.currency, dueDay: 1 }, { amountMinor, name: "Аренда", dueDay: 1 }, `Добавить ежемесячный платёж ${this.money(amountMinor)} первого числа?`);
+    }
+    if (/отмен[иь].*(?:аренд|платеж)/.test(normalized)) {
+      const payment = (await this.recurring.list(userId)).find((item) => normalized.includes(item.name.toLowerCase())) ?? (await this.recurring.list(userId))[0];
+      if (!payment) return { content: "Не нашёл обязательный платёж.", action: null };
+      return this.createPendingAction(userId, conversationId, "cancel_recurring_payment", { recurringPaymentId: payment.id }, { name: payment.name, amountMinor: payment.amountMinor }, `Отменить платёж «${payment.name}»?`, "high");
+    }
+    const recurringUpdate = normalized.match(/(?:измени|поменяй).*(?:аренд|платеж).*?на\s+(\d[\d\s]*)/);
+    if (recurringUpdate) {
+      const payment = (await this.recurring.list(userId))[0];
+      if (!payment) return { content: "Не нашёл обязательный платёж.", action: null };
+      const amountMinor = Number(recurringUpdate[1]!.replace(/\s/g, "")) * 100;
+      return this.createPendingAction(userId, conversationId, "update_recurring_payment", { recurringPaymentId: payment.id, changes: { amountMinor } }, { name: payment.name, amountMinor }, `Изменить платёж «${payment.name}» на ${this.money(amountMinor)}?`, "high");
+    }
+    const goalCreate = normalized.match(/(?:создай|добавь).*цель.*?(?:на\s+)?([а-яa-z\s]+?)\s+(\d[\d\s]*)$/i);
+    if (goalCreate) {
+      const targetMinor = Number(goalCreate[2]!.replace(/\s/g, "")) * 100;
+      const name = goalCreate[1]!.trim();
+      return this.createPendingAction(userId, conversationId, "create_goal", { name, targetMinor, currency: "RUB" }, { name, targetMinor }, `Создать цель «${name}» на ${this.money(targetMinor)}?`);
+    }
+    const contribution = normalized.match(/(?:отложи|добавь).*?(\d[\d\s]*).*?(?:в|на).*цель\s+(.+)$/i);
+    if (contribution) {
+      const goals = await this.goals.list(userId);
+      const goal = goals.find((item) => normalized.includes(item.name.toLowerCase()));
+      if (!goal) return { content: "Не нашёл указанную цель.", action: null };
+      const amountMinor = Number(contribution[1]!.replace(/\s/g, "")) * 100;
+      return this.createPendingAction(userId, conversationId, "contribute_goal", { goalId: goal.id, amountMinor }, { name: goal.name, amountMinor }, `Отложить ${this.money(amountMinor)} на цель «${goal.name}»?`);
+    }
+    if (/удал[иь].*цель/.test(normalized)) {
+      const goals = await this.goals.list(userId);
+      const goal = goals.find((item) => normalized.includes(item.name.toLowerCase())) ?? goals[0];
+      if (!goal) return { content: "Не нашёл цель.", action: null };
+      return this.createPendingAction(userId, conversationId, "delete_goal", { goalId: goal.id }, { name: goal.name, targetMinor: goal.targetMinor }, `Удалить цель «${goal.name}»?`, "high");
+    }
+    const goalUpdate = normalized.match(/(?:измени|поменяй).*цель.*?на\s+(\d[\d\s]*)/);
+    if (goalUpdate) {
+      const goals = await this.goals.list(userId);
+      const goal = goals.find((item) => normalized.includes(item.name.toLowerCase())) ?? goals[0];
+      if (!goal) return { content: "Не нашёл цель.", action: null };
+      const targetMinor = Number(goalUpdate[1]!.replace(/\s/g, "")) * 100;
+      return this.createPendingAction(userId, conversationId, "update_goal", { goalId: goal.id, changes: { targetMinor } }, { name: goal.name, targetMinor }, `Изменить цель «${goal.name}» на ${this.money(targetMinor)}?`, "high");
     }
 
     // Multiple amounts in one utterance must never be collapsed to the first number.
@@ -309,26 +531,19 @@ export class AssistantService {
 
   private async splitMultiCommand(text: string): Promise<string[]> {
     if (this.llm.available()) {
-      const response = await this.llm.chat([
-        { role: "system", content: ASSISTANT_SYSTEM_PROMPT },
-        { role: "user", content: text },
-      ]);
-      const parsed = this.parseAssistantIntent(response.content);
+      const parsed = await this.structuredIntent(text);
       if (parsed?.intent === "multi_transaction" && parsed.commands.length > 1) return parsed.commands;
     }
     return text
-      .split(/\s*(?:,|\bпотом\b|\bи\b)\s*/i)
+      // JavaScript's `\b` is ASCII-only, so it does not delimit Cyrillic words.
+      .split(/(?:\s*,\s*|\s+потом\s+|\s+и\s+)/iu)
       .map((part) => part.trim())
       .filter((part) => /\d/.test(part));
   }
 
   private async routeViaLlm(userId: string, conversationId: string, text: string) {
     if (!this.llm.available()) return null;
-    const response = await this.llm.chat([
-      { role: "system", content: ASSISTANT_SYSTEM_PROMPT },
-      { role: "user", content: text },
-    ]);
-    const intent = this.parseAssistantIntent(response.content);
+    const intent = await this.structuredIntent(text);
     if (!intent) return null;
     if (intent.intent === "multi_transaction" && intent.commands.length > 1) {
       const drafts = await Promise.all(intent.commands.map((command) => this.commands.parse(userId, command, "text")));
@@ -348,6 +563,22 @@ export class AssistantService {
     } catch {
       return null;
     }
+  }
+
+  private async structuredIntent(text: string) {
+    const messages = [
+      { role: "system" as const, content: ASSISTANT_SYSTEM_PROMPT },
+      { role: "user" as const, content: text },
+    ];
+    const first = this.parseAssistantIntent((await this.llm.chat(messages)).content);
+    if (first) return first;
+    // One bounded correction attempt for malformed structured output; never fan out
+    // across providers for a user validation error.
+    const corrected = await this.llm.chat([
+      ...messages,
+      { role: "user", content: "Предыдущий ответ был невалидным. Верни только JSON указанного формата." },
+    ]);
+    return this.parseAssistantIntent(corrected.content);
   }
 
   private async createMultiAction(
@@ -379,6 +610,16 @@ export class AssistantService {
     return { content: `Добавить ${drafts.length} операции на общую сумму ${this.money(drafts.reduce((sum, draft) => sum + draft.amountMinor, 0))}?`, action: this.mapAction(action!) };
   }
 
+  private async createPendingAction(userId: string, conversationId: string, tool: string, argumentsJson: Record<string, unknown>, previewJson: Record<string, unknown>, content: string, riskLevel: "low" | "medium" | "high" = "medium") {
+    const [action] = await this.db.insert(assistantPendingActions).values({ userId, conversationId, tool, argumentsJson, previewJson, riskLevel, expiresAt: new Date(Date.now() + 15 * 60_000) }).returning();
+    return { content, action: this.mapAction(action!) };
+  }
+
+  private async completeAction(actionId: string, resultJson: Record<string, unknown>): Promise<AssistantAction> {
+    const [completed] = await this.db.update(assistantPendingActions).set({ status: "completed", resultJson, executedAt: new Date() }).where(eq(assistantPendingActions.id, actionId)).returning();
+    return this.mapAction(completed!);
+  }
+
   private readCreateArguments(value: unknown): CreateTransactionArguments {
     const args = value as Partial<CreateTransactionArguments> | null;
     if (
@@ -402,6 +643,7 @@ export class AssistantService {
   }
 
   private async ownedConversation(userId: string, id: string) {
+    this.ensureEnabled();
     const [row] = await this.db
       .select()
       .from(assistantConversations)
@@ -411,6 +653,7 @@ export class AssistantService {
   }
 
   private async ownedAction(userId: string, id: string) {
+    this.ensureEnabled();
     const [row] = await this.db
       .select()
       .from(assistantPendingActions)
@@ -452,5 +695,10 @@ export class AssistantService {
 
   private money(minor: number): string {
     return `${new Intl.NumberFormat("ru-RU").format(Math.round(minor / 100))} ₽`;
+  }
+
+  private ensureEnabled(): void {
+    if (!this.config.get("ASSISTANT_ENABLED", { infer: true }))
+      throw new BadRequestException("Amola Assistant временно отключён");
   }
 }

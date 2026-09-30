@@ -10,5 +10,6 @@ import { RecurringPaymentsService } from "./recurring-payments.service";
   imports: [AccountsModule, TransactionsModule],
   controllers: [RecurringPaymentsController],
   providers: [RecurringPaymentsService],
+  exports: [RecurringPaymentsService],
 })
 export class RecurringPaymentsModule {}
