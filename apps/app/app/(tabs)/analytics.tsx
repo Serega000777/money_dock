@@ -2,7 +2,7 @@ import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type { Category, Transaction } from "@money-dock/shared-types";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View, type ViewStyle } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
@@ -196,6 +196,7 @@ export default function Analytics() {
   const [offset, setOffset] = useState(0);
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(null);
   const [picker, setPicker] = useState<"month" | "year" | "custom" | null>(null);
+  const [breakdownType, setBreakdownType] = useState<"expense" | "income">("expense");
   const [openCategory, setOpenCategory] = useState<CategoryTotal | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -413,24 +414,36 @@ export default function Analytics() {
         </View>
       </FadeIn>
 
-      <CategoryBreakdownSection
-        title="Расходы по категориям"
-        emptyText="Пока нет расходов за этот период"
-        bars={view.bars}
-        breakdown={view.breakdown}
-        donutCaption={current.label.toLowerCase()}
-        onOpenCategory={setOpenCategory}
-      />
+      <FadeIn index={4}>
+        <Segmented<"expense" | "income">
+          value={breakdownType}
+          onChange={setBreakdownType}
+          options={[
+            { value: "expense", label: "Расходы" },
+            { value: "income", label: "Доходы" },
+          ]}
+        />
+      </FadeIn>
 
-      <CategoryBreakdownSection
-        title="Доходы по категориям"
-        emptyText="Пока нет доходов за этот период"
-        bars={view.incomeBars}
-        breakdown={view.incomeBreakdown}
-        donutCaption={current.label.toLowerCase()}
-        onOpenCategory={setOpenCategory}
-        style={styles.incomeSection}
-      />
+      {breakdownType === "expense" ? (
+        <CategoryBreakdownSection
+          title="Расходы по категориям"
+          emptyText="Пока нет расходов за этот период"
+          bars={view.bars}
+          breakdown={view.breakdown}
+          donutCaption={current.label.toLowerCase()}
+          onOpenCategory={setOpenCategory}
+        />
+      ) : (
+        <CategoryBreakdownSection
+          title="Доходы по категориям"
+          emptyText="Пока нет доходов за этот период"
+          bars={view.incomeBars}
+          breakdown={view.incomeBreakdown}
+          donutCaption={current.label.toLowerCase()}
+          onOpenCategory={setOpenCategory}
+        />
+      )}
 
       <BottomSheet
         visible={openCategory !== null}
@@ -514,7 +527,6 @@ function CategoryBreakdownSection({
   breakdown,
   donutCaption,
   onOpenCategory,
-  style,
 }: {
   title: string;
   emptyText: string;
@@ -522,11 +534,10 @@ function CategoryBreakdownSection({
   breakdown: CategoryTotal[];
   donutCaption: string;
   onOpenCategory: (item: CategoryTotal) => void;
-  style?: ViewStyle;
 }) {
   const theme = useTheme();
   return (
-    <View style={[styles.sectionWrap, style]}>
+    <View style={styles.sectionWrap}>
       {breakdown.length > 0 ? (
         <FadeIn index={4}>
           <Card>
@@ -679,7 +690,6 @@ const styles = StyleSheet.create({
   donutCard: { paddingVertical: spacing.xl },
   sectionTitle: { ...typography.headline, marginTop: spacing.md },
   sectionWrap: { gap: spacing.md },
-  incomeSection: { marginTop: spacing.xl },
   listCard: { gap: spacing.lg },
   breakdownRow: { gap: spacing.sm },
   breakdownHeader: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
