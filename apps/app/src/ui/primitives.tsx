@@ -4,6 +4,7 @@ import {
   Animated,
   Easing,
   Modal,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -314,19 +315,55 @@ export function BottomSheet({
   children: ReactNode;
 }) {
   const theme = useTheme();
+  const dragY = useRef(new Animated.Value(0)).current;
+
+  // The Modal's children stay mounted across visible toggles, so a sheet closed by a
+  // drag (dragY left non-zero) would otherwise reopen already pulled halfway down.
+  useEffect(() => {
+    if (visible) dragY.setValue(0);
+  }, [visible, dragY]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      // Only claims the gesture once it's clearly a downward drag — a plain tap on the
+      // handle/title must still fall through to the sheet's own Pressable.
+      onMoveShouldSetPanResponder: (_event, gesture) => gesture.dy > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+      onPanResponderMove: (_event, gesture) => {
+        if (gesture.dy > 0) dragY.setValue(gesture.dy);
+      },
+      onPanResponderRelease: (_event, gesture) => {
+        const pastThreshold = gesture.dy > 90 || gesture.vy > 0.8;
+        if (pastThreshold) {
+          Animated.timing(dragY, {
+            toValue: 700,
+            duration: 180,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }).start(onClose);
+        } else {
+          Animated.spring(dragY, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
+        }
+      },
+    }),
+  ).current;
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.sheetOverlay} onPress={onClose}>
-        <Pressable
-          style={[styles.sheetBody, { backgroundColor: theme.sheet }]}
-          onPress={(event) => event.stopPropagation()}
-        >
-          <View style={[styles.sheetHandle, { backgroundColor: theme.border }]} />
-          {title ? (
-            <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>{title}</Text>
-          ) : null}
-          {children}
-        </Pressable>
+        <Animated.View style={{ transform: [{ translateY: dragY }] }}>
+          <Pressable
+            style={[styles.sheetBody, { backgroundColor: theme.sheet }]}
+            onPress={(event) => event.stopPropagation()}
+          >
+            <View {...panResponder.panHandlers}>
+              <View style={[styles.sheetHandle, { backgroundColor: theme.border }]} />
+              {title ? (
+                <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>{title}</Text>
+              ) : null}
+            </View>
+            {children}
+          </Pressable>
+        </Animated.View>
       </Pressable>
     </Modal>
   );

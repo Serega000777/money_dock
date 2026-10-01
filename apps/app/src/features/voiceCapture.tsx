@@ -1,19 +1,12 @@
 import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type { Account, Category, CommandDraft } from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, type ReactNode } from "react";
-import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-  type TextStyle,
-} from "react-native";
+import { useState, type ReactNode } from "react";
+import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View, type TextStyle } from "react-native";
 
 import { apiClient } from "../api/client";
 import { useTheme } from "../theme/useTheme";
+import { DatePickerSheet } from "../ui/PeriodPicker";
 import { Text } from "../ui/Text";
 import { PressableScale, Segmented } from "../ui/primitives";
 import { generateClientId } from "../utils/uuid";
@@ -136,7 +129,7 @@ export function DraftSummary({
   // The draft is the source of truth for the amount except while the field has focus —
   // otherwise a half-typed "12." would be reformatted from under the user's cursor.
   const [amountEditing, setAmountEditing] = useState<string | null>(null);
-  const dateInputRef = useRef<HTMLInputElement | null>(null);
+  const [pickingDate, setPickingDate] = useState(false);
 
   const visibleCategories = (categories ?? []).filter(
     (c) => c.type === draft.type || c.type === "both",
@@ -244,35 +237,25 @@ export function DraftSummary({
               onPress={() => setDaysAgo(chip.daysAgo)}
             />
           ))}
-          {Platform.OS === "web" ? (
-            <Chip
-              label={
-                customDate ? new Date(draft.occurredAt).toLocaleDateString("ru-RU") : "Другая дата"
-              }
-              active={customDate}
-              onPress={() => {
-                const input = dateInputRef.current;
-                if (!input) return;
-                if (typeof input.showPicker === "function") input.showPicker();
-                else input.click();
-              }}
-            />
-          ) : null}
-        </ChipRow>
-        {Platform.OS === "web" ? (
-          <input
-            ref={dateInputRef}
-            type="date"
-            value={draft.occurredAt.slice(0, 10)}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={(event) => {
-              const picked = new Date(`${event.target.value}T12:00:00`);
-              if (!Number.isNaN(picked.getTime())) setDaysAgo(daysAgoOf(picked.toISOString()));
-            }}
-            style={hiddenDateInputStyle}
+          <Chip
+            label={
+              customDate ? new Date(draft.occurredAt).toLocaleDateString("ru-RU") : "Другая дата"
+            }
+            active={customDate}
+            onPress={() => setPickingDate(true)}
           />
-        ) : null}
+        </ChipRow>
       </Field>
+      <DatePickerSheet
+        visible={pickingDate}
+        onClose={() => setPickingDate(false)}
+        initialDate={new Date(draft.occurredAt)}
+        maxDate={new Date()}
+        onSelect={(day) => {
+          setDaysAgo(daysAgoOf(day.toISOString()));
+          setPickingDate(false);
+        }}
+      />
 
       <Text style={[styles.confidence, { color: theme.textTertiary }]}>
         Уверенность {Math.round(draft.confidence * 100)}% · распознано:{" "}
@@ -360,15 +343,6 @@ const noFocusRing = Platform.select<TextStyle>({
   web: { outlineStyle: "none" } as unknown as TextStyle,
   default: {},
 });
-
-// Off-screen rather than display:none — a hidden input can't open its picker.
-const hiddenDateInputStyle = {
-  position: "absolute" as const,
-  width: 1,
-  height: 1,
-  opacity: 0,
-  pointerEvents: "none" as const,
-};
 
 const styles = StyleSheet.create({
   wrap: { gap: spacing.md },
