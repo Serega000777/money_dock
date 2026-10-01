@@ -126,3 +126,49 @@ describe("Profile update (e2e)", () => {
       .expect(400);
   });
 });
+
+describe("Owner-only admin link (e2e)", () => {
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN must be set to run this suite");
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it("is false for an ordinary account", async () => {
+    const login = await request(app.getHttpServer())
+      .post("/auth/telegram")
+      .send({ initData: signInitData(runPrefix * 1_000_000 + 3) })
+      .expect(200);
+    const me = await request(app.getHttpServer())
+      .get("/users/me")
+      .set("Authorization", `Bearer ${login.body.accessToken}`)
+      .expect(200);
+    expect(me.body.isOwner).toBe(false);
+  });
+
+  // Only meaningful where OWNER_TELEGRAM_ID is actually configured (it's optional — see
+  // env.ts); soft-skips elsewhere rather than failing a deployment that never sets it.
+  const ownerId = Number(process.env.OWNER_TELEGRAM_ID);
+  (Number.isInteger(ownerId) && ownerId > 0 ? it : it.skip)(
+    "is true for the account matching OWNER_TELEGRAM_ID",
+    async () => {
+      const login = await request(app.getHttpServer())
+        .post("/auth/telegram")
+        .send({ initData: signInitData(ownerId) })
+        .expect(200);
+      const me = await request(app.getHttpServer())
+        .get("/users/me")
+        .set("Authorization", `Bearer ${login.body.accessToken}`)
+        .expect(200);
+      expect(me.body.isOwner).toBe(true);
+      expect(me.body.role).toBe("admin");
+    },
+  );
+});

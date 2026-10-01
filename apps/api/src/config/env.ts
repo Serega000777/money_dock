@@ -34,6 +34,12 @@ const envSchema = z
     // by default: a deployment with no admin configured just has no admin panel access,
     // never an open one.
     ADMIN_TELEGRAM_IDS: z.string().default(""),
+    // A single Telegram numeric user id (from @userinfobot) whose cabinet shows the admin
+    // panel entry point. Deliberately separate from ADMIN_TELEGRAM_IDS: that list grants
+    // the `admin` role (API access) and may grow to cover support staff later, while the
+    // owner-only dashboard link should still follow just one person even then. Unset =
+    // nobody sees the link, regardless of role.
+    OWNER_TELEGRAM_ID: z.string().optional(),
     // Audience of Sign in with Apple identity tokens. For the native app this is the
     // bundle identifier; keeping it configurable also supports a future web Service ID.
     APPLE_CLIENT_ID: z.string().min(1).default("app.amola.finance"),

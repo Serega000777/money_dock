@@ -1,27 +1,16 @@
 import type { User } from "@money-dock/shared-types";
 import type { UpdateMeInput } from "@money-dock/validation";
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { and, eq, isNull, lt, or } from "drizzle-orm";
 
 import { AuditLogService } from "../../common/audit-log.service";
+import type { Env } from "../../config/env";
 import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
 import { firstOrThrow } from "../../db/first-or-throw";
 import { userIdentities, users } from "../../db/schema";
 import type { TelegramInitDataUser } from "../auth/telegram-init-data";
-
-function toUser(row: typeof users.$inferSelect): User {
-  return {
-    id: row.id,
-    displayName: row.displayName,
-    baseCurrency: row.baseCurrency as User["baseCurrency"],
-    timezone: row.timezone,
-    locale: row.locale,
-    avatarUrl: row.avatarUrl,
-    role: row.role,
-    status: row.status,
-  };
-}
 
 @Injectable()
 export class UsersService {
@@ -30,7 +19,25 @@ export class UsersService {
   constructor(
     @Inject(DATABASE) private readonly db: Database,
     private readonly auditLog: AuditLogService,
+    private readonly config: ConfigService<Env, true>,
   ) {}
+
+  private async toUser(row: typeof users.$inferSelect): Promise<User> {
+    const ownerTelegramId = this.config.get("OWNER_TELEGRAM_ID", { infer: true });
+    const isOwner =
+      Boolean(ownerTelegramId) && (await this.ownsTelegramIdentity(row.id, Number(ownerTelegramId)));
+    return {
+      id: row.id,
+      displayName: row.displayName,
+      baseCurrency: row.baseCurrency as User["baseCurrency"],
+      timezone: row.timezone,
+      locale: row.locale,
+      avatarUrl: row.avatarUrl,
+      role: row.role,
+      status: row.status,
+      isOwner,
+    };
+  }
 
   async findOrCreateByTelegramIdentity(telegramUser: TelegramInitDataUser): Promise<User> {
     const providerUserId = String(telegramUser.id);
@@ -46,7 +53,7 @@ export class UsersService {
         ),
       );
 
-    if (existing) return toUser(existing.user);
+    if (existing) return this.toUser(existing.user);
 
     return this.db.transaction(async (tx) => {
       const displayName = [telegramUser.first_name, telegramUser.last_name]
@@ -70,7 +77,7 @@ export class UsersService {
         verifiedAt: new Date(),
       });
 
-      return toUser(createdUser);
+      return this.toUser(createdUser);
     });
   }
 
@@ -87,7 +94,7 @@ export class UsersService {
         and(eq(userIdentities.provider, "apple"), eq(userIdentities.providerUserId, input.subject)),
       );
 
-    if (existing) return toUser(existing.user);
+    if (existing) return this.toUser(existing.user);
 
     return this.db.transaction(async (tx) => {
       const createdUser = firstOrThrow(
@@ -108,7 +115,7 @@ export class UsersService {
         verifiedAt: new Date(),
       });
 
-      return toUser(createdUser);
+      return this.toUser(createdUser);
     });
   }
 
@@ -151,7 +158,7 @@ export class UsersService {
   async getById(id: string): Promise<User> {
     const [row] = await this.db.select().from(users).where(eq(users.id, id));
     if (!row) throw new NotFoundException("User not found");
-    return toUser(row);
+    return this.toUser(row);
   }
 
   async updateProfile(userId: string, input: UpdateMeInput): Promise<User> {
@@ -161,7 +168,7 @@ export class UsersService {
       .set({ ...input, updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
-    return toUser(firstOrThrow(rows));
+    return this.toUser(firstOrThrow(rows));
   }
 
   /** Called once per login with the just-verified Telegram id (see AuthService) — grants

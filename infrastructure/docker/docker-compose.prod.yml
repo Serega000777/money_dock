@@ -41,8 +41,10 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env.production}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET in .env.production}
       # Telegram numeric user ids promoted to `admin` on next login — see AuthService.
-      # Empty/unset = no admin panel access for anyone.
+      # Grants /admin/* API access; empty/unset = nobody.
       ADMIN_TELEGRAM_IDS: ${ADMIN_TELEGRAM_IDS:-}
+      # Single Telegram id whose cabinet shows the "Админ-панель" link — see UsersService.
+      OWNER_TELEGRAM_ID: ${OWNER_TELEGRAM_ID:-}
       # Verifies incoming webhook calls (set via `pnpm telegram:set-webhook`) — without it
       # the bot's /start flow (welcome message, phone capture) never runs.
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}

@@ -524,7 +524,7 @@ export default function Account() {
         </Section>
       </FadeIn>
 
-      {me?.role === "admin" ? (
+      {me?.isOwner ? (
         <FadeIn index={12}>
           <Section title="Админ">
             <NavRow href="/admin" icon="shield" label="Админ-панель" />

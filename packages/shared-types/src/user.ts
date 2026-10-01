@@ -14,6 +14,9 @@ export interface User {
   avatarUrl: string | null;
   role: UserRole;
   status: UserStatus;
+  /** True only for the single Telegram id configured as OWNER_TELEGRAM_ID — gates the
+   * admin panel entry point in the client, separately from `role`. */
+  isOwner: boolean;
 }
 
 export interface AuthTokens {
