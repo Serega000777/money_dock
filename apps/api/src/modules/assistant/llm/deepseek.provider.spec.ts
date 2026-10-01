@@ -27,6 +27,10 @@ describe("DeepSeekProvider", () => {
       expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Api-Key secret" }) }),
     );
     const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    expect(JSON.parse(String(request.body))).not.toHaveProperty("thinking");
+    const body = JSON.parse(String(request.body));
+    expect(body).not.toHaveProperty("thinking");
+    // Without this, a reasoning model spends max_tokens on reasoning_content and
+    // `content` comes back null before it ever answers.
+    expect(body.reasoning_effort).toBe("none");
   });
 });

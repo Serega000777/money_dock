@@ -19,6 +19,8 @@ COPY --from=build /out/dist ./dist
 COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /out/package.json ./package.json
 COPY --from=build /repo/infrastructure/migrations ./infrastructure/migrations
+# Russian Ministry of Digital Development root CA, needed to trust GigaChat's TLS chain.
+COPY --from=build /repo/apps/api/certs ./certs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s \
   CMD node -e "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

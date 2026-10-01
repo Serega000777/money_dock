@@ -1,11 +1,25 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 import type { Env } from "../../../config/env";
+
 import type { LlmMessage, LlmProvider, LlmResponse } from "./llm-provider";
 import { LlmProviderError } from "./llm-provider";
+
+// Sber's endpoints chain to the Russian Ministry of Digital Development's root CA,
+// which isn't in Node's (or most OS) default trust store. Extending the trust store
+// (rather than NODE_TLS_REJECT_UNAUTHORIZED=0) keeps verification on for every other
+// outbound call this process makes. Module-load time so it's set before the first
+// request, in dev, prod, and e2e tests alike (all three load this module, not just
+// main.ts).
+const CA_BUNDLE_PATH = join(__dirname, "../../../../certs/russian-trusted-ca.pem");
+if (!process.env.NODE_EXTRA_CA_CERTS && existsSync(CA_BUNDLE_PATH)) {
+  process.env.NODE_EXTRA_CA_CERTS = CA_BUNDLE_PATH;
+}
 
 interface GigaTokenResponse { access_token?: string; expires_at?: number }
 interface GigaChatResponse {
@@ -30,7 +44,7 @@ export class GigaChatProvider implements LlmProvider {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 25_000);
     try {
-      const response = await fetch("https://api.giga.chat/v1/chat/completions", {
+      const response = await fetch("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         signal: controller.signal,

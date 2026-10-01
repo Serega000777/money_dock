@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 import type { Env } from "../../../config/env";
+
 import type { LlmMessage, LlmProvider, LlmResponse } from "./llm-provider";
 import { LlmProviderError } from "./llm-provider";
 
@@ -40,6 +41,10 @@ export class DeepSeekProvider implements LlmProvider {
           messages,
           response_format: { type: "json_object" },
           ...(baseUrl.includes("api.deepseek.com") ? { thinking: { type: "disabled" } } : {}),
+          // Yandex's OpenAI-compatible gateway exposes the same off switch as
+          // `reasoning_effort` instead — without it the model burns max_tokens on
+          // reasoning_content and content comes back null before it ever answers.
+          ...(baseUrl.includes("yandex.net") ? { reasoning_effort: "none" } : {}),
           temperature: 0,
           max_tokens: 500,
         }),
