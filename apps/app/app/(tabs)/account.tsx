@@ -239,7 +239,7 @@ export default function Account() {
           <NavRow
             href="/review-inbox"
             icon="inbox"
-            label="Нужно проверить"
+            label="Проверка быстрого ввода"
             badge={pendingCount > 0 ? String(pendingCount) : undefined}
           />
           <NavRow href="/import" icon="upload" label="Импорт выписки" />

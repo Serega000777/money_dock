@@ -623,7 +623,7 @@ export default function Home() {
                   </View>
                   <View style={styles.reviewLeft}>
                     <Text style={[styles.reviewTitle, { color: theme.textPrimary }]}>
-                      Нужно проверить
+                      Проверка быстрого ввода
                     </Text>
                     <Text style={[styles.reviewHint, { color: theme.textSecondary }]}>
                       {pending} {plural(pending, "операция ждёт", "операции ждут", "операций ждут")}{" "}
