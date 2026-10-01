@@ -7,6 +7,24 @@ import request from "supertest";
 import { AppModule } from "../../app.module";
 import { EntitlementsService } from "../entitlements/entitlements.service";
 
+// pdf-parse (PDF.js) sets up a worker via a dynamic import() that Jest's CJS module
+// system refuses outside --experimental-vm-modules — and that flag breaks this project's
+// unrelated @nestjs/jwt transform setup, so it's not an option. Confirmed separately
+// against a real multipart upload through the live dev server (not under Jest) that
+// ImportService.parsePdf's actual pdf-parse calls work; this mock lets the PDF-specific
+// tests below exercise everything downstream of "here's the extracted text" — the part
+// that's actually this project's code — the same way deepseek/gigachat provider specs
+// mock fetch instead of hitting the real API.
+const mockGetText = jest.fn();
+const mockGetTable = jest.fn();
+jest.mock("pdf-parse", () => ({
+  PDFParse: jest.fn().mockImplementation(() => ({
+    getText: mockGetText,
+    getTable: mockGetTable,
+    destroy: jest.fn().mockResolvedValue(undefined),
+  })),
+}));
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const runPrefix = Math.floor(Math.random() * 1_000_000);
 let idCounter = 0;
@@ -36,6 +54,18 @@ const RU_STATEMENT = [
 
 /** Comma-separated ISO/English export — the other common shape. */
 const EN_STATEMENT = ["Date,Amount,Description", "2026-09-05,-42.30,Starbucks"].join("\n");
+
+// The actual bytes don't matter — parsing is mocked above — just a buffer whose filename
+// ends in .pdf so ImportService routes it to parsePdf instead of parseCsv.
+const PDF_PLACEHOLDER = Buffer.from("%PDF-1.4 placeholder, see mock above");
+
+/** No table/grid lines — getTable finds nothing, forcing the text-token fallback path. */
+const PDF_STATEMENT_TEXT = [
+  "Date Amount Description",
+  "2026-09-01 -500.00 Produkty",
+  "2026-09-05 10000.00 Zarplata",
+  "2026-09-10 -1200.50 AZS Gazprom",
+].join("\n");
 
 describe("Statement import (e2e)", () => {
   let app: INestApplication;
@@ -182,5 +212,96 @@ describe("Statement import (e2e)", () => {
       .set("Authorization", `Bearer ${other.body.accessToken}`)
       .attach("file", Buffer.from(EN_STATEMENT, "utf8"), "en.csv")
       .expect(404);
+  });
+});
+
+// Own app instance (own ThrottlerStorageService, in-memory and scoped per app) so these
+// don't share the 10-req/60s import throttle budget with the CSV suite above.
+describe("PDF statement import (e2e)", () => {
+  let app: INestApplication;
+  let token: string;
+  let accountId: string;
+
+  const authed = (method: "get" | "post", path: string) =>
+    request(app.getHttpServer())[method](path).set("Authorization", `Bearer ${token}`);
+
+  beforeAll(async () => {
+    if (!BOT_TOKEN) throw new Error("TELEGRAM_BOT_TOKEN must be set to run this suite");
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
+
+    idCounter += 1;
+    const login = await request(app.getHttpServer())
+      .post("/auth/telegram")
+      .send({ initData: signInitData(runPrefix * 1_000_000 + idCounter) })
+      .expect(200);
+    token = login.body.accessToken;
+    await app.get(EntitlementsService).setPlan(login.body.user.id, "pro");
+
+    const account = await authed("post", "/accounts")
+      .send({ type: "card", name: "Карта", currency: "RUB", initialBalanceMinor: 100_000_00 })
+      .expect(201);
+    accountId = account.body.id;
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    mockGetTable.mockReset();
+    mockGetText.mockReset();
+  });
+
+  it("parses a PDF statement with no table lines by locating date/amount tokens in the text", async () => {
+    mockGetTable.mockResolvedValueOnce({ mergedTables: [], pages: [{ tables: [] }] });
+    mockGetText.mockResolvedValueOnce({ text: PDF_STATEMENT_TEXT });
+
+    const res = await authed("post", `/import/preview/${accountId}`)
+      .attach("file", PDF_PLACEHOLDER, "statement.pdf")
+      .expect(201);
+    expect(res.body.stats.rowsFound).toBe(3);
+    const merchants = res.body.rows.map((row: { merchant: string | null }) => row.merchant);
+    expect(merchants).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Produkty"),
+        expect.stringContaining("Zarplata"),
+        expect.stringContaining("AZS Gazprom"),
+      ]),
+    );
+    const salaryRow = res.body.rows.find((row: { merchant: string | null }) =>
+      row.merchant?.includes("Zarplata"),
+    );
+    expect(salaryRow.type).toBe("income");
+    expect(salaryRow.amountMinor).toBe(1_000_000);
+  });
+
+  it("rejects a PDF with no date-and-amount-shaped lines at all", async () => {
+    mockGetTable.mockResolvedValueOnce({ mergedTables: [], pages: [{ tables: [] }] });
+    mockGetText.mockResolvedValueOnce({ text: "Statement summary\nNo transactions this period" });
+
+    await authed("post", `/import/preview/${accountId}`)
+      .attach("file", PDF_PLACEHOLDER, "empty.pdf")
+      .expect(400);
+  });
+
+  it("prefers a detected table over the text fallback when getTable finds one", async () => {
+    mockGetTable.mockResolvedValueOnce({
+      mergedTables: [
+        [
+          ["Дата", "Сумма", "Описание"],
+          ["2026-09-07", "-777.00", "Табличная строка"],
+        ],
+      ],
+      pages: [{ tables: [] }],
+    });
+
+    const res = await authed("post", `/import/preview/${accountId}`)
+      .attach("file", PDF_PLACEHOLDER, "table.pdf")
+      .expect(201);
+    expect(res.body.stats.rowsFound).toBe(1);
+    expect(res.body.rows[0].merchant).toBe("Табличная строка");
+    expect(mockGetText).not.toHaveBeenCalled();
   });
 });

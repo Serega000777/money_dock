@@ -53,7 +53,7 @@ export default function Import() {
 
   const pickNativeFile = async () => {
     const result = await DocumentPicker.getDocumentAsync({
-      type: ["text/csv", "text/comma-separated-values", "application/csv"],
+      type: ["text/csv", "text/comma-separated-values", "application/csv", "application/pdf"],
       copyToCacheDirectory: true,
       multiple: false,
     });
@@ -83,8 +83,8 @@ export default function Import() {
 
       <FadeIn index={0}>
         <Text style={[styles.hint, { color: theme.textSecondary }]}>
-          CSV-выписка из банка. Колонки даты, суммы и назначения определяются автоматически. Ничего
-          не сохранится, пока вы не подтвердите.
+          CSV или PDF-выписка из банка. Колонки даты, суммы и назначения определяются
+          автоматически. Ничего не сохранится, пока вы не подтвердите.
         </Text>
       </FadeIn>
 
@@ -94,7 +94,7 @@ export default function Import() {
         <input
           ref={inputRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,text/csv,.pdf,application/pdf"
           style={{ display: "none" }}
           onChange={(event) => {
             const file = event.target.files?.[0];
@@ -119,10 +119,10 @@ export default function Import() {
             <Icon name="upload" color={theme.accent} size={24} />
           </View>
           <Text style={[styles.dropTitle, { color: theme.textPrimary }]}>
-            {upload.isPending ? "Разбираю файл…" : "Выбрать CSV-файл"}
+            {upload.isPending ? "Разбираю файл…" : "Выбрать файл выписки"}
           </Text>
           <Text style={[styles.dropHint, { color: theme.textTertiary }]}>
-            Сбербанк, Тинькофф, Альфа — любой CSV
+            Сбербанк, Тинькофф, Альфа — CSV или PDF
           </Text>
         </PressableScale>
       </FadeIn>
