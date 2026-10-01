@@ -306,10 +306,10 @@ export class AssistantService {
   private async routeDeterministically(userId: string, conversationId: string, text: string) {
     const normalized = text.toLowerCase().replace(/ё/g, "е");
     const conversation = await this.ownedConversation(userId, conversationId);
-    const context = (conversation.contextJson ?? {}) as { currentTotalMinor?: number; previousTotalMinor?: number; currentLabel?: string; previousLabel?: string; activeCategoryId?: string; activeCategoryName?: string };
+    const context = (conversation.contextJson ?? {}) as { currentTotalMinor?: number; previousTotalMinor?: number; currentLabel?: string; previousLabel?: string; activeCategoryId?: string; activeCategoryName?: string; activeType?: "expense" | "income" };
     const monthNames = ["январ", "феврал", "март", "апрел", "ма[йя]", "июн", "июл", "август", "сентябр", "октябр", "ноябр", "декабр"];
     const monthIndex = monthNames.findIndex((name) => new RegExp(name).test(normalized));
-    if (monthIndex >= 0 && /сколько|потрат|расход|^а\s/.test(normalized)) {
+    if (monthIndex >= 0 && /сколько|потрат|расход|заработ|доход|получил|пришло|^а\s/.test(normalized)) {
       const now = new Date();
       const year = monthIndex > now.getUTCMonth() ? now.getUTCFullYear() - 1 : now.getUTCFullYear();
       const from = new Date(Date.UTC(year, monthIndex, 1));
@@ -322,10 +322,18 @@ export class AssistantService {
       );
       const activeCategoryId = mentionedCategory?.id ?? (/^а\s/.test(normalized) ? context.activeCategoryId : undefined);
       const activeCategoryName = mentionedCategory?.name ?? (/^а\s/.test(normalized) ? context.activeCategoryName : undefined);
-      const total = rows.filter((item) => item.type === "expense" && (!activeCategoryId || item.categoryId === activeCategoryId) && new Date(item.occurredAt) >= from && new Date(item.occurredAt) < to).reduce((sum, item) => sum + item.amountMinor, 0);
+      // The message itself decides income vs expense when it says so explicitly; a bare
+      // follow-up ("А в сентябре") with no type word carries over whatever was last asked
+      // about instead of silently defaulting back to expense.
+      const type: "expense" | "income" = /заработ|доход|получил|пришло/.test(normalized)
+        ? "income"
+        : /потрат|расход/.test(normalized)
+          ? "expense"
+          : (context.activeType ?? "expense");
+      const total = rows.filter((item) => item.type === type && (!activeCategoryId || item.categoryId === activeCategoryId) && new Date(item.occurredAt) >= from && new Date(item.occurredAt) < to).reduce((sum, item) => sum + item.amountMinor, 0);
       const label = from.toLocaleDateString("ru-RU", { month: "long", year: "numeric", timeZone: "UTC" });
-      await this.db.update(assistantConversations).set({ contextJson: { previousTotalMinor: context.currentTotalMinor, previousLabel: context.currentLabel, currentTotalMinor: total, currentLabel: label, activeCategoryId, activeCategoryName } }).where(and(eq(assistantConversations.id, conversationId), eq(assistantConversations.userId, userId)));
-      return { content: `Расходы${activeCategoryName ? ` в категории «${activeCategoryName}»` : ""} за ${label}: ${this.money(total)}.`, action: null };
+      await this.db.update(assistantConversations).set({ contextJson: { previousTotalMinor: context.currentTotalMinor, previousLabel: context.currentLabel, currentTotalMinor: total, currentLabel: label, activeCategoryId, activeCategoryName, activeType: type } }).where(and(eq(assistantConversations.id, conversationId), eq(assistantConversations.userId, userId)));
+      return { content: `${type === "income" ? "Доход" : "Расходы"}${activeCategoryName ? ` в категории «${activeCategoryName}»` : ""} за ${label}: ${this.money(total)}.`, action: null };
     }
     if (/^сравни\.?$/.test(normalized) && context.currentTotalMinor !== undefined && context.previousTotalMinor !== undefined) {
       const delta = context.currentTotalMinor - context.previousTotalMinor;
@@ -374,8 +382,8 @@ export class AssistantService {
       if (/сравни.*месяц/.test(normalized)) {
         const currentStart = startOfMonth(now, timezone);
         const previousStart = startOfPreviousMonth(now, timezone);
-        const current = rows.filter((item) => item.type === "expense" && new Date(item.occurredAt) >= currentStart).reduce((sum, item) => sum + item.amountMinor, 0);
-        const previous = rows.filter((item) => item.type === "expense" && new Date(item.occurredAt) >= previousStart && new Date(item.occurredAt) < currentStart).reduce((sum, item) => sum + item.amountMinor, 0);
+        const current = rows.filter((item) => item.type === type && new Date(item.occurredAt) >= currentStart).reduce((sum, item) => sum + item.amountMinor, 0);
+        const previous = rows.filter((item) => item.type === type && new Date(item.occurredAt) >= previousStart && new Date(item.occurredAt) < currentStart).reduce((sum, item) => sum + item.amountMinor, 0);
         const delta = current - previous;
         return { content: `В этом месяце ${this.money(current)}, в прошлом — ${this.money(previous)}. ${delta >= 0 ? "Больше" : "Меньше"} на ${this.money(Math.abs(delta))}.`, action: null };
       }

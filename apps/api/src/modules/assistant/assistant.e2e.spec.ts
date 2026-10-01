@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
@@ -140,5 +140,44 @@ describe("Amola Assistant (e2e)", () => {
     expect(recurring.body.action.tool).toBe("create_recurring_payment");
     const goals = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Как идут мои цели?" }).expect(201);
     expect(goals.body.message.content).toContain("Цел");
+  // Three sequential LLM-dependent turns against a real provider when local keys are
+  // configured (nothing here is mocked) — Jest's 5s default is too tight for that.
+  }, 30_000);
+
+  it("answers a month-scoped income question as income, not a repeat of the prior expense answer", async () => {
+    const monthToken = await newUser();
+    const account = await request(app.getHttpServer())
+      .post("/accounts")
+      .set("Authorization", `Bearer ${monthToken}`)
+      .send({ type: "cash", name: "Наличные", currency: "RUB", initialBalanceMinor: 0 })
+      .expect(201);
+    const monthLabel = new Date().toLocaleDateString("ru-RU", { month: "long" });
+    await request(app.getHttpServer())
+      .post("/transactions")
+      .set("Authorization", `Bearer ${monthToken}`)
+      .send({ type: "expense", accountId: account.body.id, amountMinor: 50_000, currency: "RUB", clientId: randomUUID() })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post("/transactions")
+      .set("Authorization", `Bearer ${monthToken}`)
+      .send({ type: "income", accountId: account.body.id, amountMinor: 5_000_000, currency: "RUB", clientId: randomUUID() })
+      .expect(201);
+
+    const conversation = await request(app.getHttpServer()).post("/assistant/conversations").set("Authorization", `Bearer ${monthToken}`).send({}).expect(201);
+    const expenseAnswer = await request(app.getHttpServer())
+      .post(`/assistant/conversations/${conversation.body.id}/messages`)
+      .set("Authorization", `Bearer ${monthToken}`)
+      .send({ text: `Сколько я потратил в ${monthLabel}?` })
+      .expect(201);
+    expect(expenseAnswer.body.message.content).toContain("Расходы");
+    expect(expenseAnswer.body.message.content).toMatch(/500\s*₽/);
+
+    const incomeAnswer = await request(app.getHttpServer())
+      .post(`/assistant/conversations/${conversation.body.id}/messages`)
+      .set("Authorization", `Bearer ${monthToken}`)
+      .send({ text: `А сколько денег я получил в ${monthLabel}?` })
+      .expect(201);
+    expect(incomeAnswer.body.message.content).toContain("Доход");
+    expect(incomeAnswer.body.message.content).toMatch(/50\s*000\s*₽/);
   });
 });
