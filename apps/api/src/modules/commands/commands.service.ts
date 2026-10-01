@@ -17,6 +17,7 @@ import { CategorizationService } from "../categorization/categorization.service"
 import { EntitlementsService } from "../entitlements/entitlements.service";
 import { TransactionsService } from "../transactions/transactions.service";
 
+import { ReceiptVisionService } from "./receipt-vision.service";
 import { SpeechService } from "../speech/speech.service";
 
 export interface CommandDraft {
@@ -56,6 +57,7 @@ export class CommandsService {
     private readonly transactions: TransactionsService,
     private readonly categorization: CategorizationService,
     private readonly speech: SpeechService,
+    private readonly receiptVision: ReceiptVisionService,
   ) {}
 
   /**
@@ -68,13 +70,22 @@ export class CommandsService {
    */
   async capture(
     userId: string,
-    text: string,
-    source: "voice" | "text",
+    input: string,
+    mode: "voice" | "text" | "photo",
     clientId: string,
     accountId?: string,
     transactionSource: "voice" | "shortcut" = "voice",
+    imageMimeType?: string,
   ): Promise<Transaction> {
-    const draft = await this.parse(userId, text, source);
+    const text =
+      mode === "photo"
+        ? await this.describeReceiptMetered(
+            userId,
+            Buffer.from(input, "base64"),
+            imageMimeType ?? "image/jpeg",
+          )
+        : input;
+    const draft = await this.parse(userId, text, mode === "photo" ? "text" : mode);
     const targetAccountId = accountId ?? draft.accountId;
     if (!targetAccountId) throw new BadRequestException("Сначала добавьте счёт");
 
@@ -123,6 +134,23 @@ export class CommandsService {
   async parseAudio(userId: string, audio: Buffer, mimeType: string): Promise<CommandDraft> {
     const { text } = await this.speech.transcribe(audio, mimeType);
     return this.parse(userId, text, "voice");
+  }
+
+  /** Same idea as `parseAudio`, from a receipt photo — the home screen's "Скан чека".
+   * Metered like voice (a real vision-model call), once, here rather than inside
+   * `parse`, which only knows about "voice"/"text" sources. */
+  async parseReceipt(userId: string, image: Buffer, mimeType: string): Promise<CommandDraft> {
+    const text = await this.describeReceiptMetered(userId, image, mimeType);
+    return this.parse(userId, text, "text");
+  }
+
+  private async describeReceiptMetered(
+    userId: string,
+    image: Buffer,
+    mimeType: string,
+  ): Promise<string> {
+    await this.entitlements.consume(userId, "voice");
+    return this.receiptVision.describe(image, mimeType);
   }
 
   async parse(userId: string, text: string, source: "voice" | "text"): Promise<CommandDraft> {

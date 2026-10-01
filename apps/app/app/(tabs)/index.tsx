@@ -586,14 +586,26 @@ export default function Home() {
                 capture="environment"
                 style={{ display: "none" }}
                 onChange={(event) => {
-                  // No OCR yet — a photo doesn't fill anything in automatically, so we
-                  // just hand off to manual entry rather than pretend to have read it.
-                  if (event.target.files?.[0]) router.push("/add-transaction");
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (!file) return;
+                  setVoiceError(null);
+                  voice.scanReceipt.mutate(file, {
+                    onSuccess: (result) => setVoiceDraft(result),
+                    onError: (e) => {
+                      if (!isPlanLimitError(e)) {
+                        setVoiceError(apiErrorMessage(e, "Не удалось распознать чек"));
+                      }
+                    },
+                  });
                 }}
               />
             ) : null}
             <View style={styles.quickButtonWrap}>
-              <PressableScale onPress={() => receiptInputRef.current?.click()}>
+              <PressableScale
+                disabled={voice.scanReceipt.isPending}
+                onPress={() => receiptInputRef.current?.click()}
+              >
                 <GradientBox
                   colors={theme.chipGradient}
                   radius={radii.pill}
@@ -603,7 +615,7 @@ export default function Home() {
                     <Icon name="note" color={theme.accent} size={22} strokeWidth={2} />
                   </View>
                   <Text style={[styles.quickLabel, { color: theme.textPrimary }]} numberOfLines={1}>
-                    Скан чека
+                    {voice.scanReceipt.isPending ? "Распознаю…" : "Скан чека"}
                   </Text>
                 </GradientBox>
               </PressableScale>

@@ -71,9 +71,7 @@ export default function QuickEntry() {
           <Text style={[styles.body, { color: theme.textSecondary }]}>
             1. Откройте приложение «Команды» на iPhone и создайте команду «Расход Amola».{"\n\n"}2.
             Добавьте действие «Диктовать текст» или «Запросить ввод». Например: «Кофе 340 рублей».
-            {"\n\n"}3. Добавьте действие «Создать UUID»: новый идентификатор нужен при каждом
-            запуске, чтобы повторная отправка не создавала дубликаты.{"\n\n"}4. Добавьте «Получить
-            содержимое URL», вставьте адрес ниже и выберите метод POST.
+            {"\n\n"}3. Добавьте «Получить содержимое URL», вставьте адрес ниже и выберите метод POST.
           </Text>
           <Text style={[styles.label, { color: theme.textTertiary }]}>URL</Text>
           <Text selectable style={[styles.code, { color: theme.textPrimary }]}>
@@ -86,14 +84,44 @@ export default function QuickEntry() {
             <Text style={{ color: theme.onAccent }}>Скопировать URL</Text>
           </PressableScale>
           <Text style={[styles.body, { color: theme.textSecondary }]}>
-            5. В заголовках добавьте Authorization со значением Bearer и вашим ключом через пробел.
-            {"\n\n"}6. Тело запроса — JSON. Поля: input — переменная с продиктованным текстом; mode
-            — text; source — ios_shortcut; clientRequestId — переменная из действия «Создать UUID».
-            Не вводите слова «Текст» и «UUID» вместо переменных.{"\n\n"}7. Добавьте «Показать
+            4. В заголовках добавьте Authorization со значением Bearer и вашим ключом через пробел.
+            {"\n\n"}5. Тело запроса — JSON, вставьте образец ниже и подставьте в поле input
+            переменную с продиктованным текстом вместо слова «Текст».{"\n\n"}6. Добавьте «Показать
             результат» и закрепите команду на домашнем экране или назначьте на кнопку действия.
-            {"\n\n"}Операция появится в Amola и разделе проверки. Нужен интернет. Telegram открывать
-            не нужно. Продиктованный текст отправляется как текст — лимит голосового распознавания
-            Amola не расходуется.
+          </Text>
+          <Text style={[styles.label, { color: theme.textTertiary }]}>Тело запроса</Text>
+          <Text
+            selectable
+            style={[styles.code, { color: theme.textPrimary }]}
+          >{`{"input": "Текст", "mode": "text"}`}</Text>
+          <Text style={[styles.body, { color: theme.textSecondary }]}>
+            Операция появится в Amola и разделе «Проверка быстрого ввода». Нужен интернет, Telegram
+            открывать не нужно. Продиктованный текст отправляется как текст — лимит голосового
+            распознавания Amola не расходуется. Поле clientRequestId можно не добавлять — без него
+            теряется только защита от случайного дубля при повторной отправке того же запроса, iOS
+            не даёт готового способа сгенерировать его без стороннего приложения.
+          </Text>
+        </Card>
+        <Card style={styles.card}>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>Фото чека вместо текста</Text>
+          <Text style={[styles.body, { color: theme.textSecondary }]}>
+            Тот же URL и ключ, только тело запроса — с фото вместо надиктованного текста.{"\n\n"}
+            <Text style={{ fontWeight: "600" }}>iPhone, «Команды»:</Text> добавьте действие «Снять
+            фото» (или «Выбрать фото»), затем «Кодировать медиафайл» с параметром «Кодировать как:
+            Base64» — на разных версиях iOS шаг может называться чуть иначе, смысл тот же.{"\n\n"}
+            Тело запроса:
+          </Text>
+          <Text
+            selectable
+            style={[styles.code, { color: theme.textPrimary }]}
+          >{`{"input": "Base64", "mode": "photo", "imageMimeType": "image/jpeg"}`}</Text>
+          <Text style={[styles.body, { color: theme.textSecondary }]}>
+            Подставьте в поле input результат «Кодировать медиафайл» вместо слова «Base64».{"\n\n"}
+            <Text style={{ fontWeight: "600" }}>Android, HTTP Shortcuts:</Text> выберите фото как
+            переменную типа File, затем при вставке в поле input выберите у неё опцию «Base64-encoded
+            content».{"\n\n"}
+            Чек появится в «Проверке быстрого ввода» уже с распознанной суммой и магазином — останется
+            проверить и одобрить.
           </Text>
         </Card>
         <Card style={styles.card}>

@@ -89,6 +89,7 @@ export class ShortcutsService {
       clientRequestId,
       input.walletId,
       "shortcut",
+      input.imageMimeType,
     );
     const sign = tx.type === "income" ? "+" : "−";
     return {

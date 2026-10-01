@@ -68,6 +68,12 @@ const envSchema = z
     DEEPSEEK_MODEL: z.string().min(1).default("deepseek-flash"),
     DEEPSEEK_BASE_URL: z.string().url().default("https://api.deepseek.com"),
     DEEPSEEK_AUTH_SCHEME: z.enum(["bearer", "api-key"]).default("bearer"),
+    // Receipt photo capture (Shortcuts/widget "photo" mode) needs a multimodal model —
+    // confirmed against Yandex AI Studio that the plain DEEPSEEK_MODEL text model does
+    // not accept image_url content, but deepseek-v4.1-flash does. Reuses
+    // DEEPSEEK_API_KEY/BASE_URL/AUTH_SCHEME; unset = receipt scan reports unavailable
+    // rather than guessing against a model that can't see the image.
+    DEEPSEEK_VISION_MODEL: z.string().min(1).optional(),
     GIGACHAT_AUTHORIZATION_KEY: optionalSecret,
     GIGACHAT_SCOPE: z
       .enum(["GIGACHAT_API_PERS", "GIGACHAT_API_B2B", "GIGACHAT_API_CORP"])

@@ -7,11 +7,12 @@ import { SpeechModule } from "../speech/speech.module";
 
 import { CommandsController } from "./commands.controller";
 import { CommandsService } from "./commands.service";
+import { ReceiptVisionService } from "./receipt-vision.service";
 
 @Module({
   imports: [CategorizationModule, EntitlementsModule, TransactionsModule, SpeechModule],
   controllers: [CommandsController],
-  providers: [CommandsService],
+  providers: [CommandsService, ReceiptVisionService],
   exports: [CommandsService],
 })
 export class CommandsModule {}

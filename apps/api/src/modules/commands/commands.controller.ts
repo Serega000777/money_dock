@@ -36,6 +36,13 @@ export interface UploadedAudioFile {
 // A held-mic recording of one spoken command is a few seconds — generous headroom
 // without leaving the endpoint open to arbitrarily large uploads.
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
+// A phone camera photo of a receipt, generous headroom included.
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+export interface UploadedImageFile {
+  buffer: Buffer;
+  mimetype: string;
+}
 
 @UseGuards(JwtAuthGuard)
 @Controller("commands")
@@ -66,6 +73,21 @@ export class CommandsController {
   ): Promise<CommandDraft> {
     if (!file) throw new BadRequestException("Аудио не приложено");
     return this.commands.parseAudio(user.id, file.buffer, file.mimetype);
+  }
+
+  /** Same result as `parse`, from a receipt photo instead of text — the home screen's
+   * "Скан чека". Returns a draft for on-screen confirmation, unlike /shortcut
+   * transactions' photo mode, which saves straight away for a client with no UI. */
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @Post("scan-receipt")
+  @UseInterceptors(FileInterceptor("image", { limits: { fileSize: MAX_IMAGE_BYTES } }))
+  async scanReceipt(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file?: UploadedImageFile,
+  ): Promise<CommandDraft> {
+    if (!file) throw new BadRequestException("Фото не приложено");
+    return this.commands.parseReceipt(user.id, file.buffer, file.mimetype);
   }
 
   /** Saves straight away, unconfirmed — for Siri and the widget, which have no UI. */

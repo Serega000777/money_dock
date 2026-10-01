@@ -450,6 +450,26 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
         if (!res.ok) throw new ApiError(res.status, await res.text());
         return (await res.json()) as CommandDraft;
       },
+      /** Same result as `parse`, from a receipt photo instead of text — the home
+       * screen's "Скан чека". */
+      scanReceipt: async (image: Blob, filename: string): Promise<CommandDraft> => {
+        const form = new FormData();
+        form.append("image", image, filename);
+        const upload = (token: string | null | undefined) =>
+          fetch(`${baseUrl}/commands/scan-receipt`, {
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            body: form,
+          });
+
+        let res = await upload(getAccessToken?.());
+        if (res.status === 401) {
+          const refreshed = await refreshOnce();
+          if (refreshed) res = await upload(refreshed);
+        }
+        if (!res.ok) throw new ApiError(res.status, await res.text());
+        return (await res.json()) as CommandDraft;
+      },
     },
 
     entitlements: {

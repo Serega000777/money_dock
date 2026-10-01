@@ -9,6 +9,8 @@ import { AppModule } from "../../app.module";
 import { EntitlementsService } from "../entitlements/entitlements.service";
 import { SpeechService } from "../speech/speech.service";
 
+import { ReceiptVisionService } from "./receipt-vision.service";
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const runPrefix = Math.floor(Math.random() * 1_000_000);
 let idCounter = 0;
@@ -33,6 +35,7 @@ describe("Voice/text commands + entitlements (e2e)", () => {
   let token: string;
   let userId: string;
   let speech: SpeechService;
+  let receiptVision: ReceiptVisionService;
 
   const authed = (method: "get" | "post", path: string) =>
     request(app.getHttpServer())[method](path).set("Authorization", `Bearer ${token}`);
@@ -53,6 +56,7 @@ describe("Voice/text commands + entitlements (e2e)", () => {
     await app.init();
     entitlements = app.get(EntitlementsService);
     speech = app.get(SpeechService);
+    receiptVision = app.get(ReceiptVisionService);
 
     const login = await newUser();
     token = login.accessToken;
@@ -273,5 +277,66 @@ describe("Voice/text commands + entitlements (e2e)", () => {
         .expect(503);
     });
 
+  });
+
+  describe("scan-receipt — the home screen's photo capture", () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    function mockVision(phrase: string) {
+      return jest.spyOn(receiptVision, "describe").mockResolvedValue(phrase);
+    }
+
+    it("turns a receipt photo into the same kind of draft parse() returns", async () => {
+      const vision = mockVision("454 Пятёрочка");
+
+      const res = await authed("post", "/commands/scan-receipt")
+        .attach("image", Buffer.from("fake-jpeg-bytes"), "receipt.jpg")
+        .expect(200);
+
+      expect(res.body).toMatchObject({ type: "expense", amountMinor: 45_400 });
+      expect(res.body.categoryName).toBe("Продукты");
+      expect(vision).toHaveBeenCalledWith(expect.any(Buffer), "image/jpeg");
+    });
+
+    it("meters it as voice, same as the audio path", async () => {
+      const fresh = await newUser();
+      mockVision("100 Магазин");
+
+      await request(app.getHttpServer())
+        .post("/commands/scan-receipt")
+        .set("Authorization", `Bearer ${fresh.accessToken}`)
+        .attach("image", Buffer.from("x"), "receipt.jpg")
+        .expect(200);
+
+      const state = await request(app.getHttpServer())
+        .get("/entitlements")
+        .set("Authorization", `Bearer ${fresh.accessToken}`)
+        .expect(200);
+      expect(state.body.used.voice).toBe(1);
+    });
+
+    it("rejects with no photo attached", async () => {
+      await authed("post", "/commands/scan-receipt").expect(400);
+    });
+
+    it("surfaces a clear error when the model can't read the receipt", async () => {
+      jest
+        .spyOn(receiptVision, "describe")
+        .mockRejectedValueOnce(new BadRequestException("не найдено"));
+
+      await authed("post", "/commands/scan-receipt")
+        .attach("image", Buffer.from("blurry"), "receipt.jpg")
+        .expect(400);
+    });
+
+    it("reports a vision-provider outage as temporarily unavailable", async () => {
+      jest
+        .spyOn(receiptVision, "describe")
+        .mockRejectedValueOnce(new ServiceUnavailableException("provider unavailable"));
+
+      await authed("post", "/commands/scan-receipt")
+        .attach("image", Buffer.from("x"), "receipt.jpg")
+        .expect(503);
+    });
   });
 });

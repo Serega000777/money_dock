@@ -5,6 +5,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 
 import { AppModule } from "../../app.module";
+import { ReceiptVisionService } from "../commands/receipt-vision.service";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const runPrefix = Math.floor(Math.random() * 1_000_000);
@@ -54,6 +55,8 @@ describe("Shortcut capture (e2e)", () => {
   afterAll(async () => {
     await app.close();
   });
+
+  afterEach(() => jest.restoreAllMocks());
 
   it("captures a transaction with a client-supplied UUID, keyed by Bearer token", async () => {
     const created = await request(app.getHttpServer())
@@ -129,5 +132,31 @@ describe("Shortcut capture (e2e)", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ input: "Кофе 100 рублей", clientRequestId: "33333333-3333-4333-8333-333333333333" })
       .expect(401);
+  });
+
+  it("captures a receipt photo — base64 input, same silent-save behavior as text/voice", async () => {
+    jest
+      .spyOn(app.get(ReceiptVisionService), "describe")
+      .mockResolvedValueOnce("454 Пятёрочка");
+
+    const created = await request(app.getHttpServer())
+      .post("/shortcut-credentials")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ name: "Test photo" })
+      .expect(201);
+    const token = created.body.token as string;
+
+    const capture = await request(app.getHttpServer())
+      .post("/shortcut/transactions")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        input: Buffer.from("fake-jpeg-bytes").toString("base64"),
+        mode: "photo",
+        imageMimeType: "image/jpeg",
+      })
+      .expect(201);
+    expect(capture.body.success).toBe(true);
+    expect(capture.body.transaction.amountMinor).toBe(45_400);
+    expect(capture.body.transaction.status).toBe("needs_review");
   });
 });

@@ -36,6 +36,14 @@ export function useVoiceCapture() {
     onError: (error) => openPaywallFromError(error),
   });
 
+  // A receipt photo, same CommandDraft/quota/paywall shape as transcribe() above — the
+  // server reads the photo, turns it into the same short phrase typing or speaking would
+  // produce, and parses that through the identical command pipeline.
+  const scanReceipt = useMutation({
+    mutationFn: (image: Blob) => apiClient.commands.scanReceipt(image, "receipt.jpg"),
+    onError: (error) => openPaywallFromError(error),
+  });
+
   const save = useMutation({
     mutationFn: (confirmed: CommandDraft) => {
       if (!confirmed.accountId) throw new Error("Сначала добавьте счёт");
@@ -58,7 +66,7 @@ export function useVoiceCapture() {
       ]),
   });
 
-  return { parse, save, transcribe };
+  return { parse, save, transcribe, scanReceipt };
 }
 
 const DAY_MS = 86_400_000;
