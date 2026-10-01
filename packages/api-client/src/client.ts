@@ -206,6 +206,7 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
         const qs = query.toString();
         return request<Transaction[]>(`/transactions${qs ? `?${qs}` : ""}`);
       },
+      get: (id: string) => request<Transaction>(`/transactions/${id}`),
       create: (input: {
         type: "expense" | "income";
         accountId: string;

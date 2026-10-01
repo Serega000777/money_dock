@@ -35,10 +35,15 @@ export function TransactionDetailSheet({
   transaction,
   categories,
   onClose,
+  onSaved,
 }: {
   transaction: Transaction;
   categories: Category[];
   onClose: () => void;
+  /** Fires only after a successful save — distinct from `onClose`, which also fires on a
+   * plain dismiss (backdrop tap, swipe-down). Callers that treat editing as resolving
+   * something else (Review Inbox's "Изменить") hook this instead of onClose. */
+  onSaved?: () => void;
 }) {
   const theme = useTheme();
   const queryClient = useQueryClient();
@@ -82,6 +87,7 @@ export function TransactionDetailSheet({
       }),
     onSuccess: async () => {
       await invalidateAll();
+      onSaved?.();
       onClose();
     },
   });

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const reviewResolveSchema = z
   .object({
-    action: z.enum(["categorize", "confirm_duplicate", "not_duplicate", "dismiss"]),
+    action: z.enum(["categorize", "confirm_duplicate", "not_duplicate", "approve", "dismiss"]),
     categoryId: z.string().uuid().optional(),
   })
   .refine((value) => value.action !== "categorize" || Boolean(value.categoryId), {

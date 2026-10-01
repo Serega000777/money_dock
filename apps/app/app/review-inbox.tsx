@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
+import { TransactionDetailSheet } from "../src/features/transactionDetail";
 import { useTheme } from "../src/theme/useTheme";
 import { Icon } from "../src/ui/Icon";
 import { Text } from "../src/ui/Text";
@@ -26,6 +27,7 @@ export default function ReviewInbox() {
   const theme = useTheme();
   const queryClient = useQueryClient();
   const [openFor, setOpenFor] = useState<string | null>(null);
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
 
   const { data: items, isLoading } = useQuery({
     queryKey: ["review-inbox"],
@@ -34,6 +36,11 @@ export default function ReviewInbox() {
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: () => apiClient.categories.list(),
+  });
+  const { data: editingTransaction } = useQuery({
+    queryKey: ["transaction", editingTransactionId],
+    queryFn: () => apiClient.transactions.get(editingTransactionId!),
+    enabled: editingTransactionId !== null,
   });
 
   const resolve = useMutation({
@@ -52,7 +59,7 @@ export default function ReviewInbox() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: "Нужно проверить" }} />
+      <Stack.Screen options={{ headerShown: true, title: "Проверка быстрого ввода" }} />
 
       {isLoading ? <ActivityIndicator style={styles.loader} color={theme.accent} /> : null}
 
@@ -92,6 +99,22 @@ export default function ReviewInbox() {
                   label="Не дубль"
                   primary
                   onPress={() => resolve.mutate({ id: item.id, action: "not_duplicate" })}
+                />
+              </View>
+            ) : item.reason === "unconfirmed_capture" ? (
+              <View style={styles.actions}>
+                <Action
+                  label="Одобрить"
+                  primary
+                  onPress={() => resolve.mutate({ id: item.id, action: "approve" })}
+                />
+                <Action
+                  label="Изменить"
+                  onPress={() => setEditingTransactionId(item.transaction.id)}
+                />
+                <Action
+                  label="Пропустить"
+                  onPress={() => resolve.mutate({ id: item.id, action: "dismiss" })}
                 />
               </View>
             ) : (
@@ -141,6 +164,18 @@ export default function ReviewInbox() {
           </Card>
         </FadeIn>
       ))}
+
+      {editingTransaction ? (
+        <TransactionDetailSheet
+          transaction={editingTransaction}
+          categories={categories ?? []}
+          onClose={() => setEditingTransactionId(null)}
+          onSaved={() => {
+            const item = (items ?? []).find((i) => i.transaction.id === editingTransactionId);
+            if (item) resolve.mutate({ id: item.id, action: "approve" });
+          }}
+        />
+      ) : null}
     </Screen>
   );
 }

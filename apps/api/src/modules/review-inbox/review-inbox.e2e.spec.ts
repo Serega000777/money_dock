@@ -205,6 +205,26 @@ describe("Review inbox (e2e)", () => {
     expect((inboxAfter.body as ReviewInboxItemDto[]).some((i) => i.id === item.id)).toBe(false);
   });
 
+  it("approve confirms an unconfirmed quick-capture transaction and resolves its review item", async () => {
+    const captured = await authed("post", "/commands/capture")
+      .send({ text: "кофе 350", source: "text", clientId: randomUUID() })
+      .expect(201);
+    expect(captured.body.status).toBe("needs_review");
+
+    const item = await findReviewItem(captured.body.id);
+    expect(item.reason).toBe("unconfirmed_capture");
+
+    await authed("post", `/review-inbox/${item.id}/resolve`)
+      .send({ action: "approve" })
+      .expect(204);
+
+    const after = await authed("get", `/transactions/${captured.body.id}`).expect(200);
+    expect(after.body.status).toBe("confirmed");
+
+    const inboxAfter = await authed("get", "/review-inbox").expect(200);
+    expect((inboxAfter.body as ReviewInboxItemDto[]).some((i) => i.id === item.id)).toBe(false);
+  });
+
   it("dismiss resolves the review item without touching the transaction", async () => {
     const merchant = `Merchant-Dismiss-${randomUUID()}`;
     const txId = await importAndCommit(statementRow("2026-08-05", "-30.00", merchant));

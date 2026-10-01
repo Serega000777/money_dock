@@ -26,7 +26,7 @@ export interface ReviewInboxItem {
   } | null;
 }
 
-export type ReviewAction = "categorize" | "confirm_duplicate" | "not_duplicate" | "dismiss";
+export type ReviewAction = "categorize" | "confirm_duplicate" | "not_duplicate" | "approve" | "dismiss";
 
 @Injectable()
 export class ReviewInboxService {
@@ -110,7 +110,11 @@ export class ReviewInboxService {
         break;
       }
 
-      case "not_duplicate": {
+      case "not_duplicate":
+      case "approve": {
+        // "approve" is a quick-capture item (unconfirmed_capture) accepted as-is; it
+        // shares not_duplicate's effect — just confirm the transaction — but keeps its
+        // own audit action name so the log reads correctly either way.
         await this.db
           .update(transactions)
           .set({ status: "confirmed", updatedAt: new Date() })
