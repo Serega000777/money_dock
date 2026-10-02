@@ -6,6 +6,7 @@ import { Platform, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
+import { AssistantButton } from "../../src/features/AssistantButton";
 import { useTheme } from "../../src/theme/useTheme";
 import { Icon, type IconName } from "../../src/ui/Icon";
 import { PressableScale } from "../../src/ui/primitives";
@@ -45,6 +46,10 @@ const TAB_BAR_MARGIN_H = spacing.md;
 const TAB_BAR_MARGIN_B = Platform.OS === "web" ? spacing.lg : spacing.xxl;
 const FAB_SIZE = 52;
 const FAB_GAP = spacing.sm;
+// The assistant launcher floats above the "+", nudged left so it sits diagonally off it
+// rather than stacked straight on top.
+const ASSISTANT_BOTTOM = TAB_BAR_MARGIN_B + TAB_BAR_HEIGHT + spacing.md;
+const ASSISTANT_RIGHT = TAB_BAR_MARGIN_H + 22;
 
 export default function TabsLayout() {
   const theme = useTheme();
@@ -130,6 +135,8 @@ export default function TabsLayout() {
           <Icon name="plus" color="#FFFFFF" size={24} strokeWidth={2.4} />
         </PressableScale>
       </Link>
+
+      <AssistantButton bottom={ASSISTANT_BOTTOM} right={ASSISTANT_RIGHT} />
     </View>
   );
 }

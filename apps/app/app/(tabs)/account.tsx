@@ -248,7 +248,6 @@ export default function Account() {
 
       <FadeIn index={2}>
         <Section title="Автоматизация">
-          <NavRow href="/assistant" icon="sparkle" label="Amola Assistant" hint="текст и голос" />
           <NavRow href="/quick-entry" icon="bolt" label="Быстрый ввод" hint="iOS и Android" />
         </Section>
       </FadeIn>
@@ -452,7 +451,7 @@ export default function Account() {
             </Text>
             <Text style={[styles.rowValue, { color: theme.textSecondary }]}>
               {entitlements && entitlements.limits.voice >= 0
-                ? `голос ${entitlements.used.voice}/${entitlements.limits.voice} в месяц`
+                ? `ИИ ${entitlements.used.assistant}/${entitlements.limits.assistant} · голос ${entitlements.used.voice}/${entitlements.limits.voice} · команды ${entitlements.used.shortcut}/${entitlements.limits.shortcut}`
                 : "без ограничений"}
             </Text>
           </View>

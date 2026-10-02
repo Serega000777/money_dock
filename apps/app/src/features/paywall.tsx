@@ -34,15 +34,17 @@ export const usePaywallStore = create<PaywallState>((set) => ({
 /** The server's 403 payload for a metered feature (EntitlementsService.consume) carries
  * a ready-to-show `message` — reused here so the paywall echoes exactly why it appeared,
  * same JSON.parse(error.message) shape OnboardingFlow already relies on. */
-export function openPaywallFromError(error: unknown, fallback?: string): void {
-  if (!isPlanLimitError(error)) return;
+export function openPaywallFromError(error: unknown, fallback?: string): boolean {
+  if (!isPlanLimitError(error)) return false;
   usePaywallStore
     .getState()
     .open(apiErrorMessage(error, fallback ?? "Эта возможность входит в подписку Pro."));
+  return true;
 }
 
 const FEATURES = [
-  "Голос и импорт выписок — без ограничений",
+  "ИИ-ассистент, голосовой ввод и Команды — без ограничений",
+  "Импорт выписок без ограничений",
   "Реалистичный дизайн банковской карты",
   "Совместные счета без ограничений на участников",
 ];

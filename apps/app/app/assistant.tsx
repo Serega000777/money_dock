@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, TextInput, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
+import { openPaywallFromError } from "../src/features/paywall";
 import { useTheme } from "../src/theme/useTheme";
 import { Icon } from "../src/ui/Icon";
 import { Text } from "../src/ui/Text";
@@ -58,6 +59,8 @@ export default function AssistantScreen() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["assistant", "messages", conversationId] }),
       queryClient.invalidateQueries({ queryKey: ["assistant", "conversations"] }),
+      // The launcher in the tab bar shows how many free messages are left.
+      queryClient.invalidateQueries({ queryKey: ["entitlements"] }),
     ]);
   };
   const send = useMutation({
@@ -68,7 +71,9 @@ export default function AssistantScreen() {
       setError(null);
       await refresh();
     },
-    onError: () => setError("Не удалось отправить сообщение. Попробуйте ещё раз."),
+    onError: (e) => {
+      if (!openPaywallFromError(e)) setError("Не удалось отправить сообщение. Попробуйте ещё раз.");
+    },
   });
   const sendVoice = useMutation({
     mutationFn: (audio: Blob) => apiClient.assistant.sendVoice(conversationId!, audio),
@@ -77,15 +82,18 @@ export default function AssistantScreen() {
       setError(null);
       await refresh();
     },
-    onError: () =>
-      setError("Голосовой ввод временно недоступен. Можно ввести команду текстом."),
+    onError: (e) => {
+      if (!openPaywallFromError(e)) setError("Голосовой ввод временно недоступен. Можно ввести команду текстом.");
+    },
   });
   const localSpeech = useSpeechRecognition((transcript) => {
     if (!conversationId) return;
     void apiClient.assistant.sendMessage(conversationId, transcript, "voice").then(async (response) => {
       setAction(response.action);
       await refresh();
-    }).catch(() => setError("Не удалось обработать голосовую команду."));
+    }).catch((e) => {
+      if (!openPaywallFromError(e)) setError("Не удалось обработать голосовую команду.");
+    });
   });
   const confirm = useMutation({
     mutationFn: (id: string) => apiClient.assistant.confirmAction(id),

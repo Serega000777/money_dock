@@ -21,11 +21,14 @@ import { openPaywallFromError } from "./paywall";
  */
 export function useVoiceCapture() {
   const queryClient = useQueryClient();
+  // The assistant launcher and the cabinet read the remaining free uses from this key.
+  const refreshEntitlements = () => void queryClient.invalidateQueries({ queryKey: ["entitlements"] });
 
   const parse = useMutation({
     mutationFn: ({ value, source }: { value: string; source: "voice" | "text" }) =>
       apiClient.commands.parse(value, source),
     onError: (error) => openPaywallFromError(error),
+    onSettled: refreshEntitlements,
   });
 
   // The iOS path: WebKit has never implemented SpeechRecognition, so there a spoken
@@ -34,6 +37,7 @@ export function useVoiceCapture() {
   const transcribe = useMutation({
     mutationFn: (audio: Blob) => apiClient.commands.transcribe(audio),
     onError: (error) => openPaywallFromError(error),
+    onSettled: refreshEntitlements,
   });
 
   // A receipt photo, same CommandDraft/quota/paywall shape as transcribe() above — the
@@ -42,6 +46,7 @@ export function useVoiceCapture() {
   const scanReceipt = useMutation({
     mutationFn: (image: Blob) => apiClient.commands.scanReceipt(image, "receipt.jpg"),
     onError: (error) => openPaywallFromError(error),
+    onSettled: refreshEntitlements,
   });
 
   const save = useMutation({
