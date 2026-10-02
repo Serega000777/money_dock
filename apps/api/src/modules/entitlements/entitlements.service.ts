@@ -6,7 +6,7 @@ import { DATABASE } from "../../db/database.token";
 import { starsPayments, subscriptions, usageCounters, users } from "../../db/schema";
 
 export type Plan = "free" | "pro" | "pro_bank";
-export type MeteredFeature = "voice" | "import";
+export type MeteredFeature = "voice" | "import" | "assistant" | "shortcut";
 
 /**
  * Free keeps a real habit-forming core and meters only what has a genuine per-use cost
@@ -14,9 +14,17 @@ export type MeteredFeature = "voice" | "import";
  * section of the spec. -1 means unlimited.
  */
 const MONTHLY_LIMITS: Record<Plan, Record<MeteredFeature, number>> = {
-  free: { voice: 10, import: 1 },
-  pro: { voice: -1, import: -1 },
-  pro_bank: { voice: -1, import: -1 },
+  // A few uses each, enough to try the feature before paying for it.
+  free: { voice: 3, import: 1, assistant: 3, shortcut: 3 },
+  pro: { voice: -1, import: -1, assistant: -1, shortcut: -1 },
+  pro_bank: { voice: -1, import: -1, assistant: -1, shortcut: -1 },
+};
+
+const PAYWALL_MESSAGES: Record<MeteredFeature, (limit: number) => string> = {
+  voice: (limit) => `Бесплатных голосовых операций в этом месяце больше нет (${limit}). Голос входит в Pro.`,
+  import: (limit) => `Бесплатный импорт в этом месяце уже использован (${limit}). Импорт без ограничений — в Pro.`,
+  assistant: (limit) => `Бесплатных сообщений ИИ-ассистенту в этом месяце больше нет (${limit}). Ассистент входит в Pro.`,
+  shortcut: (limit) => `Бесплатных быстрых вводов через Команды в этом месяце больше нет (${limit}). Быстрый ввод входит в Pro.`,
 };
 
 export interface Entitlements {
@@ -104,9 +112,9 @@ export class EntitlementsService {
       .from(usageCounters)
       .where(and(eq(usageCounters.userId, userId), eq(usageCounters.periodKey, periodKey)));
 
-    const used: Record<MeteredFeature, number> = { voice: 0, import: 0 };
+    const used: Record<MeteredFeature, number> = { voice: 0, import: 0, assistant: 0, shortcut: 0 };
     for (const row of rows) {
-      if (row.feature === "voice" || row.feature === "import") used[row.feature] = row.used;
+      if (row.feature in used) used[row.feature as MeteredFeature] = row.used;
     }
 
     return { plan, limits: MONTHLY_LIMITS[plan], used };
@@ -133,10 +141,7 @@ export class EntitlementsService {
 
     if ((row?.used ?? 0) > limit) {
       throw new ForbiddenException({
-        message:
-          feature === "voice"
-            ? `Бесплатных голосовых операций в этом месяце больше нет (${limit}). Голос входит в Pro.`
-            : `Бесплатный импорт в этом месяце уже использован (${limit}). Импорт без ограничений — в Pro.`,
+        message: PAYWALL_MESSAGES[feature](limit),
         feature,
         plan,
         limit,

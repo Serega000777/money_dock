@@ -7,6 +7,7 @@ import type { Database } from "../../db/client";
 import { DATABASE } from "../../db/database.token";
 import { shortcutCredentials } from "../../db/schema";
 import { CommandsService } from "../commands/commands.service";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
@@ -15,6 +16,7 @@ export class ShortcutsService {
   constructor(
     @Inject(DATABASE) private readonly db: Database,
     private readonly commands: CommandsService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async list(userId: string) {
@@ -81,11 +83,13 @@ export class ShortcutsService {
     // A client that can't build its own UUID (most generic Android "HTTP request"
     // shortcut apps) just omits it — this only costs that one request retry-safety, not
     // correctness, since a fresh id here can never collide with a real duplicate.
+    await this.entitlements.consume(userId, "shortcut");
     const clientRequestId = input.clientRequestId ?? randomUUID();
     const tx = await this.commands.capture(
       userId,
       input.input,
-      input.mode,
+      // Metered once above as "shortcut" — a dictated phrase must not also draw down voice.
+      input.mode === "photo" ? "photo" : "text",
       clientRequestId,
       input.walletId,
       "shortcut",

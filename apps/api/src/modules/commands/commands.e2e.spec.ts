@@ -160,7 +160,7 @@ describe("Voice/text commands + entitlements (e2e)", () => {
         .set("Authorization", `Bearer ${fresh.accessToken}`)
         .send({ text: t, source: "voice" });
 
-    for (let i = 0; i < 10; i++) await voice("потратил 100").expect(200);
+    for (let i = 0; i < 3; i++) await voice("потратил 100").expect(200);
 
     const blocked = await voice("потратил 100").expect(403);
     expect(String(blocked.body.message)).toContain("Pro");
@@ -204,13 +204,15 @@ describe("Voice/text commands + entitlements (e2e)", () => {
   it("reports the current plan and usage", async () => {
     const res = await authed("get", "/entitlements").expect(200);
     expect(res.body.plan).toBe("free");
-    expect(res.body.limits.voice).toBe(10);
+    expect(res.body.limits.voice).toBe(3);
     expect(typeof res.body.used.voice).toBe("number");
     expect(userId).toBeTruthy();
   });
 
   describe("transcribe — the iOS path (no client-side SpeechRecognition)", () => {
     afterEach(() => jest.restoreAllMocks());
+    // The shared user would otherwise run out of the 3 free voice uses mid-suite.
+    beforeAll(async () => entitlements.setPlan(userId, "pro"));
 
     function mockSpeech(text: string) {
       return jest.spyOn(speech, "transcribe").mockResolvedValue({ text, provider: "yandex" });
@@ -281,6 +283,7 @@ describe("Voice/text commands + entitlements (e2e)", () => {
 
   describe("scan-receipt — the home screen's photo capture", () => {
     afterEach(() => jest.restoreAllMocks());
+    beforeAll(async () => entitlements.setPlan(userId, "pro"));
 
     function mockVision(phrase: string) {
       return jest.spyOn(receiptVision, "describe").mockResolvedValue(phrase);

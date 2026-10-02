@@ -121,7 +121,8 @@ export class AssistantService {
   ): Promise<AssistantResponse> {
     this.ensureEnabled();
     await this.ownedConversation(userId, conversationId);
-    if (inputType === "voice") await this.entitlements.consume(userId, "voice");
+    // Voice already meters speech recognition; typed messages meter the assistant itself.
+    await this.entitlements.consume(userId, inputType === "voice" ? "voice" : "assistant");
     await this.db.insert(assistantMessages).values({
       userId,
       conversationId,

@@ -5,6 +5,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 
 import { AppModule } from "../../app.module";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 import { ReceiptVisionService } from "../commands/receipt-vision.service";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
@@ -41,6 +42,8 @@ describe("Shortcut capture (e2e)", () => {
       .send({ initData: signInitData(runPrefix * 1_000_000 + idCounter) })
       .expect(200);
     accessToken = login.body.accessToken;
+    // Free is 3 shortcut captures a month; this suite makes more than that.
+    await app.get(EntitlementsService).setPlan(login.body.user.id, "pro");
 
     // Any account works as the capture target — commands.capture falls back to the
     // parser's own account-hint resolution when none is given, but that path needs at

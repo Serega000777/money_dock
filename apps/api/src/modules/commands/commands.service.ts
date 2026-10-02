@@ -83,6 +83,8 @@ export class CommandsService {
             userId,
             Buffer.from(input, "base64"),
             imageMimeType ?? "image/jpeg",
+            // The Shortcuts path is already metered as "shortcut" by its own caller.
+            transactionSource !== "shortcut",
           )
         : input;
     const draft = await this.parse(userId, text, mode === "photo" ? "text" : mode);
@@ -148,8 +150,9 @@ export class CommandsService {
     userId: string,
     image: Buffer,
     mimeType: string,
+    meter = true,
   ): Promise<string> {
-    await this.entitlements.consume(userId, "voice");
+    if (meter) await this.entitlements.consume(userId, "voice");
     return this.receiptVision.describe(image, mimeType);
   }
 

@@ -5,6 +5,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 
 import { AppModule } from "../../app.module";
+import { EntitlementsService } from "../entitlements/entitlements.service";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const runPrefix = Math.floor(Math.random() * 1_000_000);
@@ -40,6 +41,9 @@ describe("Amola Assistant (e2e)", () => {
     app = moduleRef.createNestApplication();
     await app.init();
     token = await newUser();
+    // Free is 3 assistant messages a month; this suite sends more than that.
+    const me = await request(app.getHttpServer()).get("/users/me").set("Authorization", `Bearer ${token}`);
+    await app.get(EntitlementsService).setPlan(me.body.id, "pro");
     await request(app.getHttpServer())
       .post("/accounts")
       .set("Authorization", `Bearer ${token}`)
@@ -179,5 +183,18 @@ describe("Amola Assistant (e2e)", () => {
       .expect(201);
     expect(incomeAnswer.body.message.content).toContain("Доход");
     expect(incomeAnswer.body.message.content).toMatch(/50\s*000\s*₽/);
+  });
+
+  it("lets a free user send a few assistant messages a month, then asks for Pro", async () => {
+    const freeToken = await newUser();
+    const conversation = await request(app.getHttpServer()).post("/assistant/conversations").set("Authorization", `Bearer ${freeToken}`).send({}).expect(201);
+    const send = () =>
+      request(app.getHttpServer())
+        .post(`/assistant/conversations/${conversation.body.id}/messages`)
+        .set("Authorization", `Bearer ${freeToken}`)
+        .send({ text: "сколько я потратил сегодня" });
+    for (let i = 0; i < 3; i++) await send().expect(201);
+    const blocked = await send().expect(403);
+    expect(blocked.body.message).toContain("Pro");
   });
 });

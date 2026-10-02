@@ -17,6 +17,6 @@ export type Plan = "free" | "pro" | "pro_bank";
 
 export interface Entitlements {
   plan: Plan;
-  limits: { voice: number; import: number };
-  used: { voice: number; import: number };
+  limits: Record<"voice" | "import" | "assistant" | "shortcut", number>;
+  used: Record<"voice" | "import" | "assistant" | "shortcut", number>;
 }
