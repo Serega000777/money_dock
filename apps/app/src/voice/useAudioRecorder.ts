@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 
 export interface AudioRecorderState {
@@ -33,6 +33,20 @@ export function useAudioRecorder(): AudioRecorderState {
   const startPendingRef = useRef(false);
   const stopRequestedRef = useRef(false);
   const startedAtRef = useRef(0);
+  // Kept alive across recordings instead of calling track.stop() after every one — some
+  // WebViews (Telegram's iOS Mini App included) re-confirm mic access on every fresh
+  // getUserMedia() call rather than remembering a grant the way Safari does, so stopping
+  // the track each time turned one permission grant into one per recording. Released on
+  // unmount, not between presses.
+  const streamRef = useRef<MediaStream | null>(null);
+
+  useEffect(
+    () => () => {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    },
+    [],
+  );
 
   const start = useCallback(async () => {
     if (!supported || startPendingRef.current || recorderRef.current?.state === "recording") return;
@@ -43,10 +57,14 @@ export function useAudioRecorder(): AudioRecorderState {
     // otherwise the button looks dead while WebKit is waiting for the user to allow mic.
     setRecording(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const reusable = streamRef.current;
+      const stream =
+        reusable && reusable.getAudioTracks().some((track) => track.readyState === "live")
+          ? reusable
+          : await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       startPendingRef.current = false;
       if (stopRequestedRef.current) {
-        stream.getTracks().forEach((track) => track.stop());
         setRecording(false);
         setError("Разрешите микрофон, затем нажмите и удерживайте кнопку ещё раз");
         stopWaiterRef.current?.(null);
@@ -65,7 +83,7 @@ export function useAudioRecorder(): AudioRecorderState {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
       recorder.onstop = () => {
-        stream.getTracks().forEach((track) => track.stop());
+        // Stream stays live for the next recording — see streamRef above.
         recorderRef.current = null;
         setRecording(false);
         const blob =
@@ -83,7 +101,6 @@ export function useAudioRecorder(): AudioRecorderState {
       };
 
       recorder.onerror = () => {
-        stream.getTracks().forEach((track) => track.stop());
         recorderRef.current = null;
         setRecording(false);
         setError("Не удалось записать голос. Попробуйте ещё раз");
