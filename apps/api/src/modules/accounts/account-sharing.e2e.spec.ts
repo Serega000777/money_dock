@@ -198,4 +198,20 @@ describe("Shared accounts (e2e)", () => {
       owner.token,
     ).expect(400);
   });
+
+  it("lets a free user pick a bank card design while the designs aren't Pro-only", async () => {
+    const user = await newUser();
+    const account = await authed("post", "/accounts", user.token)
+      .send({
+        type: "card",
+        name: "Т-Банк",
+        currency: "RUB",
+        initialBalanceMinor: 0,
+        bank: "tinkoff",
+        cardLast4: "1234",
+      })
+      .expect(201);
+    expect(account.body.bank).toBe("tinkoff");
+    expect(account.body.cardLast4).toBe("1234");
+  });
 });

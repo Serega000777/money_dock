@@ -5,18 +5,13 @@ import { useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
+import { PRO_FEATURES } from "../src/features/paywall";
 import { useTelegram } from "../src/telegram/TelegramProvider";
 import { useTheme } from "../src/theme/useTheme";
 import { GradientBox } from "../src/ui/Gradient";
 import { Icon, type IconName } from "../src/ui/Icon";
 import { Text } from "../src/ui/Text";
 import { Card, FadeIn, Pill, PressableScale, Screen } from "../src/ui/primitives";
-
-const FEATURES = [
-  "Голос и импорт выписок — без ограничений",
-  "Реалистичный дизайн банковской карты",
-  "Совместные счета без ограничений на участников",
-];
 
 type PaymentStatus = "idle" | "opening" | "verifying" | "pending" | "failed";
 
@@ -92,7 +87,7 @@ export default function Upgrade() {
 
       <FadeIn index={1}>
         <Card style={styles.featuresCard}>
-          {FEATURES.map((feature) => (
+          {PRO_FEATURES.map((feature) => (
             <View key={feature} style={styles.featureRow}>
               <Icon name="check" color={theme.positive} size={18} strokeWidth={2.2} />
               <Text style={[styles.featureText, { color: theme.textPrimary }]}>{feature}</Text>

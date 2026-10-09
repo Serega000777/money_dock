@@ -6,7 +6,7 @@ import type {
   AccountMember,
   AccountRole,
 } from "@money-dock/shared-types";
-import { asMinorUnits } from "@money-dock/shared-types";
+import { asMinorUnits, BANK_CARD_DESIGNS_PRO_ONLY } from "@money-dock/shared-types";
 import type {
   CreateAccountInput,
   CreateAccountInviteInput,
@@ -98,11 +98,12 @@ export class AccountsService {
   }
 
   async create(userId: string, input: CreateAccountInput): Promise<Account> {
-    // The realistic per-bank card art is a Pro cosmetic — free stays a plain card, never
-    // blocked from creating the account itself over it. Checked here, not only in the
-    // picker's own lock screen, so the API can't be talked into it directly.
+    // Per-bank card art is a cosmetic: when it's Pro-only (BANK_CARD_DESIGNS_PRO_ONLY),
+    // free stays a plain card — never blocked from creating the account itself over it.
+    // Checked here, not only in the picker's lock, so the API can't be talked into it.
     const canPickBank =
-      input.type === "card" && (await this.entitlements.getPlan(userId)) !== "free";
+      input.type === "card" &&
+      (!BANK_CARD_DESIGNS_PRO_ONLY || (await this.entitlements.getPlan(userId)) !== "free");
     return this.db.transaction(async (tx) => {
       const rows = await tx
         .insert(accounts)

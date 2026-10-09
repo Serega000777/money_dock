@@ -1,4 +1,5 @@
 import { radii, spacing, typography } from "@money-dock/design-tokens";
+import { BANK_CARD_DESIGNS_PRO_ONLY } from "@money-dock/shared-types";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
@@ -42,10 +43,10 @@ export function openPaywallFromError(error: unknown, fallback?: string): boolean
   return true;
 }
 
-const FEATURES = [
+export const PRO_FEATURES = [
   "ИИ-ассистент, голосовой ввод и Команды — без ограничений",
   "Импорт выписок без ограничений",
-  "Реалистичный дизайн банковской карты",
+  ...(BANK_CARD_DESIGNS_PRO_ONLY ? ["Реалистичный дизайн банковской карты"] : []),
   "Совместные счета без ограничений на участников",
 ];
 
@@ -85,7 +86,7 @@ export function PaywallModal() {
         </Text>
 
         <View style={styles.features}>
-          {FEATURES.map((feature) => (
+          {PRO_FEATURES.map((feature) => (
             <View key={feature} style={styles.featureRow}>
               <Icon name="check" color={theme.positive} size={16} strokeWidth={2.2} />
               <Text style={[styles.featureText, { color: theme.textSecondary }]}>{feature}</Text>

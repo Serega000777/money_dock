@@ -1,5 +1,5 @@
 import { radii, spacing, typography } from "@money-dock/design-tokens";
-import type { AccountType, Bank } from "@money-dock/shared-types";
+import { BANK_CARD_DESIGNS_PRO_ONLY, type AccountType, type Bank } from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
@@ -51,7 +51,8 @@ export function CreateAccountSheet({
     queryFn: () => apiClient.entitlements.get(),
     enabled: visible,
   });
-  const canPickBank = entitlements ? entitlements.plan !== "free" : false;
+  const canPickBank =
+    !BANK_CARD_DESIGNS_PRO_ONLY || (entitlements ? entitlements.plan !== "free" : false);
 
   const create = useMutation({
     mutationFn: () =>
