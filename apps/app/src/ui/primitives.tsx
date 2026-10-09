@@ -8,6 +8,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
   View,
   type PressableProps,
   type ViewStyle,
@@ -315,7 +316,12 @@ export function BottomSheet({
   children: ReactNode;
 }) {
   const theme = useTheme();
+  const { height } = useWindowDimensions();
   const dragY = useRef(new Animated.Value(0)).current;
+  // The responder below is created once; read the latest onClose through a ref rather
+  // than the one captured on the sheet's first render.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   // The Modal's children stay mounted across visible toggles, so a sheet closed by a
   // drag (dragY left non-zero) would otherwise reopen already pulled halfway down.
@@ -325,46 +331,72 @@ export function BottomSheet({
 
   const panResponder = useRef(
     PanResponder.create({
-      // Only claims the gesture once it's clearly a downward drag — a plain tap on the
-      // handle/title must still fall through to the sheet's own Pressable.
-      onMoveShouldSetPanResponder: (_event, gesture) => gesture.dy > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+      // The grab area (handle + title) claims the touch on start. Waiting for a move used
+      // to lose to the sheet's own Pressable: once that became the responder, the
+      // responder system never asks its descendants again, so on a phone the drag never
+      // started at all.
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
       onPanResponderMove: (_event, gesture) => {
-        if (gesture.dy > 0) dragY.setValue(gesture.dy);
+        dragY.setValue(Math.max(0, gesture.dy));
       },
       onPanResponderRelease: (_event, gesture) => {
         const pastThreshold = gesture.dy > 90 || gesture.vy > 0.8;
         if (pastThreshold) {
           Animated.timing(dragY, {
-            toValue: 700,
+            toValue: 900,
             duration: 180,
             easing: Easing.in(Easing.cubic),
             useNativeDriver: true,
-          }).start(onClose);
+          }).start(() => onCloseRef.current());
         } else {
           Animated.spring(dragY, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
         }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(dragY, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
       },
     }),
   ).current;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.sheetOverlay} onPress={onClose}>
-        <Animated.View style={{ transform: [{ translateY: dragY }] }}>
-          <Pressable
-            style={[styles.sheetBody, { backgroundColor: theme.sheet }]}
-            onPress={(event) => event.stopPropagation()}
+      <View style={styles.sheetOverlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Закрыть" />
+        <Animated.View
+          style={[
+            styles.sheetBody,
+            {
+              backgroundColor: theme.sheet,
+              // A pixel cap, not a percentage: "82%" of an auto-height wrapper never
+              // resolved, so tall content (the voice draft, the calendar) spilled past the
+              // sheet's own background onto the screen behind it.
+              maxHeight: Math.round(height * 0.92),
+              transform: [{ translateY: dragY }],
+            },
+          ]}
+        >
+          <View {...panResponder.panHandlers} style={styles.sheetGrab}>
+            <View style={[styles.sheetHandle, { backgroundColor: theme.border }]} />
+            {title ? (
+              <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>{title}</Text>
+            ) : null}
+          </View>
+          <ScrollView
+            style={styles.sheetScroll}
+            contentContainerStyle={styles.sheetContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
           >
-            <View {...panResponder.panHandlers}>
-              <View style={[styles.sheetHandle, { backgroundColor: theme.border }]} />
-              {title ? (
-                <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>{title}</Text>
-              ) : null}
-            </View>
             {children}
-          </Pressable>
+          </ScrollView>
+          {/* Same colour below the sheet's bottom edge, so a spring-back or an iOS
+              overscroll never shows the screen behind through a gap. */}
+          <View style={[styles.sheetSkirt, { backgroundColor: theme.sheet }]} />
         </Animated.View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -416,22 +448,30 @@ const styles = StyleSheet.create({
   },
   segmentText: { ...typography.callout, fontWeight: "600" },
 
-  sheetOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(10,12,20,0.45)" },
+  sheetOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(10,12,20,0.55)" },
   sheetBody: {
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-    maxHeight: "82%",
     width: "100%",
     maxWidth: 560,
     alignSelf: "center",
   },
+  // A generous touch target: the handle alone is a 4px line, too thin to grab on a phone.
+  sheetGrab: {
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    // Lets the browser hand the vertical drag to us instead of scrolling the page.
+    touchAction: "none",
+  } as ViewStyle,
+  sheetScroll: { flexGrow: 0, flexShrink: 1 },
+  sheetContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  sheetSkirt: { position: "absolute", top: "100%", left: 0, right: 0, height: 1200 },
   sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
+    width: 40,
+    height: 5,
+    borderRadius: 3,
     alignSelf: "center",
+    marginTop: spacing.xs,
     marginBottom: spacing.md,
   },
   sheetTitle: { ...typography.headline, marginBottom: spacing.md, textAlign: "center" },

@@ -23,6 +23,17 @@ describe("parseTotalsQuery", () => {
     });
   });
 
+  it("reads a bare follow-up like 'а доход' without a period of its own", () => {
+    expect(parseTotalsQuery(norm("А доход"))).toMatchObject({
+      type: "income",
+      periodExplicit: false,
+    });
+    expect(parseTotalsQuery(norm("а расходы?"))).toMatchObject({
+      type: "expense",
+      periodExplicit: false,
+    });
+  });
+
   it.each(["кофе 350", "потратил 500 на бензин вчера", "получил зарплату 100000", "привет"])(
     "leaves %s alone — a command or chatter, not a totals question",
     (text) => {

@@ -2,7 +2,7 @@ import { categoryPalette, radii, spacing, typography } from "@money-dock/design-
 import type { Category } from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
@@ -259,8 +259,11 @@ function CreateCategorySheet({
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<IconName>("cart");
   const [color, setColor] = useState<string>(categoryPalette[0]);
-  const [categoryType, setCategoryType] = useState<"expense" | "income" | "both">(type);
-  const [aliases, setAliases] = useState("");
+  const [categoryType, setCategoryType] = useState<"expense" | "income">(type);
+  // The sheet stays mounted between opens; follow the transaction's own type each time.
+  useEffect(() => {
+    if (visible) setCategoryType(type);
+  }, [visible, type]);
 
   const create = useMutation({
     mutationFn: () =>
@@ -269,18 +272,12 @@ function CreateCategorySheet({
         name: name.trim(),
         icon,
         color,
-        aliases: aliases
-          .split(",")
-          .map((v) => v.trim())
-          .filter(Boolean),
       }),
     onSuccess: async (category) => {
       await queryClient.invalidateQueries({ queryKey: ["categories"] });
       setName("");
       setIcon("cart");
       setColor(categoryPalette[0]);
-      setCategoryType(type);
-      setAliases("");
       onCreated(category);
     },
   });
@@ -307,17 +304,6 @@ function CreateCategorySheet({
         options={[
           { value: "expense", label: "Расход" },
           { value: "income", label: "Доход" },
-          { value: "both", label: "Оба" },
-        ]}
-      />
-      <TextInput
-        value={aliases}
-        onChangeText={setAliases}
-        placeholder="Алиасы через запятую"
-        placeholderTextColor={theme.textTertiary}
-        style={[
-          styles.nameInput,
-          { color: theme.textPrimary, backgroundColor: theme.surfaceSunken },
         ]}
       />
 

@@ -116,6 +116,9 @@ export function CreateAccountSheet({
           onLast4Change={setLast4}
         />
       ) : null}
+      {type === "card" ? (
+        <Text style={[styles.legal, { color: theme.textTertiary }]}>{BANK_TRADEMARK_NOTICE}</Text>
+      ) : null}
 
       <Text style={[styles.hint, { color: theme.textTertiary }]}>
         Дальше баланс считается сам — из операций, которые вы добавляете.
@@ -128,6 +131,14 @@ export function CreateAccountSheet({
     </BottomSheet>
   );
 }
+
+/** Bank names, logos and card designs belong to the banks, not to us — said plainly
+ * wherever they are shown, so nobody reads the picker as a bank partnership. */
+export const BANK_TRADEMARK_NOTICE =
+  "Названия, логотипы и дизайн карт банков (СБЕР, Т-Банк, ВТБ, Альфа-Банк, Ozon Банк, " +
+  "Газпромбанк, Банк России) — товарные знаки и объекты прав их правообладателей. Они " +
+  "показаны только чтобы вы узнавали свой счёт. Amola Finance не связана с этими банками и " +
+  "не является их партнёром.";
 
 const CARD_PREVIEW_W = 118;
 const CARD_PREVIEW_H = 74;
@@ -227,6 +238,7 @@ function BankPicker({
 const styles = StyleSheet.create({
   gap: { height: spacing.md },
   hint: { ...typography.caption, marginBottom: spacing.md, lineHeight: 17 },
+  legal: { fontSize: 10, lineHeight: 13, marginBottom: spacing.sm, opacity: 0.85 },
 
   bankSection: { marginBottom: spacing.md },
   bankHeadRow: {
@@ -271,4 +283,65 @@ const styles = StyleSheet.create({
   bankLockText: { ...typography.caption, fontSize: 11, flexShrink: 1 },
 
   last4Input: { marginTop: spacing.sm, marginBottom: 0 },
+});
+
+/** Confirmation before archiving an account — the API soft-deletes (history stays), so the
+ * copy says exactly that instead of a scary "все данные будут удалены". */
+export function DeleteAccountSheet({
+  account,
+  onClose,
+}: {
+  account: { id: string; name: string } | null;
+  onClose: () => void;
+}) {
+  const theme = useTheme();
+  const queryClient = useQueryClient();
+  const remove = useMutation({
+    mutationFn: (id: string) => apiClient.accounts.remove(id),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["accounts"] }),
+        queryClient.invalidateQueries({ queryKey: ["analytics"] }),
+      ]);
+      onClose();
+    },
+  });
+
+  return (
+    <BottomSheet visible={account !== null} onClose={onClose} title="Удалить счёт?">
+      <Text style={[deleteStyles.body, { color: theme.textSecondary }]}>
+        «{account?.name}» пропадёт из списка счетов и общего баланса. Операции по нему останутся в
+        истории.
+      </Text>
+      {remove.isError ? (
+        <Text style={[deleteStyles.body, { color: theme.negative }]}>
+          Не удалось удалить счёт. Попробуйте ещё раз.
+        </Text>
+      ) : null}
+      <View style={deleteStyles.buttons}>
+        <Pressable
+          onPress={onClose}
+          style={[deleteStyles.button, { backgroundColor: theme.surfaceSunken }]}
+        >
+          <Text style={[deleteStyles.buttonText, { color: theme.textPrimary }]}>Отмена</Text>
+        </Pressable>
+        <Pressable
+          disabled={remove.isPending || !account}
+          onPress={() => account && remove.mutate(account.id)}
+          style={[deleteStyles.button, { backgroundColor: theme.negative }]}
+        >
+          <Text style={[deleteStyles.buttonText, { color: "#FFFFFF" }]}>
+            {remove.isPending ? "Удаляю…" : "Удалить"}
+          </Text>
+        </Pressable>
+      </View>
+    </BottomSheet>
+  );
+}
+
+const deleteStyles = StyleSheet.create({
+  body: { ...typography.body, textAlign: "center", marginBottom: spacing.md },
+  buttons: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
+  button: { flex: 1, alignItems: "center", paddingVertical: spacing.md, borderRadius: radii.md },
+  buttonText: { ...typography.callout, fontWeight: "600" },
 });

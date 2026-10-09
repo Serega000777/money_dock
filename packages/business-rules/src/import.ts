@@ -119,9 +119,15 @@ export function detectColumns(header: readonly string[]): ColumnMap {
   const normalized = header.map((h) => normalizeMerchant(h));
   const find = (candidates: string[]) => normalized.findIndex((h) => candidates.includes(h));
 
-  const date = find(DATE_HEADERS);
-  const amount = find(AMOUNT_HEADERS);
-  const merchant = find(MERCHANT_HEADERS);
+  // Exact names first; then any header that merely starts with the word ("Дата операции
+  // (МСК)", "Сумма в валюте карты", "Описание операции").
+  const findLoose = (exact: string[], prefix: string) => {
+    const hit = find(exact);
+    return hit !== -1 ? hit : normalized.findIndex((h) => h.startsWith(prefix));
+  };
+  const date = findLoose(DATE_HEADERS, "дата");
+  const amount = findLoose(AMOUNT_HEADERS, "сумма");
+  const merchant = findLoose(MERCHANT_HEADERS, "описание");
   const mcc = find(MCC_HEADERS);
 
   if (date === -1) throw new RowParseError("В файле не найдена колонка с датой");
@@ -181,4 +187,204 @@ export function classifyDedup(
     return { tier: "review", matchId: best.match.id, confidence };
   }
   return { tier: "new", confidence };
+}
+
+// ─── PDF statements ──────────────────────────────────────────────────────────────────
+// PDF exports have no reliable column structure: some yield real tables (often only page
+// by page, with the header on page 1 and nothing above the continuation pages), others
+// only positioned text where one operation spreads over several lines — date, time, a
+// wrapped description, then the amounts. Both readers below normalise into the same
+// ["Дата", "Сумма", "Описание"] rows the CSV path already understands.
+
+/** A dd.mm.yyyy / ISO date at the very start of a cell or line — the mark of a new
+ * operation, unlike "Период выписки: 01.09.2026 — 30.09.2026" in the document header. */
+const ROW_START_DATE =
+  /^\s*(\d{1,2}[.\-/]\d{1,2}[.\-/]\d{4}|\d{4}-\d{2}-\d{2})(?:[ T,]+\d{1,2}:\d{2}(?::\d{2})?)?/;
+const EMBEDDED_DATE_OR_TIME =
+  /\d{4}-\d{2}-\d{2}|\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}|\d{1,2}:\d{2}(?::\d{2})?/g;
+/** A money figure with kopecks — "- 25 000.00 ₽", "+500,00", "1 468.95 руб". Kopecks are
+ * required so document numbers and card digits never pass for an amount. */
+const MONEY_SOURCE =
+  "([+\\-\\u2212\\u2013]\\s?)?(?<![\\d.,])((?:\\d{1,3}(?:[ \\u00A0\\u202F]\\d{3})+|\\d+)[.,]\\d{2})(?!\\d)(\\s?(?:₽|руб\\.?|RUB|RUR|р\\.))?";
+const MONEY_TOKEN = new RegExp(MONEY_SOURCE, "gi");
+const MONEY_CELL = new RegExp(`^${MONEY_SOURCE}$`, "i");
+const STATEMENT_HEADER = ["Дата", "Сумма", "Описание"];
+
+/** "Оплата товаров по карте 8881 сумма 220.00 в Chao Simferopol RU дата …" → "Chao
+ * Simferopol RU"; "Перевод … через СБП. Получатель: Тимур Игоревич С." → "Перевод СБП:
+ * Тимур Игоревич С.". Anything else just loses the boilerplate tax notes. */
+export function simplifyStatementDescription(raw: string): string {
+  const text = raw.replace(/\s+/g, " ").trim();
+  // (No `\b` after "дата": JavaScript's word boundary is ASCII-only, so it never matches
+  // next to a Cyrillic letter.)
+  const shop = /(?:оплата|покупка).*?\sв\s(.+?)(?:\s+дата(?=\s|$)|\s+\d{1,2}[.\-/]\d{1,2}|$)/i.exec(
+    text,
+  );
+  if (shop?.[1]) return shop[1].trim();
+  const cash =
+    /^(взнос наличных|снятие наличных|пополнение).*?\sв\s(.+?)(?:\s+дата(?=\s|$)|$)/i.exec(text);
+  if (cash?.[1] && cash[2])
+    return `${cash[1][0]!.toUpperCase()}${cash[1].slice(1)}: ${cash[2].trim()}`;
+  const person =
+    /(?:получатель|отправитель):\s*(.+?)(?:\.?\s*без ндс|\.?\s*ндс не облагается|$)/i.exec(text);
+  if (person?.[1]) return `Перевод СБП: ${person[1].trim()}`;
+  return text
+    .replace(/\.?\s*без ндс\.?/gi, "")
+    .replace(/\.?\s*ндс не облагается\.?/gi, "")
+    .trim()
+    .slice(0, 200);
+}
+
+interface StatementRecord {
+  date: string;
+  /** As printed; `null` = the statement showed no sign on this row. */
+  sign: "+" | "-" | null;
+  /** Unsigned figure, e.g. "25 000.00". */
+  amount: string;
+  description: string;
+}
+
+function signOf(raw: string | undefined): "+" | "-" | null {
+  if (!raw) return null;
+  return /[-−–]/.test(raw) ? "-" : "+";
+}
+
+function readRecord(record: string): StatementRecord | null {
+  const start = ROW_START_DATE.exec(record);
+  if (!start?.[1]) return null;
+  const rest = record.slice(start[0].length);
+  // Dates/times inside the description ("дата 2026-09-30 время 18:50:12") are blanked
+  // out — same length, so match positions still line up with `rest` — before money search.
+  const scrubbed = rest.replace(EMBEDDED_DATE_OR_TIME, (match) => " ".repeat(match.length));
+  const tokens = [...scrubbed.matchAll(MONEY_TOKEN)];
+  // A signed figure is the operation's own amount; failing that, one with a currency
+  // mark; failing that, the first figure (a trailing one is usually the running balance).
+  const pick = tokens.find((t) => t[1]) ?? tokens.find((t) => t[3]) ?? tokens[0];
+  if (!pick?.[2]) return null;
+
+  // Every column-amount token (signed or with a currency mark) is cut from the purpose
+  // text, right to left so earlier positions stay valid.
+  let description = rest;
+  for (const token of [...tokens].reverse()) {
+    if (token.index === undefined || (!token[1] && !token[3] && token !== pick)) continue;
+    description = `${description.slice(0, token.index)} ${description.slice(token.index + token[0].length)}`;
+  }
+  // A long bare number at the start is the bank's document id, not part of the purpose.
+  description = description.replace(/^\s*\d{6,}\s+/, "");
+
+  return {
+    date: start[1],
+    sign: signOf(pick[1]),
+    amount: pick[2],
+    description: simplifyStatementDescription(description),
+  };
+}
+
+/** Unsigned rows take whatever sign the rest of the statement implies: Sber prints "+"
+ * only on income, so there an unsigned figure is money out; a statement that marks
+ * expenses with "-" means the opposite. */
+function toRows(records: StatementRecord[]): string[][] {
+  const hasPlus = records.some((r) => r.sign === "+");
+  const hasMinus = records.some((r) => r.sign === "-");
+  const unsigned = hasPlus && !hasMinus ? "-" : "";
+  return [
+    STATEMENT_HEADER,
+    ...records.map((r) => [
+      r.date,
+      `${r.sign === "-" ? "-" : r.sign === "+" ? "" : unsigned}${r.amount}`,
+      r.description,
+    ]),
+  ];
+}
+
+/** Positioned PDF text → statement rows: each operation starts at a line that begins
+ * with a date and runs until the next one. */
+export function rowsFromStatementText(text: string): string[][] {
+  const records: StatementRecord[] = [];
+  let current: string[] = [];
+  const flush = () => {
+    const record = current.length ? readRecord(current.join(" ")) : null;
+    if (record) records.push(record);
+    current = [];
+  };
+  for (const raw of text.split("\n")) {
+    const line = raw.replace(/\t/g, " ").trim();
+    if (!line) continue;
+    if (ROW_START_DATE.test(line)) {
+      flush();
+      current = [line];
+    } else if (/(?:входящий|исходящий)\s+остаток|^итого|^обороты/i.test(line)) {
+      flush();
+    } else if (current.length && !/^\d{1,3}$|^--\s*\d+\s+of\s+\d+\s*--$/i.test(line)) {
+      // (a bare 1–3 digit line, or pdf-parse's "-- 1 of 2 --", is a page break)
+      current.push(line);
+    }
+  }
+  flush();
+  return toRows(records);
+}
+
+function findHeader(rows: string[][]): ColumnMap | null {
+  for (const row of rows) {
+    try {
+      return detectColumns(row);
+    } catch {
+      // Not the header row — keep looking; it's often only on the first page.
+    }
+  }
+  return null;
+}
+
+/** No header row anywhere: pick the columns by what's in them. */
+function inferColumns(rows: string[][]): ColumnMap | null {
+  const width = Math.max(0, ...rows.map((r) => r.length));
+  const best = (test: (cell: string) => boolean, exclude: number[]) => {
+    let pick = -1;
+    let score = 0.5;
+    for (let i = 0; i < width; i++) {
+      if (exclude.includes(i)) continue;
+      const cells = rows.map((r) => r[i] ?? "").filter((c) => c.trim());
+      const share = cells.length ? cells.filter(test).length / cells.length : 0;
+      if (share > score) [pick, score] = [i, share];
+    }
+    return pick;
+  };
+  const date = best((c) => ROW_START_DATE.test(c), []);
+  const amount = best((c) => MONEY_CELL.test(c.trim()), [date]);
+  if (date === -1 || amount === -1) return null;
+  let merchant: number | null = null;
+  let letters = 0;
+  for (let i = 0; i < width; i++) {
+    if (i === date || i === amount) continue;
+    const count = rows.reduce((sum, r) => sum + ((r[i] ?? "").match(/\p{L}/gu)?.length ?? 0), 0);
+    if (count > letters) [merchant, letters] = [i, count];
+  }
+  return { date, amount, merchant, mcc: null };
+}
+
+/** pdf-parse tables (all pages, in order) → statement rows, or null when nothing in them
+ * looks like operations. The header is searched for in every table, not just the first. */
+export function rowsFromPdfTables(tables: string[][][]): string[][] | null {
+  const rows = tables
+    .flat()
+    .map((row) => row.map((cell) => (cell ?? "").replace(/\s+/g, " ").trim()));
+  const columns =
+    findHeader(rows) ?? inferColumns(rows.filter((r) => r.some((c) => ROW_START_DATE.test(c))));
+  if (!columns) return null;
+  const records: StatementRecord[] = [];
+  for (const row of rows) {
+    const start = ROW_START_DATE.exec(row[columns.date] ?? "");
+    const amount = (row[columns.amount] ?? "").replace(/₽|руб\.?|RUB|RUR|р\./gi, "").trim();
+    if (!start?.[1] || !/\d/.test(amount)) continue;
+    const bracketed = /^\(.*\)$/.test(amount);
+    records.push({
+      date: start[1],
+      sign: bracketed ? "-" : signOf(/^[+\-−–]/.exec(amount)?.[0]),
+      amount: amount.replace(/^[+\-−–]\s*|[()]/g, ""),
+      description: simplifyStatementDescription(
+        columns.merchant === null ? "" : (row[columns.merchant] ?? ""),
+      ),
+    });
+  }
+  return records.length ? toRows(records) : null;
 }

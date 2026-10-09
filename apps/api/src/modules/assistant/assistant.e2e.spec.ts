@@ -16,7 +16,10 @@ function signInitData(userId: number): string {
     auth_date: String(Math.floor(Date.now() / 1000)),
     user: JSON.stringify({ id: userId, first_name: "AssistantE2E", language_code: "ru" }),
   });
-  const data = [...params.entries()].map(([key, value]) => `${key}=${value}`).sort().join("\n");
+  const data = [...params.entries()]
+    .map(([key, value]) => `${key}=${value}`)
+    .sort()
+    .join("\n");
   const secret = createHmac("sha256", "WebAppData").update(BOT_TOKEN).digest();
   params.set("hash", createHmac("sha256", secret).update(data).digest("hex"));
   return params.toString();
@@ -42,7 +45,9 @@ describe("Amola Assistant (e2e)", () => {
     await app.init();
     token = await newUser();
     // Free is 3 assistant messages a month; this suite sends more than that.
-    const me = await request(app.getHttpServer()).get("/users/me").set("Authorization", `Bearer ${token}`);
+    const me = await request(app.getHttpServer())
+      .get("/users/me")
+      .set("Authorization", `Bearer ${token}`);
     await app.get(EntitlementsService).setPlan(me.body.id, "pro");
     await request(app.getHttpServer())
       .post("/accounts")
@@ -95,7 +100,9 @@ describe("Amola Assistant (e2e)", () => {
       .get("/transactions")
       .set("Authorization", `Bearer ${token}`)
       .expect(200);
-    expect(transactions.body.filter((row: { amountMinor: number }) => row.amountMinor === 35_000)).toHaveLength(1);
+    expect(
+      transactions.body.filter((row: { amountMinor: number }) => row.amountMinor === 35_000),
+    ).toHaveLength(1);
   });
 
   it("returns 404 for another user's conversation and action", async () => {
@@ -121,35 +128,84 @@ describe("Amola Assistant (e2e)", () => {
   });
 
   it("edits a pending draft before confirmation and can later update and delete it", async () => {
-    const conversation = await request(app.getHttpServer()).post("/assistant/conversations").set("Authorization", `Bearer ${token}`).send({}).expect(201);
-    const draft = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Кофе 410" }).expect(201);
-    const edited = await request(app.getHttpServer()).patch(`/assistant/actions/${draft.body.action.id}`).set("Authorization", `Bearer ${token}`).send({ amountMinor: 42_000, type: "expense" }).expect(200);
+    const conversation = await request(app.getHttpServer())
+      .post("/assistant/conversations")
+      .set("Authorization", `Bearer ${token}`)
+      .send({})
+      .expect(201);
+    const draft = await request(app.getHttpServer())
+      .post(`/assistant/conversations/${conversation.body.id}/messages`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ text: "Кофе 410" })
+      .expect(201);
+    const edited = await request(app.getHttpServer())
+      .patch(`/assistant/actions/${draft.body.action.id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ amountMinor: 42_000, type: "expense" })
+      .expect(200);
     expect(edited.body.preview.amountMinor).toBe(42_000);
-    await request(app.getHttpServer()).post(`/assistant/actions/${draft.body.action.id}/confirm`).set("Authorization", `Bearer ${token}`).expect(200);
+    await request(app.getHttpServer())
+      .post(`/assistant/actions/${draft.body.action.id}/confirm`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
 
-    const update = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Поменяй последнюю трату на 1700" }).expect(201);
+    const update = await request(app.getHttpServer())
+      .post(`/assistant/conversations/${conversation.body.id}/messages`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ text: "Поменяй последнюю трату на 1700" })
+      .expect(201);
     expect(update.body.action.tool).toBe("update_transaction");
-    await request(app.getHttpServer()).post(`/assistant/actions/${update.body.action.id}/confirm`).set("Authorization", `Bearer ${token}`).expect(200);
+    await request(app.getHttpServer())
+      .post(`/assistant/actions/${update.body.action.id}/confirm`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
 
-    const remove = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Удали последнюю покупку" }).expect(201);
+    const remove = await request(app.getHttpServer())
+      .post(`/assistant/conversations/${conversation.body.id}/messages`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ text: "Удали последнюю покупку" })
+      .expect(201);
     expect(remove.body.action.tool).toBe("delete_transaction");
-    await request(app.getHttpServer()).post(`/assistant/actions/${remove.body.action.id}/confirm`).set("Authorization", `Bearer ${token}`).expect(200);
+    await request(app.getHttpServer())
+      .post(`/assistant/actions/${remove.body.action.id}/confirm`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
   });
 
   it("creates multi-transaction and recurring drafts and supports goal reads", async () => {
-    const conversation = await request(app.getHttpServer()).post("/assistant/conversations").set("Authorization", `Bearer ${token}`).send({}).expect(201);
-    const multi = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Сегодня кофе 300 и бензин 4000" }).expect(201);
+    const conversation = await request(app.getHttpServer())
+      .post("/assistant/conversations")
+      .set("Authorization", `Bearer ${token}`)
+      .send({})
+      .expect(201);
+    const multi = await request(app.getHttpServer())
+      .post(`/assistant/conversations/${conversation.body.id}/messages`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ text: "Сегодня кофе 300 и бензин 4000" })
+      .expect(201);
     expect(multi.body.action.tool).toBe("create_multiple_transactions");
-    const recurring = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Добавь аренду 45000 первого числа" }).expect(201);
+    const recurring = await request(app.getHttpServer())
+      .post(`/assistant/conversations/${conversation.body.id}/messages`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ text: "Добавь аренду 45000 первого числа" })
+      .expect(201);
     expect(recurring.body.action.tool).toBe("create_recurring_payment");
-    const goals = await request(app.getHttpServer()).post(`/assistant/conversations/${conversation.body.id}/messages`).set("Authorization", `Bearer ${token}`).send({ text: "Как идут мои цели?" }).expect(201);
+    const goals = await request(app.getHttpServer())
+      .post(`/assistant/conversations/${conversation.body.id}/messages`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ text: "Как идут мои цели?" })
+      .expect(201);
     expect(goals.body.message.content).toContain("Цел");
-  // Three sequential LLM-dependent turns against a real provider when local keys are
-  // configured (nothing here is mocked) — Jest's 5s default is too tight for that.
+    // Three sequential LLM-dependent turns against a real provider when local keys are
+    // configured (nothing here is mocked) — Jest's 5s default is too tight for that.
   }, 30_000);
 
   it("answers a month-scoped income question as income, not a repeat of the prior expense answer", async () => {
     const monthToken = await newUser();
+    const monthUser = await request(app.getHttpServer())
+      .get("/users/me")
+      .set("Authorization", `Bearer ${monthToken}`);
+    await app.get(EntitlementsService).setPlan(monthUser.body.id, "pro");
     const account = await request(app.getHttpServer())
       .post("/accounts")
       .set("Authorization", `Bearer ${monthToken}`)
@@ -159,15 +215,31 @@ describe("Amola Assistant (e2e)", () => {
     await request(app.getHttpServer())
       .post("/transactions")
       .set("Authorization", `Bearer ${monthToken}`)
-      .send({ type: "expense", accountId: account.body.id, amountMinor: 50_000, currency: "RUB", clientId: randomUUID() })
+      .send({
+        type: "expense",
+        accountId: account.body.id,
+        amountMinor: 50_000,
+        currency: "RUB",
+        clientId: randomUUID(),
+      })
       .expect(201);
     await request(app.getHttpServer())
       .post("/transactions")
       .set("Authorization", `Bearer ${monthToken}`)
-      .send({ type: "income", accountId: account.body.id, amountMinor: 5_000_000, currency: "RUB", clientId: randomUUID() })
+      .send({
+        type: "income",
+        accountId: account.body.id,
+        amountMinor: 5_000_000,
+        currency: "RUB",
+        clientId: randomUUID(),
+      })
       .expect(201);
 
-    const conversation = await request(app.getHttpServer()).post("/assistant/conversations").set("Authorization", `Bearer ${monthToken}`).send({}).expect(201);
+    const conversation = await request(app.getHttpServer())
+      .post("/assistant/conversations")
+      .set("Authorization", `Bearer ${monthToken}`)
+      .send({})
+      .expect(201);
     const expenseAnswer = await request(app.getHttpServer())
       .post(`/assistant/conversations/${conversation.body.id}/messages`)
       .set("Authorization", `Bearer ${monthToken}`)
@@ -183,11 +255,28 @@ describe("Amola Assistant (e2e)", () => {
       .expect(201);
     expect(incomeAnswer.body.message.content).toContain("Доход");
     expect(incomeAnswer.body.message.content).toMatch(/50\s*000\s*₽/);
+    // A follow-up that names no period keeps the month just asked about.
+    const followUp = await request(app.getHttpServer())
+      .post(`/assistant/conversations/${conversation.body.id}/messages`)
+      .set("Authorization", `Bearer ${monthToken}`)
+      .send({ text: "А сколько заработал" })
+      .expect(201);
+    expect(followUp.body.message.content).toContain(`за ${monthLabel}`);
+    const bare = await request(app.getHttpServer())
+      .post(`/assistant/conversations/${conversation.body.id}/messages`)
+      .set("Authorization", `Bearer ${monthToken}`)
+      .send({ text: "А расходы" })
+      .expect(201);
+    expect(bare.body.message.content).toMatch(/Расходы за .*500\s*₽/);
   });
 
   it("lets a free user send a few assistant messages a month, then asks for Pro", async () => {
     const freeToken = await newUser();
-    const conversation = await request(app.getHttpServer()).post("/assistant/conversations").set("Authorization", `Bearer ${freeToken}`).send({}).expect(201);
+    const conversation = await request(app.getHttpServer())
+      .post("/assistant/conversations")
+      .set("Authorization", `Bearer ${freeToken}`)
+      .send({})
+      .expect(201);
     const send = () =>
       request(app.getHttpServer())
         .post(`/assistant/conversations/${conversation.body.id}/messages`)

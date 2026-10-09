@@ -1,7 +1,9 @@
 import { categoryPalette } from "@money-dock/design-tokens";
 import type { Category } from "@money-dock/shared-types";
 
-import { CATEGORY_ICONS, type IconName } from "./Icon";
+import { CATEGORY_ICONS, PICKABLE_ICONS, type IconName } from "./Icon";
+
+const PICKABLE = new Set<string>(PICKABLE_ICONS);
 
 /** Stable hash so a category keeps the same colour forever without storing one. */
 function paletteIndex(seed: string): number {
@@ -20,7 +22,11 @@ export function categoryColor(
   return categoryPalette[paletteIndex(seed)] ?? categoryPalette[0];
 }
 
+/** Seeded categories map their system code; a user's own category stores the icon name
+ * picked in the create sheet (that used to fall through to dots for every custom one). */
 export function categoryIcon(category?: Pick<Category, "systemCode" | "icon"> | null): IconName {
-  const key = category?.systemCode ?? category?.icon ?? "";
-  return CATEGORY_ICONS[key] ?? "dots";
+  const bySystem = category?.systemCode ? CATEGORY_ICONS[category.systemCode] : undefined;
+  if (bySystem) return bySystem;
+  const icon = category?.icon ?? "";
+  return PICKABLE.has(icon) ? (icon as IconName) : "dots";
 }

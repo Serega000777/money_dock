@@ -32,6 +32,9 @@ export interface TelegramWebApp {
   ready: () => void;
   expand: () => void;
   close: () => void;
+  /** Bot API 7.7+: stops a downward drag inside the app from minimizing the Mini App on
+   * iOS, so our own drag gestures (bottom sheets) receive it instead. */
+  disableVerticalSwipes?: () => void;
   setHeaderColor?: (color: string) => void;
   setBackgroundColor?: (color: string) => void;
   setBottomBarColor?: (color: string) => void;

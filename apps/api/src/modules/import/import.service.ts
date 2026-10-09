@@ -5,6 +5,8 @@ import {
   detectColumns,
   parseAmountToMinor,
   parseRowDate,
+  rowsFromPdfTables,
+  rowsFromStatementText,
   RowParseError,
   type DedupMatch,
 } from "@money-dock/business-rules";
@@ -33,17 +35,6 @@ import { TransactionsService } from "../transactions/transactions.service";
 
 /** How far back to look for possible duplicates of an imported row. */
 const DEDUP_WINDOW_DAYS = 5;
-
-// Used only to locate candidate tokens within a line of PDF-extracted text (see
-// extractPdfRowsFromText) — parseRowDate/parseAmountToMinor do the real validation once a
-// token's been found, so these stay permissive rather than trying to fully validate here.
-const PDF_DATE_PATTERN = /\b(\d{4}-\d{2}-\d{2}|\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4})\b/;
-
-// Thousands-group separator can be a plain space or the non-breaking/narrow-no-break
-// variants RU statements use (built from char codes, not typed literally, so the
-// source file never holds an invisible character a future edit could mangle).
-const THOUSANDS_SEPARATOR = `[ ${String.fromCharCode(0x00a0)}${String.fromCharCode(0x202f)}]`;
-const PDF_AMOUNT_PATTERN = new RegExp(`[+-]?\\d+(?:${THOUSANDS_SEPARATOR}\\d{3})*(?:[.,]\\d{2})?`);
 
 export interface ImportPreviewResult {
   jobId: string;
@@ -219,59 +210,32 @@ export class ImportService {
 
   /**
    * Bank statement PDFs come in two shapes: some render with real table/line structure
-   * pdf-parse's layout detector (`getTable`) can find directly; many more are just text
-   * positioned in columns, which getTable finds nothing in (confirmed against a
-   * hand-built sample — it returned zero tables for text with no drawn grid lines).
-   * Falls back to locating a date and an amount token on each text line and treating
-   * whatever's left as the merchant — the same "date, amount, description" column order
-   * the CSV path already assumes — then feeds either result through the identical
-   * `detectColumns`/row pipeline CSV uses, so nothing downstream needs to know which one
-   * ran.
+   * pdf-parse's layout detector (`getTable`) can find — though often page by page, with
+   * the header row only on page 1 — and many more are just positioned text, where one
+   * operation spreads over several lines. `rowsFromPdfTables` / `rowsFromStatementText`
+   * (business-rules, unit-tested against an Ozon-style statement) normalise either into
+   * the same "Дата, Сумма, Описание" rows the CSV path feeds through `detectColumns`.
    */
   private async parsePdf(buffer: Buffer): Promise<string[][]> {
     const parser = new PDFParse({ data: buffer });
     try {
-      const fromTable = await this.extractPdfTable(parser);
+      const result = await parser.getTable();
+      const tables =
+        result.mergedTables.length > 0
+          ? result.mergedTables
+          : result.pages.flatMap((page) => page.tables);
+      const fromTable = rowsFromPdfTables(tables);
       if (fromTable) return fromTable;
-      const fromText = await this.extractPdfRowsFromText(parser);
+      const { text } = await parser.getText();
+      const fromText = rowsFromStatementText(text);
       if (fromText.length > 1) return fromText;
-      throw new BadRequestException("Не удалось найти таблицу операций в PDF-файле");
+      throw new BadRequestException("Не удалось найти операции в PDF-файле");
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
       throw new BadRequestException("Не удалось прочитать PDF-файл");
     } finally {
       await parser.destroy();
     }
-  }
-
-  private async extractPdfTable(parser: PDFParse): Promise<string[][] | null> {
-    const result = await parser.getTable();
-    const tables =
-      result.mergedTables.length > 0
-        ? result.mergedTables
-        : result.pages.flatMap((page) => page.tables);
-    const largest = tables.reduce<string[][] | null>(
-      (best, table) => (table.length > (best?.length ?? 0) ? table : best),
-      null,
-    );
-    return largest && largest.length > 1 ? largest : null;
-  }
-
-  private async extractPdfRowsFromText(parser: PDFParse): Promise<string[][]> {
-    const { text } = await parser.getText();
-    const rows: string[][] = [["Дата", "Сумма", "Описание"]];
-    for (const rawLine of text.split("\n")) {
-      const line = rawLine.trim();
-      const dateMatch = PDF_DATE_PATTERN.exec(line);
-      if (!dateMatch) continue;
-      const afterDate = `${line.slice(0, dateMatch.index)} ${line.slice(dateMatch.index + dateMatch[0].length)}`.trim();
-      const amountMatch = PDF_AMOUNT_PATTERN.exec(afterDate);
-      if (!amountMatch) continue;
-      const merchant =
-        `${afterDate.slice(0, amountMatch.index)} ${afterDate.slice(amountMatch.index + amountMatch[0].length)}`.trim();
-      rows.push([dateMatch[0], amountMatch[0].trim(), merchant]);
-    }
-    return rows;
   }
 
   private async buildDraftRow(

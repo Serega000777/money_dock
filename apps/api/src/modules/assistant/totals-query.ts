@@ -1,4 +1,9 @@
-import { addDays, startOfDay, startOfMonth, startOfPreviousMonth } from "@money-dock/business-rules";
+import {
+  addDays,
+  startOfDay,
+  startOfMonth,
+  startOfPreviousMonth,
+} from "@money-dock/business-rules";
 
 export type TotalsType = "income" | "expense" | "both";
 
@@ -21,8 +26,18 @@ export interface TotalsQuery {
 }
 
 const MONTH_STEMS = [
-  "январ", "феврал", "март", "апрел", "ма[йя]", "июн",
-  "июл", "август", "сентябр", "октябр", "ноябр", "декабр",
+  "январ",
+  "феврал",
+  "март",
+  "апрел",
+  "ма[йя]",
+  "июн",
+  "июл",
+  "август",
+  "сентябр",
+  "октябр",
+  "ноябр",
+  "декабр",
 ];
 
 const INCOME_WORDS = /доход|заработ|получил|получен|пришл|поступ|зарплат|начислен/;
@@ -53,8 +68,13 @@ export function parseTotalsQuery(normalized: string): TotalsQuery | null {
     if (!ASKING.test(normalized) && type === null) return null;
     return { type, period: period.value, periodExplicit: true };
   }
-  // No period named: only a question when it clearly asks about income/expense totals.
-  if (type !== null && /сколько|покажи|какой|какие|какая|итог|сумм|всего/.test(normalized)) {
+  // No period named: only a question when it clearly asks about income/expense totals —
+  // including a bare follow-up like "а доход" / "а расходы?" to the previous answer.
+  const bareFollowUp = /^а\s+(?:мои\s+|по\s+)?(?:доход|расход|трат|заработ|получ)/.test(normalized);
+  if (
+    type !== null &&
+    (bareFollowUp || /сколько|покажи|какой|какие|какая|итог|сумм|всего/.test(normalized))
+  ) {
     return { type, period: period.value, periodExplicit: false };
   }
   return null;
@@ -63,21 +83,29 @@ export function parseTotalsQuery(normalized: string): TotalsQuery | null {
 function parsePeriod(n: string): { value: TotalsPeriod; explicit: boolean } {
   const lastDays = /(?:за|последни[ехй]*)\s*(\d{1,3})\s*дн/.exec(n);
   if (lastDays) return { value: { kind: "last_days", days: Number(lastDays[1]) }, explicit: true };
-  if (/две недели|2 недели|14\s*дн/.test(n)) return { value: { kind: "last_days", days: 14 }, explicit: true };
+  if (/две недели|2 недели|14\s*дн/.test(n))
+    return { value: { kind: "last_days", days: 14 }, explicit: true };
   if (/недел/.test(n)) return { value: { kind: "last_days", days: 7 }, explicit: true };
   if (/позавчера/.test(n)) return { value: { kind: "last_days", days: 2 }, explicit: true };
   if (/вчера/.test(n)) return { value: { kind: "yesterday" }, explicit: true };
   if (/сегодня/.test(n)) return { value: { kind: "today" }, explicit: true };
-  if (/прошл[а-я]*\s*месяц|предыдущ[а-я]*\s*месяц/.test(n)) return { value: { kind: "prev_month" }, explicit: true };
-  if (/все\s*время|всё\s*время|всего|за\s*все/.test(n)) return { value: { kind: "all_time" }, explicit: true };
-  if (/этот\s*год|этом\s*году|за\s*год|с начала года/.test(n)) return { value: { kind: "this_year" }, explicit: true };
+  if (/прошл[а-я]*\s*месяц|предыдущ[а-я]*\s*месяц/.test(n))
+    return { value: { kind: "prev_month" }, explicit: true };
+  if (/все\s*время|всё\s*время|всего|за\s*все/.test(n))
+    return { value: { kind: "all_time" }, explicit: true };
+  if (/этот\s*год|этом\s*году|за\s*год|с начала года/.test(n))
+    return { value: { kind: "this_year" }, explicit: true };
 
   const monthIndex = MONTH_STEMS.findIndex((stem) => new RegExp(stem).test(n));
   if (monthIndex >= 0) {
     const year = /\b(20\d{2})\b/.exec(n);
-    return { value: { kind: "month", monthIndex, year: year ? Number(year[1]) : undefined }, explicit: true };
+    return {
+      value: { kind: "month", monthIndex, year: year ? Number(year[1]) : undefined },
+      explicit: true,
+    };
   }
-  if (/этом месяце|этот месяц|за месяц|текущ[а-я]*\s*месяц/.test(n)) return { value: { kind: "this_month" }, explicit: true };
+  if (/этом месяце|этот месяц|за месяц|текущ[а-я]*\s*месяц/.test(n))
+    return { value: { kind: "this_month" }, explicit: true };
   return { value: { kind: "this_month" }, explicit: false };
 }
 
@@ -102,16 +130,30 @@ export function resolvePeriod(period: TotalsPeriod, now: Date, timezone: string)
         label: period.days === 7 ? "за неделю" : `за последние ${period.days} дн.`,
       };
     case "prev_month":
-      return { from: startOfPreviousMonth(now, timezone), to: startOfMonth(now, timezone), label: "в прошлом месяце" };
+      return {
+        from: startOfPreviousMonth(now, timezone),
+        to: startOfMonth(now, timezone),
+        label: "в прошлом месяце",
+      };
     case "this_year":
-      return { from: new Date(Date.UTC(now.getUTCFullYear(), 0, 1)), to: now, label: "в этом году" };
+      return {
+        from: new Date(Date.UTC(now.getUTCFullYear(), 0, 1)),
+        to: now,
+        label: "в этом году",
+      };
     case "all_time":
       return { from: new Date(0), to: now, label: "за всё время" };
     case "month": {
-      const year = period.year ?? (period.monthIndex > now.getUTCMonth() ? now.getUTCFullYear() - 1 : now.getUTCFullYear());
+      const year =
+        period.year ??
+        (period.monthIndex > now.getUTCMonth() ? now.getUTCFullYear() - 1 : now.getUTCFullYear());
       const from = new Date(Date.UTC(year, period.monthIndex, 1));
       const to = new Date(Date.UTC(year, period.monthIndex + 1, 1));
-      return { from, to, label: `за ${from.toLocaleDateString("ru-RU", { month: "long", year: "numeric", timeZone: "UTC" })}` };
+      return {
+        from,
+        to,
+        label: `за ${from.toLocaleDateString("ru-RU", { month: "long", year: "numeric", timeZone: "UTC" })}`,
+      };
     }
     case "this_month":
     default:

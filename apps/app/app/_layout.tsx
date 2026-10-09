@@ -16,6 +16,8 @@ import { TelegramProvider, useTelegram } from "../src/telegram/TelegramProvider"
 import { hydrateSettings } from "../src/theme/settingsStore";
 import { useTheme } from "../src/theme/useTheme";
 import { BootScreen } from "../src/ui/BootScreen";
+import { useEdgeSwipeBack } from "../src/ui/useEdgeSwipeBack";
+import { useVisualViewportLock } from "../src/ui/useVisualViewportLock";
 
 /**
  * Two overlays share the top of the tree, painted over the navigator rather than routed
@@ -99,6 +101,8 @@ function ThemedStack() {
 }
 
 export default function RootLayout() {
+  useVisualViewportLock();
+  useEdgeSwipeBack();
   useEffect(() => {
     hydrateSettings();
     hydrateOnboarding();

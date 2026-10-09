@@ -9,7 +9,7 @@ import { Image, Platform, Pressable, StyleSheet, View } from "react-native";
 
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
-import { CreateAccountSheet } from "../../src/features/accounts";
+import { CreateAccountSheet, DeleteAccountSheet } from "../../src/features/accounts";
 import { CreateRecurringPaymentSheet, recurringStatus } from "../../src/features/recurring";
 import { useTelegram } from "../../src/telegram/TelegramProvider";
 import {
@@ -64,6 +64,7 @@ export default function Account() {
   const queryClient = useQueryClient();
   const [addingPayment, setAddingPayment] = useState(false);
   const [addingAccount, setAddingAccount] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState<{ id: string; name: string } | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
@@ -291,6 +292,15 @@ export default function Account() {
                     <Text style={[styles.shareButtonText, { color: theme.accent }]}>Участники</Text>
                   </PressableScale>
                 </Link>
+              ) : null}
+              {account.role === "owner" ? (
+                <PressableScale
+                  accessibilityLabel={`Удалить счёт ${account.name}`}
+                  onPress={() => setDeletingAccount(account)}
+                  style={styles.iconButton}
+                >
+                  <Icon name="trash" color={theme.textTertiary} size={17} />
+                </PressableScale>
               ) : account.role === "member" || account.role === "viewer" ? (
                 // No management link for a non-owner, but still a visible sign that this
                 // account is shared, not just theirs — there was previously no way to
@@ -532,6 +542,7 @@ export default function Account() {
       ) : null}
 
       <CreateAccountSheet visible={addingAccount} onClose={() => setAddingAccount(false)} />
+      <DeleteAccountSheet account={deletingAccount} onClose={() => setDeletingAccount(null)} />
       <CreateRecurringPaymentSheet
         visible={addingPayment}
         onClose={() => setAddingPayment(false)}

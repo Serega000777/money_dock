@@ -68,6 +68,34 @@ export type IconName =
   | "phone"
   | "plane"
   | "coffee"
+  | "carWash"
+  | "wrench"
+  | "tire"
+  | "taxi"
+  | "parking"
+  | "bus"
+  | "hammer"
+  | "roller"
+  | "sofa"
+  | "drop"
+  | "scissors"
+  | "lipstick"
+  | "tv"
+  | "music"
+  | "gamepad"
+  | "cloud"
+  | "paw"
+  | "stroller"
+  | "pill"
+  | "tooth"
+  | "dumbbell"
+  | "school"
+  | "bed"
+  | "box"
+  | "bag"
+  | "laptop"
+  | "flower"
+  | "wine"
   | "dots";
 
 interface Props {
@@ -539,6 +567,255 @@ export function Icon({ name, color, size = 24, strokeWidth = 1.7, filled = false
         </>
       ) : null}
 
+      {name === "carWash" ? (
+        <>
+          <Path
+            d="M4.4 18.4v-2.1l1.8-4.4a1.6 1.6 0 0 1 1.5-1h8.6a1.6 1.6 0 0 1 1.5 1l1.8 4.4v2.1"
+            {...s}
+          />
+          <Path d="M4.4 18.4h15.2v2.2h-2.6v-2.2M7 20.6H4.4v-2.2M7.4 15.4h9.2" {...s} />
+          <Path d="M8 3.6c.8 1.1 1.2 1.8 1.2 2.3a1.2 1.2 0 0 1-2.4 0c0-.5.4-1.2 1.2-2.3Z" {...s} />
+          <Path d="M12 2.8c.8 1.1 1.2 1.8 1.2 2.3a1.2 1.2 0 0 1-2.4 0c0-.5.4-1.2 1.2-2.3Z" {...s} />
+          <Path d="M16 3.6c.8 1.1 1.2 1.8 1.2 2.3a1.2 1.2 0 0 1-2.4 0c0-.5.4-1.2 1.2-2.3Z" {...s} />
+        </>
+      ) : null}
+
+      {name === "wrench" ? (
+        <>
+          <Path
+            d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"
+            {...s}
+          />
+        </>
+      ) : null}
+
+      {name === "tire" ? (
+        <>
+          <Circle cx="12" cy="12" r="8" {...s} />
+          <Circle cx="12" cy="12" r="3" {...s} />
+          <Path
+            d="M12 4v5M12 15v5M4 12h5M15 12h5M6.3 6.3l3.6 3.6M14.1 14.1l3.6 3.6M17.7 6.3l-3.6 3.6M9.9 14.1l-3.6 3.6"
+            {...s}
+          />
+        </>
+      ) : null}
+
+      {name === "taxi" ? (
+        <>
+          <Path
+            d="M4.4 16.9v-2.1l1.8-4.4a1.6 1.6 0 0 1 1.5-1h8.6a1.6 1.6 0 0 1 1.5 1l1.8 4.4v2.1"
+            {...s}
+          />
+          <Path d="M4.4 16.9h15.2v2.2h-2.6v-2.2M7 19.1H4.4v-2.2M7.4 13.9h9.2" {...s} />
+          <Path d="M9.6 5.4h4.8v4H9.6Z" {...s} />
+        </>
+      ) : null}
+
+      {name === "parking" ? (
+        <>
+          <Rect x="4" y="4" width="16" height="16" rx="3.4" {...s} />
+          <Path d="M10 16.4V7.6h2.8a2.6 2.6 0 0 1 0 5.2H10" {...s} />
+        </>
+      ) : null}
+
+      {name === "bus" ? (
+        <>
+          <Rect x="5" y="3.6" width="14" height="14" rx="2.6" {...s} />
+          <Path d="M5 10.6h14M9.4 6.4h5.2M7.6 17.6v2.4M16.4 17.6v2.4" {...s} />
+          <Circle cx="8.4" cy="14.2" r="0.9" fill={color} stroke="none" />
+          <Circle cx="15.6" cy="14.2" r="0.9" fill={color} stroke="none" />
+        </>
+      ) : null}
+
+      {name === "hammer" ? (
+        <>
+          <Path d="M13.27 3.65 20.35 10.73l-2.82 2.82-7.08-7.08Z" {...s} />
+          <Path d="M14 10 4.8 19.2" {...s} />
+        </>
+      ) : null}
+
+      {name === "roller" ? (
+        <>
+          <Rect x="4" y="3.8" width="13" height="5" rx="1.6" {...s} />
+          <Path d="M17 6.3h2.4v4.6l-7.4 1.8v2.4" {...s} />
+          <Rect x="10.6" y="15.1" width="2.8" height="5.4" rx="1" {...s} />
+        </>
+      ) : null}
+
+      {name === "sofa" ? (
+        <>
+          <Path d="M5.4 11.2V8.4A2.4 2.4 0 0 1 7.8 6h8.4a2.4 2.4 0 0 1 2.4 2.4v2.8" {...s} />
+          <Path
+            d="M3.6 13.2a1.8 1.8 0 0 1 3.6 0v1.6h9.6v-1.6a1.8 1.8 0 0 1 3.6 0v4.4H3.6Z"
+            {...s}
+          />
+          <Path d="M5.6 17.6v1.8M18.4 17.6v1.8" {...s} />
+        </>
+      ) : null}
+
+      {name === "drop" ? (
+        <>
+          <Path
+            d="M12 3.6c3.2 4 5.2 7.1 5.2 9.8a5.2 5.2 0 0 1-10.4 0c0-2.7 2-5.8 5.2-9.8Z"
+            {...s}
+          />
+          <Path d="M9.6 14a2.4 2.4 0 0 0 2.4 2.2" {...s} />
+        </>
+      ) : null}
+
+      {name === "scissors" ? (
+        <>
+          <Circle cx="6.6" cy="7" r="2.6" {...s} />
+          <Circle cx="6.6" cy="17" r="2.6" {...s} />
+          <Path d="M8.8 8.4 19.6 17.6M8.8 15.6 19.6 6.4" {...s} />
+        </>
+      ) : null}
+
+      {name === "lipstick" ? (
+        <>
+          <Rect x="8.4" y="12.4" width="7.2" height="8" rx="1" {...s} />
+          <Path d="M9.6 12.4V7.2l4.8-3.2v8.4M8.4 15.6h7.2" {...s} />
+        </>
+      ) : null}
+
+      {name === "tv" ? (
+        <>
+          <Rect x="3.4" y="5" width="17.2" height="11.6" rx="2.2" {...s} />
+          <Path d="M8.6 20h6.8M12 16.6V20" {...s} />
+          <Path d="M10.4 8.6v4.4l3.8-2.2Z" {...s} />
+        </>
+      ) : null}
+
+      {name === "music" ? (
+        <>
+          <Path d="M9 17.4V5.6l10-1.8v11.6M9 8.8l10-1.8" {...s} />
+          <Circle cx="6.8" cy="17.4" r="2.2" {...s} />
+          <Circle cx="16.8" cy="15.4" r="2.2" {...s} />
+        </>
+      ) : null}
+
+      {name === "gamepad" ? (
+        <>
+          <Path
+            d="M7.4 7.6h9.2a4.2 4.2 0 0 1 4 3l1 4.4a2.6 2.6 0 0 1-4.6 2.2L15 15.4H9l-2 1.8a2.6 2.6 0 0 1-4.6-2.2l1-4.4a4.2 4.2 0 0 1 4-3Z"
+            {...s}
+          />
+          <Path d="M7.8 10.4v3.2M6.2 12h3.2" {...s} />
+          <Circle cx="15.4" cy="10.9" r="0.9" fill={color} stroke="none" />
+          <Circle cx="17.3" cy="12.8" r="0.9" fill={color} stroke="none" />
+        </>
+      ) : null}
+
+      {name === "cloud" ? (
+        <>
+          <Path d="M7.4 18.4a4 4 0 0 1-.6-8 5.6 5.6 0 0 1 10.8 1.4 3.4 3.4 0 0 1-.2 6.6Z" {...s} />
+        </>
+      ) : null}
+
+      {name === "paw" ? (
+        <>
+          <Path
+            d="M12 12.6c-2.6 0-5 2.6-5 4.8 0 1.4 1 2.2 2.4 2.2 1 0 1.6-.6 2.6-.6s1.6.6 2.6.6c1.4 0 2.4-.8 2.4-2.2 0-2.2-2.4-4.8-5-4.8Z"
+            {...s}
+          />
+          <Circle cx="5.8" cy="10.4" r="1.6" {...s} />
+          <Circle cx="9.4" cy="6.6" r="1.7" {...s} />
+          <Circle cx="14.6" cy="6.6" r="1.7" {...s} />
+          <Circle cx="18.2" cy="10.4" r="1.6" {...s} />
+        </>
+      ) : null}
+
+      {name === "stroller" ? (
+        <>
+          <Path d="M12.6 4.2v6.8h7a7 7 0 0 0-7-6.8Z" {...s} />
+          <Path
+            d="M2.8 7.4h1.6l.8 3.6h14.4a5.4 5.4 0 0 1-5.4 5.4H9.6a4.6 4.6 0 0 1-4.4-5.4"
+            {...s}
+          />
+          <Circle cx="8.6" cy="19" r="1.5" {...s} />
+          <Circle cx="16" cy="19" r="1.5" {...s} />
+        </>
+      ) : null}
+
+      {name === "pill" ? (
+        <>
+          <Path d="M10.2 19.4a4.4 4.4 0 0 1-6.2-6.2l9.2-9.2a4.4 4.4 0 0 1 6.2 6.2Z" {...s} />
+          <Path d="M8.6 8.6l6.2 6.2" {...s} />
+        </>
+      ) : null}
+
+      {name === "tooth" ? (
+        <>
+          <Path
+            d="M7.6 4.2c-2.4 0-3.6 2-3.4 4.4.2 2.4 1.4 3.8 1.8 6.4.4 2.6.8 5 2.4 5 1.4 0 1.6-2.4 2-4 .3-1.2.8-1.8 1.6-1.8s1.3.6 1.6 1.8c.4 1.6.6 4 2 4 1.6 0 2-2.4 2.4-5 .4-2.6 1.6-4 1.8-6.4.2-2.4-1-4.4-3.4-4.4-1.8 0-2.6 1-4.4 1s-2.6-1-4.4-1Z"
+            {...s}
+          />
+        </>
+      ) : null}
+
+      {name === "dumbbell" ? (
+        <>
+          <Rect x="4.8" y="6.6" width="3.2" height="10.8" rx="1" {...s} />
+          <Rect x="16" y="6.6" width="3.2" height="10.8" rx="1" {...s} />
+          <Path d="M8 12h8M2.8 9.6v4.8M21.2 9.6v4.8" {...s} />
+        </>
+      ) : null}
+
+      {name === "school" ? (
+        <>
+          <Path d="M2.8 9.4 12 5l9.2 4.4L12 13.8Z" {...s} />
+          <Path d="M6.4 11.2v4.2c0 1.4 2.6 2.8 5.6 2.8s5.6-1.4 5.6-2.8v-4.2M21.2 9.4v5" {...s} />
+        </>
+      ) : null}
+
+      {name === "bed" ? (
+        <>
+          <Path
+            d="M3.6 6v13.4M3.6 15.6h16.8v3.8M20.4 15.6v-3.4a2.4 2.4 0 0 0-2.4-2.4h-7.6v5.8"
+            {...s}
+          />
+          <Circle cx="7.2" cy="12.4" r="1.8" {...s} />
+        </>
+      ) : null}
+
+      {name === "box" ? (
+        <>
+          <Path d="M12 3.6 19.6 7.6v8.8L12 20.4l-7.6-4V7.6Z" {...s} />
+          <Path d="M4.4 7.6 12 11.6l7.6-4M12 11.6v8.8M8.2 5.6l7.6 4" {...s} />
+        </>
+      ) : null}
+
+      {name === "bag" ? (
+        <>
+          <Path d="M5.2 8.4h13.6l-1 11.2H6.2Z" {...s} />
+          <Path d="M9 10.4V7.2a3 3 0 0 1 6 0v3.2" {...s} />
+        </>
+      ) : null}
+
+      {name === "laptop" ? (
+        <>
+          <Rect x="5" y="5" width="14" height="10" rx="1.6" {...s} />
+          <Path d="M3 18.6h18" {...s} />
+        </>
+      ) : null}
+
+      {name === "flower" ? (
+        <>
+          <Path
+            d="M12 13.2c-3 0-5-2.4-5-6V4.6l2.6 1.8L12 3.6l2.4 2.8L17 4.6v2.6c0 3.8-2 6-5 6Z"
+            {...s}
+          />
+          <Path d="M12 13.2v7M12 17.6c-1.2-1.8-3-2.6-5-2.4.4 2 2.2 3.2 5 3.2" {...s} />
+        </>
+      ) : null}
+
+      {name === "wine" ? (
+        <>
+          <Path d="M7.6 3.8h8.8l-.4 4.4a4 4 0 0 1-8 0Z" {...s} />
+          <Path d="M12 12.2v7.6M8.6 19.8h6.8" {...s} />
+        </>
+      ) : null}
+
       {name === "dots" ? (
         <>
           <Circle cx="6.2" cy="12" r="1.4" fill={color} stroke="none" />
@@ -569,22 +846,65 @@ export const CATEGORY_ICONS: Record<string, IconName> = {
 
 /** Icons offered when creating a custom category. */
 export const PICKABLE_ICONS: IconName[] = [
+  // food & shopping
   "cart",
   "cutlery",
-  "car",
-  "fuel",
-  "house",
-  "health",
-  "film",
+  "coffee",
+  "wine",
+  "bag",
+  "box",
   "shirt",
+  "gift",
+  "flower",
+  // transport & car
+  "car",
+  "taxi",
+  "bus",
+  "fuel",
+  "parking",
+  "carWash",
+  "wrench",
+  "tire",
+  "plane",
+  // home & utilities
+  "house",
+  "sofa",
+  "drop",
+  "bulb",
+  "bolt",
   "wifi",
+  "hammer",
+  "roller",
+  // health & beauty
+  "health",
+  "pill",
+  "tooth",
+  "dumbbell",
+  "scissors",
+  "lipstick",
+  // leisure & subscriptions
+  "film",
+  "tv",
+  "music",
+  "gamepad",
+  "refresh",
+  "cloud",
+  "book",
+  "school",
+  "bed",
+  "palm",
+  // family & tech
+  "paw",
+  "stroller",
+  "phone",
+  "laptop",
+  // money
   "wallet",
   "briefcase",
-  "gift",
-  "book",
-  "phone",
-  "plane",
-  "coffee",
   "card",
+  "bank",
+  "receipt",
+  "shield",
+  "star",
   "dots",
 ];

@@ -40,6 +40,7 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     webApp?.ready();
     webApp?.expand();
+    webApp?.disableVerticalSwipes?.();
   }, [webApp]);
 
   // `colorScheme` is a plain property on the Telegram object, not React state — Telegram

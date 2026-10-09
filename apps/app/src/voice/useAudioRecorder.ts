@@ -11,6 +11,18 @@ export interface AudioRecorderState {
   stop: () => Promise<Blob | null>;
 }
 
+/**
+ * One microphone stream for the whole app, kept alive across recordings instead of
+ * calling track.stop() after every one — some WebViews (Telegram's iOS Mini App
+ * included) re-confirm mic access on every fresh getUserMedia() call rather than
+ * remembering a grant the way Safari does. Shared rather than per-screen: the home tab
+ * stays mounted under the assistant, and a second live capture on iOS silences one of
+ * the two, so the assistant's clips arrived empty and SpeechKit had nothing to hear.
+ * Released when the last recorder unmounts.
+ */
+let sharedStream: MediaStream | null = null;
+let mountedRecorders = 0;
+
 function isSupported(): boolean {
   if (Platform.OS !== "web" || typeof navigator === "undefined") return false;
   return Boolean(navigator.mediaDevices?.getUserMedia) && typeof MediaRecorder !== "undefined";
@@ -33,20 +45,16 @@ export function useAudioRecorder(): AudioRecorderState {
   const startPendingRef = useRef(false);
   const stopRequestedRef = useRef(false);
   const startedAtRef = useRef(0);
-  // Kept alive across recordings instead of calling track.stop() after every one — some
-  // WebViews (Telegram's iOS Mini App included) re-confirm mic access on every fresh
-  // getUserMedia() call rather than remembering a grant the way Safari does, so stopping
-  // the track each time turned one permission grant into one per recording. Released on
-  // unmount, not between presses.
-  const streamRef = useRef<MediaStream | null>(null);
-
-  useEffect(
-    () => () => {
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    },
-    [],
-  );
+  useEffect(() => {
+    mountedRecorders += 1;
+    return () => {
+      mountedRecorders -= 1;
+      if (mountedRecorders === 0) {
+        sharedStream?.getTracks().forEach((track) => track.stop());
+        sharedStream = null;
+      }
+    };
+  }, []);
 
   const start = useCallback(async () => {
     if (!supported || startPendingRef.current || recorderRef.current?.state === "recording") return;
@@ -57,12 +65,12 @@ export function useAudioRecorder(): AudioRecorderState {
     // otherwise the button looks dead while WebKit is waiting for the user to allow mic.
     setRecording(true);
     try {
-      const reusable = streamRef.current;
+      const reusable = sharedStream;
       const stream =
         reusable && reusable.getAudioTracks().some((track) => track.readyState === "live")
           ? reusable
           : await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      sharedStream = stream;
       startPendingRef.current = false;
       if (stopRequestedRef.current) {
         setRecording(false);
@@ -83,7 +91,7 @@ export function useAudioRecorder(): AudioRecorderState {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
       recorder.onstop = () => {
-        // Stream stays live for the next recording — see streamRef above.
+        // Stream stays live for the next recording — see sharedStream above.
         recorderRef.current = null;
         setRecording(false);
         const blob =

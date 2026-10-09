@@ -61,11 +61,11 @@ const BANK_STYLE: Record<
     mark: "alfa",
   },
   tinkoff: {
-    colors: ["#171307", "#6F5700", "#FFDD2D"],
-    glow: "#FFE75E",
+    colors: ["#0B0B0B", "#1C1C1C", "#2E2A1C"],
+    glow: "#FFDD2D",
     label: "Т-Банк",
     labelColor: "#FFFFFF",
-    chip: "#FFF4A8",
+    chip: "#FFE680",
     mark: "tinkoff",
   },
   vtb: {
@@ -112,31 +112,32 @@ const H = 176;
  * around the physical card, so each frame below maps the card rectangle in the source
  * image to this component's bounds.  Keeping the original files (rather than tracing
  * their logos and light effects in SVG) is what makes the home tile and picker match
- * the references pixel-for-pixel.
+ * the references pixel-for-pixel. Shipped as ~30 KB WebP (960px wide — still sharp on a
+ * 3x phone at card size): the 2 MB PNGs made the card picker visibly crawl in.
  */
 const REFERENCE_ART: Partial<Record<Bank, { file: string; frame: ImageStyle }>> = {
   bank_russia: {
-    file: "bank-russia.png",
+    file: "bank-russia.webp",
     frame: { left: "-14.0%", top: "-24.4%", width: "127.9%", height: "153.2%" },
   },
   gazprombank: {
-    file: "gazprombank.png",
+    file: "gazprombank.webp",
     frame: { left: "-14.2%", top: "-28.5%", width: "128.4%", height: "162.1%" },
   },
   ozon: {
-    file: "ozon.png",
+    file: "ozon.webp",
     frame: { left: "-15.6%", top: "-27.3%", width: "131.4%", height: "161.1%" },
   },
   vtb: {
-    file: "vtb.png",
+    file: "vtb.webp",
     frame: { left: "-16.3%", top: "-30.0%", width: "132.8%", height: "164.6%" },
   },
   alfa: {
-    file: "alfa.png",
+    file: "alfa.webp",
     frame: { left: "-17.4%", top: "-28.6%", width: "135.5%", height: "164.6%" },
   },
   sber: {
-    file: "sber.png",
+    file: "sber.webp",
     frame: { left: "-18.7%", top: "-30.9%", width: "137.3%", height: "167.1%" },
   },
 };
@@ -187,7 +188,14 @@ function BankWatermark({ bank, color }: { bank: Bank; color: string }) {
       );
     case "tinkoff":
     default:
-      return <Path d="M220 82h58M249 82v56" {...s} strokeWidth={9} />;
+      return (
+        <Path
+          d="M214 70h72v46c0 22-17 35-36 43-19-8-36-21-36-43Z"
+          {...s}
+          strokeWidth={4}
+          opacity={0.22}
+        />
+      );
   }
 }
 
@@ -222,17 +230,12 @@ function BankMark({ bank, color }: { bank: Bank; color: string }) {
         </G>
       );
     case "tinkoff":
+      // The brand's own emblem: a solid yellow shield with a bold dark "Т" — drawn as
+      // paths, not text, so it never falls back to a serif font.
       return (
         <G>
-          <Path
-            d="M25 18h34v24c0 10-7 15-17 19-10-4-17-9-17-19z"
-            fill="none"
-            stroke={color}
-            strokeWidth="3"
-          />
-          <SvgText x="42" y="48" textAnchor="middle" fontSize="22" fontWeight="900" fill={color}>
-            T
-          </SvgText>
+          <Path d="M25 18h34v23c0 11-8 17-17 21-9-4-17-10-17-21Z" fill="#FFDD2D" />
+          <Path d="M31.5 25.5h21v6h-7.5v19h-6v-19h-7.5Z" fill="#1A1A1A" />
         </G>
       );
     case "bank_russia":
@@ -308,7 +311,7 @@ export function BankCardArt({
         <Image
           accessibilityIgnoresInvertColors
           resizeMode="stretch"
-          source={{ uri: `/bank-cards/${reference.file}?v=20260928` }}
+          source={{ uri: `/bank-cards/${reference.file}?v=20261009` }}
           style={[styles.referenceImage, reference.frame]}
         />
       </View>
@@ -362,6 +365,7 @@ export function BankCardArt({
           y="45"
           fontSize={style.label.length > 11 ? 17 : 22}
           fontWeight="800"
+          fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', Roboto, Helvetica, Arial, sans-serif"
           letterSpacing={bank === "tinkoff" ? 0.5 : 0.2}
           fill={style.labelColor}
         >
@@ -385,6 +389,7 @@ export function BankCardArt({
               y={H - 26}
               fontSize={17}
               fontWeight="600"
+              fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', Roboto, Helvetica, Arial, sans-serif"
               letterSpacing={3}
               fill={style.labelColor}
               opacity={0.85}
