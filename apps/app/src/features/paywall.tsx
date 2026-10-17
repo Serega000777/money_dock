@@ -6,6 +6,7 @@ import { StyleSheet, View } from "react-native";
 import { create } from "zustand";
 
 import { apiClient } from "../api/client";
+import { CAN_SELL_PRO } from "../platform/appStore";
 import { useTheme } from "../theme/useTheme";
 import { GradientBox } from "../ui/Gradient";
 import { Icon } from "../ui/Icon";
@@ -58,8 +59,30 @@ export function PaywallModal() {
   const { data: pricing } = useQuery({
     queryKey: ["payments-pricing"],
     queryFn: () => apiClient.payments.pricing(),
-    enabled: visible,
+    enabled: visible && CAN_SELL_PRO,
   });
+
+  // Where Pro isn't on sale (the iOS build), a limit is just a limit: say when it resets,
+  // never point at a subscription the app can't sell there.
+  if (!CAN_SELL_PRO) {
+    return (
+      <BottomSheet visible={visible} onClose={close}>
+        <View style={styles.wrap}>
+          <View style={[styles.badge, styles.limitBadge, { backgroundColor: theme.accentSoft }]}>
+            <Icon name="calendar" color={theme.accent} size={26} />
+          </View>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>Лимит на месяц исчерпан</Text>
+          <Text style={[styles.message, { color: theme.textSecondary }]}>
+            Бесплатные попытки этой функции в текущем месяце закончились. Счётчик обновится 1-го
+            числа — остальное в приложении работает как обычно.
+          </Text>
+          <PressableScale onPress={close} style={styles.dismiss}>
+            <Text style={[styles.dismissText, { color: theme.accent }]}>Понятно</Text>
+          </PressableScale>
+        </View>
+      </BottomSheet>
+    );
+  }
 
   return (
     <BottomSheet visible={visible} onClose={close}>
@@ -121,6 +144,7 @@ const styles = StyleSheet.create({
   wrap: { alignItems: "center", gap: spacing.sm },
   badge: { width: 56, height: 56, alignItems: "center", justifyContent: "center" },
   badgeIcon: { alignItems: "center", justifyContent: "center" },
+  limitBadge: { borderRadius: radii.pill },
   title: { ...typography.title, marginTop: spacing.xs },
   message: { ...typography.body, textAlign: "center", lineHeight: 21 },
   features: { alignSelf: "stretch", gap: spacing.sm, marginVertical: spacing.sm },

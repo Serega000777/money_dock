@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import { Platform, StyleSheet } from "react-native";
 
 import { apiClient } from "../src/api/client";
+import { CAN_SELL_PRO } from "../src/platform/appStore";
 import { useTheme } from "../src/theme/useTheme";
 import { Text } from "../src/ui/Text";
 import { Card, PressableScale, Screen } from "../src/ui/primitives";
@@ -71,7 +72,8 @@ export default function QuickEntry() {
           <Text style={[styles.body, { color: theme.textSecondary }]}>
             1. Откройте приложение «Команды» на iPhone и создайте команду «Расход Amola».{"\n\n"}2.
             Добавьте действие «Диктовать текст» или «Запросить ввод». Например: «Кофе 340 рублей».
-            {"\n\n"}3. Добавьте «Получить содержимое URL», вставьте адрес ниже и выберите метод POST.
+            {"\n\n"}3. Добавьте «Получить содержимое URL», вставьте адрес ниже и выберите метод
+            POST.
           </Text>
           <Text style={[styles.label, { color: theme.textTertiary }]}>URL</Text>
           <Text selectable style={[styles.code, { color: theme.textPrimary }]}>
@@ -96,11 +98,14 @@ export default function QuickEntry() {
           >{`{"input": "Текст", "mode": "text"}`}</Text>
           <Text style={[styles.body, { color: theme.textSecondary }]}>
             Операция появится в Amola и разделе «Проверка быстрого ввода». Нужен интернет, Telegram
-            открывать не нужно. Первые 3 быстрых ввода в месяц бесплатны, дальше — в подписке Pro.
-            Продиктованный текст отправляется как текст — лимит голосового
-            распознавания Amola не расходуется. Поле clientRequestId можно не добавлять — без него
-            теряется только защита от случайного дубля при повторной отправке того же запроса, iOS
-            не даёт готового способа сгенерировать его без стороннего приложения.
+            открывать не нужно.{" "}
+            {CAN_SELL_PRO
+              ? "Первые 3 быстрых ввода в месяц бесплатны, дальше — в подписке Pro."
+              : "Бесплатно — 3 быстрых ввода в месяц."}
+            Продиктованный текст отправляется как текст — лимит голосового распознавания Amola не
+            расходуется. Поле clientRequestId можно не добавлять — без него теряется только защита
+            от случайного дубля при повторной отправке того же запроса, iOS не даёт готового способа
+            сгенерировать его без стороннего приложения.
           </Text>
         </Card>
         <Card style={styles.card}>
@@ -119,10 +124,10 @@ export default function QuickEntry() {
           <Text style={[styles.body, { color: theme.textSecondary }]}>
             Подставьте в поле input результат «Кодировать медиафайл» вместо слова «Base64».{"\n\n"}
             <Text style={{ fontWeight: "600" }}>Android, HTTP Shortcuts:</Text> выберите фото как
-            переменную типа File, затем при вставке в поле input выберите у неё опцию «Base64-encoded
-            content».{"\n\n"}
-            Чек появится в «Проверке быстрого ввода» уже с распознанной суммой и магазином — останется
-            проверить и одобрить.
+            переменную типа File, затем при вставке в поле input выберите у неё опцию
+            «Base64-encoded content».{"\n\n"}
+            Чек появится в «Проверке быстрого ввода» уже с распознанной суммой и магазином —
+            останется проверить и одобрить.
           </Text>
         </Card>
         <Card style={styles.card}>

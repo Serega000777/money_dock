@@ -4,6 +4,7 @@ import {
   Image,
   StyleSheet,
   View,
+  type ImageSourcePropType,
   type ImageStyle,
   type StyleProp,
   type ViewStyle,
@@ -19,6 +20,13 @@ import Svg, {
   Stop,
   Text as SvgText,
 } from "react-native-svg";
+
+import bankRussiaArt from "../../assets/bank-cards/bank-russia.webp";
+import gazprombankArt from "../../assets/bank-cards/gazprombank.webp";
+import ozonArt from "../../assets/bank-cards/ozon.webp";
+import vtbArt from "../../assets/bank-cards/vtb.webp";
+import alfaArt from "../../assets/bank-cards/alfa.webp";
+import sberArt from "../../assets/bank-cards/sber.webp";
 
 /**
  * Realistic-enough bank card art — brand colour, a simplified mark evoking each bank's
@@ -113,31 +121,32 @@ const H = 176;
  * image to this component's bounds.  Keeping the original files (rather than tracing
  * their logos and light effects in SVG) is what makes the home tile and picker match
  * the references pixel-for-pixel. Shipped as ~30 KB WebP (960px wide — still sharp on a
- * 3x phone at card size): the 2 MB PNGs made the card picker visibly crawl in.
+ * 3x phone at card size): the 2 MB PNGs made the card picker visibly crawl in. Bundled
+ * through require(), not a /public URL, so the native builds get them too.
  */
-const REFERENCE_ART: Partial<Record<Bank, { file: string; frame: ImageStyle }>> = {
+const REFERENCE_ART: Partial<Record<Bank, { source: ImageSourcePropType; frame: ImageStyle }>> = {
   bank_russia: {
-    file: "bank-russia.webp",
+    source: bankRussiaArt,
     frame: { left: "-14.0%", top: "-24.4%", width: "127.9%", height: "153.2%" },
   },
   gazprombank: {
-    file: "gazprombank.webp",
+    source: gazprombankArt,
     frame: { left: "-14.2%", top: "-28.5%", width: "128.4%", height: "162.1%" },
   },
   ozon: {
-    file: "ozon.webp",
+    source: ozonArt,
     frame: { left: "-15.6%", top: "-27.3%", width: "131.4%", height: "161.1%" },
   },
   vtb: {
-    file: "vtb.webp",
+    source: vtbArt,
     frame: { left: "-16.3%", top: "-30.0%", width: "132.8%", height: "164.6%" },
   },
   alfa: {
-    file: "alfa.webp",
+    source: alfaArt,
     frame: { left: "-17.4%", top: "-28.6%", width: "135.5%", height: "164.6%" },
   },
   sber: {
-    file: "sber.webp",
+    source: sberArt,
     frame: { left: "-18.7%", top: "-30.9%", width: "137.3%", height: "167.1%" },
   },
 };
@@ -311,7 +320,7 @@ export function BankCardArt({
         <Image
           accessibilityIgnoresInvertColors
           resizeMode="stretch"
-          source={{ uri: `/bank-cards/${reference.file}?v=20261009` }}
+          source={reference.source}
           style={[styles.referenceImage, reference.frame]}
         />
       </View>

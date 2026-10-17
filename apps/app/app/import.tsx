@@ -83,8 +83,8 @@ export default function Import() {
 
       <FadeIn index={0}>
         <Text style={[styles.hint, { color: theme.textSecondary }]}>
-          CSV или PDF-выписка из банка. Колонки даты, суммы и назначения определяются
-          автоматически. Ничего не сохранится, пока вы не подтвердите.
+          CSV или PDF-выписка из банка. Колонки даты, суммы и назначения определяются автоматически.
+          Ничего не сохранится, пока вы не подтвердите.
         </Text>
       </FadeIn>
 
@@ -122,7 +122,7 @@ export default function Import() {
             {upload.isPending ? "Разбираю файл…" : "Выбрать файл выписки"}
           </Text>
           <Text style={[styles.dropHint, { color: theme.textTertiary }]}>
-            Сбербанк, Тинькофф, Альфа — CSV или PDF
+            Выписка из вашего банка — CSV или PDF
           </Text>
         </PressableScale>
       </FadeIn>

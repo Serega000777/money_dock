@@ -11,6 +11,8 @@ import { Icon } from "../ui/Icon";
 import { Text } from "../ui/Text";
 import { BottomSheet, Segmented } from "../ui/primitives";
 
+import { SHOW_BANK_BRANDING } from "../platform/appStore";
+
 import { usePaywallStore } from "./paywall";
 import { SheetSubmit, sheetStyles } from "./recurring";
 
@@ -108,7 +110,7 @@ export function CreateAccountSheet({
         ]}
       />
 
-      {type === "card" ? (
+      {type === "card" && SHOW_BANK_BRANDING ? (
         <BankPicker
           value={bank}
           onChange={setBank}
@@ -117,7 +119,7 @@ export function CreateAccountSheet({
           onLast4Change={setLast4}
         />
       ) : null}
-      {type === "card" ? (
+      {type === "card" && SHOW_BANK_BRANDING ? (
         <Text style={[styles.legal, { color: theme.textTertiary }]}>{BANK_TRADEMARK_NOTICE}</Text>
       ) : null}
 

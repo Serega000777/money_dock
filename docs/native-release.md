@@ -1,60 +1,96 @@
-# Нативный релиз Amola Finance
+# Деплой и выпуск в App Store — пошаговый гайд владельца
 
-## Что уже подготовлено
+## 0. Что уже сделано в коде (iOS-сборка)
 
-- Expo-конфигурация содержит bundle id/package `app.amola.finance`, версии сборок,
-  иконку, splash, разрешение микрофона и Sign in with Apple.
-- Production-профили EAS находятся в `apps/app/eas.json`; API сборки направлен на
-  `https://amola-finance.ru/api`.
-- Голосовая запись работает через нативный `expo-audio`, а не через браузерный
-  `MediaRecorder`; лёгкая отдача цифровой клавиатуры работает через `expo-haptics`.
-- Access/refresh-токены нативной версии хранятся в iOS Keychain / Android Keystore через
-  `expo-secure-store`. Тема и состояние онбординга сохраняются в AsyncStorage.
-- Добавлен настоящий Sign in with Apple: сервер проверяет подпись, issuer и audience
-  identity token по публичным ключам Apple.
-- CSV выбирается системным file picker, аватар — системным photo picker.
-- В iOS скрыты Telegram Stars, СБП и другие внешние способы оплаты Pro: цифровая
-  подписка в App Store должна продаваться через StoreKit/IAP.
+Флаги в `apps/app/src/platform/appStore.ts` (на iOS выключено, в Telegram/вебе всё как было):
 
-## Сборка для Xcode / TestFlight
+- `CAN_SELL_PRO` — в iOS нет покупки Pro и упоминаний о ней (Apple разрешает продавать
+  подписку только через свой IAP; оплата Apple в РФ не работает). Лимиты 3/мес действуют,
+  при исчерпании — нейтральное «Лимит на месяц исчерпан, обновится 1-го».
+- `SHOW_BANK_BRANDING` — в iOS нет логотипов/дизайнов карт банков (санкционные банки +
+  разрешение на знаки ещё не получено).
+- `APPLE_SIGN_IN_ONLY` — в iOS вход только через Apple (нерабочие «скоро»-кнопки убраны).
+- `SHOW_COMING_SOON` — в iOS нет плашек «Скоро» и пустых ссылок поддержки.
+- В Кабинете → «Данные» есть **«Удалить аккаунт»** (требование Apple 5.1.1(v)).
+- iOS: поле ввода ИИ поднимается над клавиатурой; картинки карт вшиты в бандл.
+- `app.json`: bundle id `app.amola.finance`, Sign in with Apple, микрофон/фото — тексты
+  разрешений, privacy manifest, русский регион. JS-бандл iOS проверен (`expo export`).
 
-На Mac из корня репозитория:
+## 1. Деплой сервера (сначала!)
 
 ```bash
-pnpm install --frozen-lockfile
-cd apps/app
-npx eas-cli login
-npx eas-cli build:configure
-pnpm native:prebuild
-pnpm ios
+cd /root/money_dock && git pull && docker compose --env-file .env.production -f infrastructure/docker/docker-compose.prod.yml up -d --build
 ```
 
-`pnpm native:prebuild` создаст `ios/` и `android/`. Открывать в Xcode нужно созданный
-`ios/*.xcworkspace`, не `.xcodeproj`. Для облачной production-сборки без локального
-Xcode: `pnpm eas:build:ios`, затем `npx eas-cli submit --platform ios --profile production`.
+Проверить: `git log --oneline -1`; в Telegram открыть Mini App, Кабинет → видна строка
+«Удалить аккаунт». В `.env.production` должны быть `OWNER_TELEGRAM_ID`,
+`DEEPSEEK_VISION_MODEL`, `APPLE_CLIENT_ID=app.amola.finance` (по умолчанию уже такой).
 
-В Apple Developer нужно заранее зарегистрировать App ID `app.amola.finance`, включить
-Sign in with Apple и создать приложение с тем же bundle id в App Store Connect.
+## 2. Apple Developer Program ($99/год)
 
-## Блокеры перед отправкой на ревью
+1. Apple ID с двухфакторной защитой → developer.apple.com/programs/enroll → Individual
+   (физлицо) или Organization (нужен D-U-N-S номер компании).
+2. Оплата: российские карты не проходят. Для физлица Apple требует **свою** карту, иначе
+   попросит документы. Рабочие варианты меняются — уточни у поддержки Apple Developer
+   (developer.apple.com/contact) до оплаты. Не плати «через посредников» чужой картой.
+3. Ждать подтверждения (от суток до нескольких недель).
 
-1. Создать auto-renewable subscription Amola Pro в App Store Connect и подключить
-   StoreKit-покупку, проверку server notification/transaction и кнопку восстановления
-   покупок. Product ID пока неизвестен, поэтому этот шаг нельзя корректно завершить в
-   коде заранее. До него iOS показывает честное сообщение, а не внешнюю оплату.
-2. Заполнить `OPENAI_API_KEY` для production-распознавания речи и проверить реальной
-   записью на iPhone и Android. Сервер использует `gpt-transcribe`; Gemini
-   `generateContent` остаётся резервным провайдером, но ранее настроенный Google-проект
-   заблокирован для inference и сам по себе не обеспечивает рабочий production.
-3. Заполнить реальные сведения Оператора и обработчиков в `apps/app/src/legal/content.ts`,
-   проверить политику у юриста и указать публичные Privacy Policy / Support URL в App
-   Store Connect. Сейчас сведения Оператора намеренно оставлены плейсхолдерами.
-4. Указать реальные `EXPO_PUBLIC_SUPPORT_TELEGRAM_URL` и
-   `EXPO_PUBLIC_FEEDBACK_TELEGRAM_URL` для production-сборки.
-5. На реальном iPhone проверить: первый/повторный Sign in with Apple, отказ в микрофоне,
-   удержание кнопки записи, редактирование распознанного черновика, импорт CSV, удаление
-   аккаунта, тёмную/светлую тему и восстановление сессии после перезапуска.
+## 3. Подготовка в Apple Developer / App Store Connect
 
-Нативную iOS-сборку и загрузку в TestFlight нельзя воспроизвести на Windows: для
-локального Xcode нужен Mac, а для EAS нужны учётная запись Expo и доступ к Apple
-Developer/App Store Connect.
+1. Certificates, IDs & Profiles → Identifiers → App ID `app.amola.finance`, включить
+   **Sign in with Apple**.
+2. App Store Connect → Мои приложения → «+» → iOS, имя «Amola Finance», язык Русский,
+   bundle id `app.amola.finance`, SKU `amola-finance`.
+3. Соглашения: для бесплатного приложения достаточно Free Apps Agreement (Paid Apps —
+   только когда будет IAP).
+
+## 4. Сборка и загрузка (с Windows — через EAS, Mac не нужен)
+
+```bash
+cd apps/app
+npx expo install --fix          # обновить 8 пакетов до версий SDK 57 (expo-doctor просит)
+npx expo-doctor                 # должно быть без ошибок; если ругается на app.json — пришли вывод
+npx eas-cli login               # аккаунт expo.dev (бесплатный)
+npx eas-cli build --platform ios --profile production
+npx eas-cli submit --platform ios --profile production --latest
+```
+
+EAS сам создаст сертификаты (спросит Apple ID). Сборка уходит в TestFlight.
+Перед сборкой можно вписать в `apps/app/eas.json` → `build.production.env`
+`EXPO_PUBLIC_SUPPORT_TELEGRAM_URL` и `EXPO_PUBLIC_FEEDBACK_TELEGRAM_URL` (те же ссылки, что
+`SUPPORT_TELEGRAM_URL`/`FEEDBACK_TELEGRAM_URL` на сервере), иначе строки поддержки скрыты.
+
+## 5. Проверка на iPhone через TestFlight
+
+Установить TestFlight → сборка → проверить: вход через Apple (первый и повторный),
+голос (удержание кнопки, отказ в микрофоне), ИИ-чат с клавиатурой, шторки (свайп вниз),
+импорт CSV/PDF, удаление счёта и аккаунта, тёмная/светлая тема, перезапуск (сессия жива).
+
+## 6. Карточка приложения в App Store Connect
+
+- **Privacy Policy URL**: `https://amola-finance.ru/legal/privacy` — сначала заполни
+  реальные данные Оператора в `apps/app/src/legal/content.ts` (сейчас плейсхолдеры!).
+- **Support URL**: любая публичная страница с контактом (можно t.me-ссылка поддержки).
+- Категория: Финансы. Цена: бесплатно. Регионы — на твой выбор.
+- Скриншоты 6.9" (1320×2868) — минимум 3, снять в симуляторе/на iPhone из TestFlight.
+- Описание, ключевые слова, подзаголовок — на русском.
+- **App Privacy**: собираются имя/e-mail (Apple ID), финансовая информация (операции),
+  аудио (голос — передаётся в Yandex SpeechKit, не хранится), фото (аватар/чек). Не для
+  рекламы и трекинга.
+- **Age rating**: заполнить анкету (включая вопросы про соцсети — у нас их нет) → 4+.
+- Шифрование: уже `usesNonExemptEncryption: false`.
+- **Review notes**: «Вход через Sign in with Apple. Голосовой ввод: удерживайте кнопку
+  микрофона на главном экране и скажите „кофе 350“. Подписки в iOS-версии нет.»
+
+## 7. Отправка на ревью
+
+Выбрать сборку → «Отправить на проверку». Обычно 1–3 дня. Если отказ — пришли текст из
+Resolution Center, поправим.
+
+## Известные риски
+
+- Pro, купленный через Telegram, в iOS тоже действует; Apple (3.1.3(b)) формально хочет,
+  чтобы такое было доступно и через IAP. Ревьюер видит свой новый бесплатный аккаунт.
+- При удалении аккаунта с Sign in with Apple Apple рекомендует отзывать токен через REST
+  API — пока не сделано (нужен ключ Sign in with Apple .p8).
+- Чтобы вернуть в iOS оплату/карты банков — StoreKit IAP и флаги выше.

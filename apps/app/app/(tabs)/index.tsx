@@ -23,6 +23,7 @@ import { useTelegram } from "../../src/telegram/TelegramProvider";
 import { useSettingsStore } from "../../src/theme/settingsStore";
 import { useTheme } from "../../src/theme/useTheme";
 import { AmolaLogo } from "../../src/ui/AmolaLogo";
+import { SHOW_BANK_BRANDING } from "../../src/platform/appStore";
 import { BankCardArt } from "../../src/ui/BankCardArt";
 import { GoalIconBadge } from "../../src/ui/GoalIconBadge";
 import { GlowBlob, GlowRing, GradientBox } from "../../src/ui/Gradient";
@@ -64,7 +65,9 @@ function plural(count: number, one: string, few: string, many: string): string {
 
 function looksLikeAssistantQuestion(value: string): boolean {
   const text = value.toLowerCase().replace(/ё/g, "е").trim();
-  return /\?$/.test(text) || /^(сколько|покажи|какой|какая|какие|сравни|как там|что будет)/.test(text);
+  return (
+    /\?$/.test(text) || /^(сколько|покажи|какой|какая|какие|сравни|как там|что будет)/.test(text)
+  );
 }
 
 /** The server sends facts + a template key, never a finished sentence (spec §20) — this
@@ -165,7 +168,10 @@ export default function Home() {
         { value: text, source: "voice" },
         {
           onSuccess: (result) => setVoiceDraft(result),
-          onError: (e) => setVoiceError(isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать команду")),
+          onError: (e) =>
+            setVoiceError(
+              isPlanLimitError(e) ? null : apiErrorMessage(e, "Не удалось разобрать команду"),
+            ),
         },
       );
     } catch (e) {
@@ -846,7 +852,7 @@ function AccountTile({ account, vivid }: { account: Account; vivid: boolean }) {
   const theme = useTheme();
   // A picked bank draws its own art and owns the tile's whole colour story — Card's
   // usual gradient/plain split doesn't apply once there's a card design underneath.
-  const bankArt = account.type === "card" && account.bank;
+  const bankArt = SHOW_BANK_BRANDING && account.type === "card" && account.bank;
   // White text only where the surface underneath is actually dark enough for it: bank
   // art always is, and the vivid tileGradient is too in dark theme — but light theme's
   // tileGradient is a pale near-white wash, where white-on-white was unreadable.

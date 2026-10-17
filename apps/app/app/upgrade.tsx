@@ -1,11 +1,12 @@
 import { radii, spacing, typography } from "@money-dock/design-tokens";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Stack, router } from "expo-router";
+import { Redirect, Stack, router } from "expo-router";
 import { useState } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
 import { PRO_FEATURES } from "../src/features/paywall";
+import { CAN_SELL_PRO } from "../src/platform/appStore";
 import { useTelegram } from "../src/telegram/TelegramProvider";
 import { useTheme } from "../src/theme/useTheme";
 import { GradientBox } from "../src/ui/Gradient";
@@ -22,6 +23,12 @@ type PaymentStatus = "idle" | "opening" | "verifying" | "pending" | "failed";
  * screen already gives Yandex ID/VK ID while their OAuth apps don't exist yet.
  */
 export default function Upgrade() {
+  // The iOS build sells nothing (see CAN_SELL_PRO); a stray link lands back in the cabinet.
+  if (!CAN_SELL_PRO) return <Redirect href="/account" />;
+  return <UpgradeScreen />;
+}
+
+function UpgradeScreen() {
   const theme = useTheme();
   const queryClient = useQueryClient();
   const { webApp, isInsideTelegram } = useTelegram();
@@ -122,19 +129,7 @@ export default function Upgrade() {
       ) : (
         <FadeIn index={2}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Способ оплаты</Text>
-          {Platform.OS === "ios" ? (
-            <Card style={styles.storeKitNotice}>
-              <Icon name="card" color={theme.textPrimary} size={22} />
-              <View style={styles.storeKitText}>
-                <Text style={[styles.rowLabel, { color: theme.textPrimary }]}>
-                  Покупка через App Store
-                </Text>
-                <Text style={[styles.hint, { color: theme.textTertiary }]}>
-                  Будет доступна после подключения подписки Amola Pro в App Store Connect.
-                </Text>
-              </View>
-            </Card>
-          ) : (
+          {
             <Card style={styles.methodsCard}>
               <PaymentRow
                 icon="star"
@@ -148,9 +143,9 @@ export default function Upgrade() {
               <PaymentRow icon="wallet" label="Yandex Pay" soon />
               <PaymentRow icon="wallet" label="Tinkoff Pay" soon />
             </Card>
-          )}
+          }
 
-          {Platform.OS !== "ios" && !canPayWithStars ? (
+          {!canPayWithStars ? (
             <Text style={[styles.hint, { color: theme.textTertiary }]}>
               Оплата Stars доступна внутри Telegram — откройте Amola через бота.
             </Text>
@@ -233,8 +228,6 @@ const styles = StyleSheet.create({
 
   sectionTitle: { ...typography.overline, textTransform: "uppercase", marginBottom: spacing.xs },
   methodsCard: { paddingVertical: spacing.xs, gap: 0 },
-  storeKitNotice: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  storeKitText: { flex: 1 },
   row: { flexDirection: "row", alignItems: "center", paddingVertical: spacing.md, gap: spacing.md },
   rowIcon: {
     width: 34,

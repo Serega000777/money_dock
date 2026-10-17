@@ -5,6 +5,7 @@ import { Platform, ScrollView, StyleSheet, TextInput, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { apiClient } from "../api/client";
+import { APPLE_SIGN_IN_ONLY } from "../platform/appStore";
 import { signInDemo } from "../auth/AuthProvider";
 import { useAuthStore } from "../auth/authStore";
 import { Icon, type IconName } from "../ui/Icon";
@@ -273,71 +274,90 @@ function AuthStep({
         <IconBadge name="chart" size={50} iconSize={22} style={styles.floatRight} />
       </View>
 
-      <GlassCard style={styles.formCard}>
-        <View style={styles.formHead}>
-          <Text style={styles.formTitle}>Ваши данные</Text>
-          <View style={styles.secureRow}>
-            <Text style={styles.secureText}>Всё под защитой</Text>
-            <Icon name="shield" color={ob.textSecondary} size={16} strokeWidth={1.9} />
+      {APPLE_SIGN_IN_ONLY ? (
+        <GlassCard style={styles.formCard}>
+          <View style={styles.formHead}>
+            <Text style={styles.formTitle}>Вход в Amola</Text>
+            <View style={styles.secureRow}>
+              <Text style={styles.secureText}>Всё под защитой</Text>
+              <Icon name="shield" color={ob.textSecondary} size={16} strokeWidth={1.9} />
+            </View>
           </View>
-        </View>
+          <Text style={styles.secureText}>
+            Войдите через Apple ID — счета и операции привяжутся к вашему аккаунту и сохранятся при
+            переустановке. Можно скрыть e-mail: Apple передаст нам только обезличенный адрес.
+          </Text>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+        </GlassCard>
+      ) : (
+        <GlassCard style={styles.formCard}>
+          <View style={styles.formHead}>
+            <Text style={styles.formTitle}>Ваши данные</Text>
+            <View style={styles.secureRow}>
+              <Text style={styles.secureText}>Всё под защитой</Text>
+              <Icon name="shield" color={ob.textSecondary} size={16} strokeWidth={1.9} />
+            </View>
+          </View>
 
-        {loginMode ? null : (
-          <Field icon="person" label="Имя">
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Как к вам обращаться?"
-              placeholderTextColor={ob.textMuted}
-              style={styles.input}
-            />
-          </Field>
-        )}
+          {loginMode ? null : (
+            <Field icon="person" label="Имя">
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="Как к вам обращаться?"
+                placeholderTextColor={ob.textMuted}
+                style={styles.input}
+              />
+            </Field>
+          )}
 
-        {/* The reference shows the mask itself as the field's bright line, with the hint
+          {/* The reference shows the mask itself as the field's bright line, with the hint
             under it inside the field — the "Телефон" label from the spec is for screen
             readers only. */}
-        <Field icon="phone" hint="Ваш номер телефона">
-          <TextInput
-            value={phone}
-            onChangeText={(value) => setPhone(formatPhone(value))}
-            placeholder="+7 (___) ___-__-__"
-            placeholderTextColor="#E9DDF0"
-            keyboardType="phone-pad"
-            accessibilityLabel="Телефон"
-            style={[styles.input, styles.inputProminent]}
-          />
-        </Field>
+          <Field icon="phone" hint="Ваш номер телефона">
+            <TextInput
+              value={phone}
+              onChangeText={(value) => setPhone(formatPhone(value))}
+              placeholder="+7 (___) ___-__-__"
+              placeholderTextColor="#E9DDF0"
+              keyboardType="phone-pad"
+              accessibilityLabel="Телефон"
+              style={[styles.input, styles.inputProminent]}
+            />
+          </Field>
 
-        <Field
-          icon="lock"
-          helper="Минимум 8 символов, включая буквы и цифры"
-          trailing={
-            <PressableScale onPress={() => setRevealed((value) => !value)} hitSlop={8}>
-              <Icon
-                name={revealed ? "eye" : "eyeOff"}
-                color={ob.textSecondary}
-                size={20}
-                strokeWidth={1.8}
-              />
-            </PressableScale>
-          }
-        >
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Пароль"
-            placeholderTextColor="#E9DDF0"
-            secureTextEntry={!revealed}
-            accessibilityLabel="Пароль"
-            style={[styles.input, styles.inputProminent]}
-          />
-        </Field>
+          <Field
+            icon="lock"
+            helper="Минимум 8 символов, включая буквы и цифры"
+            trailing={
+              <PressableScale onPress={() => setRevealed((value) => !value)} hitSlop={8}>
+                <Icon
+                  name={revealed ? "eye" : "eyeOff"}
+                  color={ob.textSecondary}
+                  size={20}
+                  strokeWidth={1.8}
+                />
+              </PressableScale>
+            }
+          >
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Пароль"
+              placeholderTextColor="#E9DDF0"
+              secureTextEntry={!revealed}
+              accessibilityLabel="Пароль"
+              style={[styles.input, styles.inputProminent]}
+            />
+          </Field>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-      </GlassCard>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+        </GlassCard>
+      )}
 
-      <PrimaryButton label="Вход по телефону — скоро" onPress={submit} />
+      {APPLE_SIGN_IN_ONLY ? null : (
+        <PrimaryButton label="Вход по телефону — скоро" onPress={submit} />
+      )}
 
       {Platform.OS === "ios" ? (
         <AppleAuthentication.AppleAuthenticationButton
@@ -349,19 +369,26 @@ function AuthStep({
         />
       ) : null}
 
-      <View style={styles.socialBlock}>
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>или войдите через</Text>
-          <View style={styles.dividerLine} />
-        </View>
+      {APPLE_SIGN_IN_ONLY ? null : (
+        <View style={styles.socialBlock}>
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>или войдите через</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
-        <View style={styles.socialRow}>
-          <SocialButton provider="telegram" label="Telegram" onPress={() => social("telegram")} />
-          <SocialButton provider="yandex" label="Yandex ID" soon onPress={() => social("yandex")} />
-          <SocialButton provider="vk" label="VK ID" soon onPress={() => social("vk")} />
+          <View style={styles.socialRow}>
+            <SocialButton provider="telegram" label="Telegram" onPress={() => social("telegram")} />
+            <SocialButton
+              provider="yandex"
+              label="Yandex ID"
+              soon
+              onPress={() => social("yandex")}
+            />
+            <SocialButton provider="vk" label="VK ID" soon onPress={() => social("vk")} />
+          </View>
         </View>
-      </View>
+      )}
 
       {__DEV__ ? <GhostButton label="Продолжить без регистрации" onPress={guest} /> : null}
 
@@ -376,11 +403,14 @@ function AuthStep({
         <Handwritten text="Финансовая свобода начинается здесь ♡" style={styles.scriptTiltRight} />
       </View>
 
-      <FooterLink
-        prefix={loginMode ? "Ещё нет аккаунта?" : "Уже есть аккаунт?"}
-        label={loginMode ? "Создать" : "Войти"}
-        onPress={() => onSwitchMode(!loginMode)}
-      />
+      {/* Apple's one button both signs up and signs in — no mode to switch on iOS. */}
+      {APPLE_SIGN_IN_ONLY ? null : (
+        <FooterLink
+          prefix={loginMode ? "Ещё нет аккаунта?" : "Уже есть аккаунт?"}
+          label={loginMode ? "Создать" : "Войти"}
+          onPress={() => onSwitchMode(!loginMode)}
+        />
+      )}
 
       {busy ? <Text style={styles.busy}>Секунду…</Text> : null}
     </View>

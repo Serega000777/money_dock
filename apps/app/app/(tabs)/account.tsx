@@ -10,6 +10,8 @@ import { Image, Platform, Pressable, StyleSheet, View } from "react-native";
 import { apiClient } from "../../src/api/client";
 import { useAuthStore } from "../../src/auth/authStore";
 import { CreateAccountSheet, DeleteAccountSheet } from "../../src/features/accounts";
+import { DeleteProfileSheet } from "../../src/features/deleteProfile";
+import { CAN_SELL_PRO, SHOW_COMING_SOON } from "../../src/platform/appStore";
 import { CreateRecurringPaymentSheet, recurringStatus } from "../../src/features/recurring";
 import { useTelegram } from "../../src/telegram/TelegramProvider";
 import {
@@ -65,6 +67,7 @@ export default function Account() {
   const [addingPayment, setAddingPayment] = useState(false);
   const [addingAccount, setAddingAccount] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState<{ id: string; name: string } | null>(null);
+  const [deletingProfile, setDeletingProfile] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
@@ -213,7 +216,7 @@ export default function Account() {
               · {me?.baseCurrency ?? "RUB"}
             </Text>
           </View>
-          {entitlements?.plan === "free" ? (
+          {entitlements?.plan === "free" && !CAN_SELL_PRO ? null : entitlements?.plan === "free" ? (
             <PressableScale
               style={StyleSheet.flatten([
                 styles.planBadge,
@@ -465,7 +468,7 @@ export default function Account() {
                 : "без ограничений"}
             </Text>
           </View>
-          {entitlements?.plan === "free" ? (
+          {entitlements?.plan === "free" && CAN_SELL_PRO ? (
             <NavRow href="/upgrade" icon="crown" label="Купить Pro" />
           ) : null}
         </Section>
@@ -484,6 +487,12 @@ export default function Account() {
               {generateReport.isPending ? "Формирую…" : "Сформировать отчёт"}
             </Text>
             <Icon name="chevron" color={theme.textTertiary} size={18} />
+          </PressableScale>
+          <PressableScale style={styles.row} onPress={() => setDeletingProfile(true)}>
+            <View style={[styles.rowIcon, { backgroundColor: theme.negativeSoft }]}>
+              <Icon name="trash" color={theme.negative} size={18} />
+            </View>
+            <Text style={[styles.rowLabel, { color: theme.negative }]}>Удалить аккаунт</Text>
           </PressableScale>
         </Section>
       </FadeIn>
@@ -525,13 +534,15 @@ export default function Account() {
         </Section>
       </FadeIn>
 
-      <FadeIn index={11}>
-        <Section title="Скоро">
-          <Text style={[styles.soon, { color: theme.textSecondary }]}>
-            Telegram-уведомления и подключение банков появятся на следующих этапах.
-          </Text>
-        </Section>
-      </FadeIn>
+      {SHOW_COMING_SOON ? (
+        <FadeIn index={11}>
+          <Section title="Скоро">
+            <Text style={[styles.soon, { color: theme.textSecondary }]}>
+              Telegram-уведомления и подключение банков появятся на следующих этапах.
+            </Text>
+          </Section>
+        </FadeIn>
+      ) : null}
 
       {me?.isOwner ? (
         <FadeIn index={12}>
@@ -543,6 +554,7 @@ export default function Account() {
 
       <CreateAccountSheet visible={addingAccount} onClose={() => setAddingAccount(false)} />
       <DeleteAccountSheet account={deletingAccount} onClose={() => setDeletingAccount(null)} />
+      <DeleteProfileSheet visible={deletingProfile} onClose={() => setDeletingProfile(false)} />
       <CreateRecurringPaymentSheet
         visible={addingPayment}
         onClose={() => setAddingPayment(false)}
@@ -581,6 +593,7 @@ function SupportRow({
   onPress?: () => void;
 }) {
   const theme = useTheme();
+  if (!onPress && !SHOW_COMING_SOON) return null;
   return (
     <PressableScale style={styles.row} onPress={onPress} disabled={!onPress}>
       <View style={[styles.rowIcon, { backgroundColor: theme.accentSoft }]}>

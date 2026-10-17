@@ -12,6 +12,8 @@ import { Icon } from "../ui/Icon";
 import { Text } from "../ui/Text";
 import { PressableScale } from "../ui/primitives";
 
+import { CAN_SELL_PRO } from "../platform/appStore";
+
 import { usePaywallStore } from "./paywall";
 
 export const ASSISTANT_BUTTON_SIZE = 48;
@@ -53,21 +55,28 @@ export function AssistantButton({ bottom, right }: { bottom: number; right: numb
   });
 
   const isPro = data ? data.plan !== "free" : false;
-  const left = data && data.limits.assistant >= 0 ? Math.max(0, data.limits.assistant - data.used.assistant) : null;
+  const left =
+    data && data.limits.assistant >= 0
+      ? Math.max(0, data.limits.assistant - data.used.assistant)
+      : null;
   const locked = !isPro && left === 0;
 
   const onPress = () => {
     if (locked) {
       usePaywallStore
         .getState()
-        .open("Бесплатные сообщения ИИ-ассистенту в этом месяце закончились. Ассистент входит в Pro.");
+        .open(
+          "Бесплатные сообщения ИИ-ассистенту в этом месяце закончились. Ассистент входит в Pro.",
+        );
       return;
     }
     router.push("/assistant");
   };
 
   const label = locked
-    ? "ИИ-ассистент — доступен в Pro"
+    ? CAN_SELL_PRO
+      ? "ИИ-ассистент — доступен в Pro"
+      : "ИИ-ассистент — лимит на месяц исчерпан"
     : isPro
       ? "ИИ-ассистент"
       : `ИИ-ассистент — осталось бесплатных: ${left ?? ""}`;
@@ -108,7 +117,9 @@ export function AssistantButton({ bottom, right }: { bottom: number; right: numb
           <Icon name="lock" size={11} color={theme.textSecondary} strokeWidth={2.4} />
         </View>
       ) : isPro ? (
-        <View style={[styles.badge, { backgroundColor: theme.warning, borderColor: theme.surface }]}>
+        <View
+          style={[styles.badge, { backgroundColor: theme.warning, borderColor: theme.surface }]}
+        >
           <Icon name="crown" size={11} color="#FFFFFF" strokeWidth={2.2} filled />
         </View>
       ) : left !== null ? (
@@ -152,5 +163,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  countText: { ...typography.overline, fontSize: 10, lineHeight: 12, letterSpacing: 0, textTransform: "none" },
+  countText: {
+    ...typography.overline,
+    fontSize: 10,
+    lineHeight: 12,
+    letterSpacing: 0,
+    textTransform: "none",
+  },
 });

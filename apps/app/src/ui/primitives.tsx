@@ -1,10 +1,12 @@
 import { elevation, motion, radii, spacing, typography } from "@money-dock/design-tokens";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Easing,
+  Keyboard,
   Modal,
   PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -31,6 +33,7 @@ export function Screen({
   contentStyle?: ViewStyle;
 }) {
   const theme = useTheme();
+  const keyboard = useIosKeyboardHeight(!scroll);
   return (
     <View style={styles.flex}>
       <GradientBackground colors={theme.backgroundGradient} glow={theme.backgroundGlow} />
@@ -39,15 +42,40 @@ export function Screen({
           <ScrollView
             contentContainerStyle={[styles.screenContent, contentStyle]}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            // iOS: scrolls the focused field above the keyboard by itself.
+            automaticallyAdjustKeyboardInsets
           >
             {children}
           </ScrollView>
         ) : (
-          <View style={[styles.flex, contentStyle]}>{children}</View>
+          // A fixed layout (the assistant chat) has nothing to scroll, so it is lifted by the
+          // keyboard's height instead — otherwise the bottom composer sits under the keyboard.
+          <View style={[styles.flex, contentStyle, keyboard ? { marginBottom: keyboard } : null]}>
+            {children}
+          </View>
         )}
       </SafeAreaView>
     </View>
   );
+}
+
+/** Native iOS only (Android resizes the window itself; the web build has
+ * useVisualViewportLock): the keyboard's height while it is up, else 0. */
+function useIosKeyboardHeight(enabled: boolean): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    if (!enabled || Platform.OS !== "ios") return;
+    const show = Keyboard.addListener("keyboardWillShow", (event) =>
+      setHeight(event.endCoordinates.height),
+    );
+    const hide = Keyboard.addListener("keyboardWillHide", () => setHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [enabled]);
+  return height;
 }
 
 /** A soft raised surface — the app's single card look, so nothing drifts apart.

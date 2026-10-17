@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
 import { apiClient } from "../src/api/client";
 import { DraftSummary, useVoiceCapture } from "../src/features/voiceCapture";
+import { CAN_SELL_PRO } from "../src/platform/appStore";
 import { useTheme } from "../src/theme/useTheme";
 import { GradientBox } from "../src/ui/Gradient";
 import { Icon } from "../src/ui/Icon";
@@ -144,7 +145,7 @@ export default function Voice() {
             {voiceLeft !== null ? (
               <Text style={[styles.hint, { color: theme.textTertiary }]}>
                 Осталось голосовых операций в этом месяце: {voiceLeft}
-                {voiceLeft === 0 ? " · безлимит входит в Pro" : ""}
+                {voiceLeft === 0 && CAN_SELL_PRO ? " · безлимит входит в Pro" : ""}
               </Text>
             ) : null}
           </View>

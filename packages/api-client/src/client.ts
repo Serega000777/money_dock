@@ -127,6 +127,8 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
        * why (no object storage yet). Pass `null` to remove a photo. */
       updateMe: (input: { avatarUrl?: string | null }) =>
         request<User>("/users/me", { method: "PATCH", body: JSON.stringify(input) }),
+      /** Hard delete of the whole profile and everything it owns (App Store 5.1.1(v)). */
+      deleteMe: () => request<void>("/users/me", { method: "DELETE" }),
     },
 
     accounts: {
@@ -341,11 +343,12 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
         const form = new FormData();
         const extension = audio.type.includes("mp4") || audio.type.includes("m4a") ? "m4a" : "webm";
         form.append("audio", audio, `speech.${extension}`);
-        const upload = (token: string | null | undefined) => fetch(`${baseUrl}/speech/transcribe`, {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          body: form,
-        });
+        const upload = (token: string | null | undefined) =>
+          fetch(`${baseUrl}/speech/transcribe`, {
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            body: form,
+          });
         let res = await upload(getAccessToken?.());
         if (res.status === 401) {
           const refreshed = await refreshOnce();
@@ -385,17 +388,20 @@ export function createApiClient({ baseUrl, getAccessToken, onUnauthorized }: Api
         if (!res.ok) throw new ApiError(res.status, await res.text());
         return (await res.json()) as AssistantResponse;
       },
-      confirmAction: (id: string) =>
-        post<AssistantAction>(`/assistant/actions/${id}/confirm`),
-        cancelAction: (id: string) => post<AssistantAction>(`/assistant/actions/${id}/cancel`),
-        updateAction: (id: string, input: {
+      confirmAction: (id: string) => post<AssistantAction>(`/assistant/actions/${id}/confirm`),
+      cancelAction: (id: string) => post<AssistantAction>(`/assistant/actions/${id}/cancel`),
+      updateAction: (
+        id: string,
+        input: {
           amountMinor?: number;
           type?: "expense" | "income";
           categoryId?: string | null;
           accountId?: string;
           occurredAt?: string;
           note?: string;
-        }) => request<AssistantAction>(`/assistant/actions/${id}`, {
+        },
+      ) =>
+        request<AssistantAction>(`/assistant/actions/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(input),
