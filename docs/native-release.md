@@ -26,6 +26,36 @@ cd /root/money_dock && git pull && docker compose --env-file .env.production -f 
 «Удалить аккаунт». В `.env.production` должны быть `OWNER_TELEGRAM_ID`,
 `DEEPSEEK_VISION_MODEL`, `APPLE_CLIENT_ID=app.amola.finance` (по умолчанию уже такой).
 
+## 1.5. Уже сейчас, на бесплатном Apple ID: проверка на iPhone через Expo Go
+
+Без платного аккаунта нельзя ни TestFlight, ни App Store Connect, но приложение можно
+запустить на своём iPhone через **Expo Go**, подключив его к локальному API на Windows:
+
+1. На iPhone из App Store поставить **Expo Go**. Он должен поддерживать Expo SDK 57;
+   если Expo Go уже на более новом SDK, этот способ не сработает — ждём TestFlight.
+2. На Windows (iPhone в той же Wi-Fi сети), из корня репозитория, в двух терминалах:
+
+   ```bash
+   pnpm docker:up
+   pnpm --filter @money-dock/api dev
+   ```
+
+   ```bash
+   pnpm --filter @money-dock/app dev
+   ```
+
+   Первый поднимает API на :3000, второй — Expo с QR-кодом. В корневом `.env` `EXPO_PUBLIC_API_URL` должен быть
+   LAN-адресом компьютера (сейчас `http://192.168.1.65:3000`). Если телефон не
+   подключается — разрешить Node.js в брандмауэре Windows (порты 3000 и 8081).
+
+3. Камерой iPhone отсканировать QR из терминала → откроется Expo Go.
+4. Войти кнопкой **«Продолжить без регистрации»** (она есть только в режиме разработки).
+   Sign in with Apple в Expo Go не заработает: у Expo Go свой идентификатор приложения,
+   вход через Apple проверяется уже в TestFlight.
+5. Пройти чек-лист из шага 5, кроме входа через Apple.
+
+Шаги 2–7 — после оплаты Apple Developer Program.
+
 ## 2. Apple Developer Program ($99/год)
 
 1. Apple ID с двухфакторной защитой → developer.apple.com/programs/enroll → Individual
@@ -48,8 +78,8 @@ cd /root/money_dock && git pull && docker compose --env-file .env.production -f 
 
 ```bash
 cd apps/app
-npx expo install --fix          # обновить 8 пакетов до версий SDK 57 (expo-doctor просит)
-npx expo-doctor                 # должно быть без ошибок; если ругается на app.json — пришли вывод
+npx expo-doctor                 # пакеты уже выровнены с SDK 57; ошибка «schema … not valid
+                                # JSON» — это сеть до серверов Expo, не наш app.json
 npx eas-cli login               # аккаунт expo.dev (бесплатный)
 npx eas-cli build --platform ios --profile production
 npx eas-cli submit --platform ios --profile production --latest

@@ -60,11 +60,11 @@ API, замком в выборе и списками Pro (paywall и /upgrade �
 Коммиты: см. `git log` после `1989111`.
 Осталось: после разрешения банков — поставить флаг в true и задеплоить.
 
-### 2026-10-17 · Claude Code (Windows) · in-progress (продолжено 2026-10-19)
+### 2026-10-17 · Claude Code (Windows) · done (продолжено 2026-10-19)
 
 Задача: подготовить деплой и первую отправку в App Store + полный гайд действий владельца.
 Области: `apps/app` (iOS-ветки: вход, оплата/лимиты, карты банков, клавиатура, удаление
 аккаунта, ассеты карт, app.json), `packages/api-client`, `docs/native-release.md`.
 Итог: iOS-флаги (src/platform/appStore.ts): без продажи Pro, без брендов банков, только Sign in with Apple, без «Скоро»; удаление аккаунта в Кабинете; клавиатура iOS; карты через require; privacy manifest; гайд docs/native-release.md. iOS JS-бандл собран (expo export).
 Коммиты: см. git log после 0cd8639.
-Осталось (прервано лимитом): npx expo install --fix (8 патч-версий), expo-doctor ругается на схему app.json — разобрать; визуально проверить веб (картинки карт через require); прогнать тесты API users; обновить STATUS.md.
+Осталось: владельцу — оплатить Apple Developer Program и пройти гайд docs/native-release.md (до оплаты — проверка в Expo Go, раздел 1.5); заполнить данные Оператора в legal/content.ts. Сделано 2026-10-19: expo install --fix (8 пакетов SDK 57), expo-doctor (остался только сетевой сбой проверки схемы), iOS-бандл и веб-экспорт собраны, картинки карт в веб-сборке на месте, тесты users/auth 23/23, STATUS.md обновлён.

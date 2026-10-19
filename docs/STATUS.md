@@ -113,6 +113,17 @@ Telegram Mini App (@amola_finance_bot); тот же клиент собирае�
   серая с замком, тап открывает оплату.
 - Оплата — Telegram Stars (`payments.controller`, `applyStarsPayment`), экран `/upgrade`.
 
+### iOS / App Store (готово к сборке, не отправлено)
+
+- Флаги `apps/app/src/platform/appStore.ts` — в iOS-сборке: нет продажи и упоминаний Pro
+  (IAP не подключён), нет брендов/дизайнов карт банков, вход только Sign in with Apple, нет
+  плашек «Скоро». В Telegram/вебе всё как прежде.
+- «Удалить аккаунт» в Кабинете (все платформы, `DELETE /users/me`); на iOS поле ИИ
+  поднимается над клавиатурой; картинки карт — бандл-ассеты; privacy manifest в `app.json`;
+  пакеты Expo выровнены с SDK 57; iOS JS-бандл и веб-экспорт собираются.
+- Гайд владельца: [`native-release.md`](native-release.md). Блокер — платный Apple
+  Developer Program (у владельца пока бесплатный Apple ID; до оплаты — проверка в Expo Go).
+
 ### Telegram-бот и админка
 
 - Бот: приветствие с баннером, запрос номера, юридические ссылки, webhook.
