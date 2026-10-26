@@ -68,3 +68,12 @@ API, замком в выборе и списками Pro (paywall и /upgrade �
 Итог: iOS-флаги (src/platform/appStore.ts): без продажи Pro, без брендов банков, только Sign in with Apple, без «Скоро»; удаление аккаунта в Кабинете; клавиатура iOS; карты через require; privacy manifest; гайд docs/native-release.md. iOS JS-бандл собран (expo export).
 Коммиты: см. git log после 0cd8639.
 Осталось: владельцу — оплатить Apple Developer Program и пройти гайд docs/native-release.md (до оплаты — проверка в Expo Go, раздел 1.5); заполнить данные Оператора в legal/content.ts. Сделано 2026-10-19: expo install --fix (8 пакетов SDK 57), expo-doctor (остался только сетевой сбой проверки схемы), iOS-бандл и веб-экспорт собраны, картинки карт в веб-сборке на месте, тесты users/auth 23/23, STATUS.md обновлён.
+
+### 2026-10-26 · Claude Code (Windows) · in-progress
+
+Задача: обновить Expo SDK 57 → 58 — Expo Go на iPhone владельца уже на SDK 58, проект на 57
+не открывается.
+Области: `apps/app` (package.json, app.json, возможные breaking changes), `pnpm-lock.yaml`.
+Итог: —
+Коммиты: —
+Осталось: —
