@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
   View,
   type PressableProps,
+  type StyleProp,
   type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -30,7 +31,7 @@ export function Screen({
 }: {
   children: ReactNode;
   scroll?: boolean;
-  contentStyle?: ViewStyle;
+  contentStyle?: StyleProp<ViewStyle>;
 }) {
   const theme = useTheme();
   const keyboard = useIosKeyboardHeight(!scroll);
@@ -88,7 +89,7 @@ export function Card({
   gradient,
 }: {
   children: ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   sunken?: boolean;
   gradient?: boolean;
 }) {
@@ -159,7 +160,7 @@ export function FadeIn({
 }: {
   children: ReactNode;
   index?: number;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }) {
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -195,7 +196,7 @@ export function PressableScale({
   children,
   style,
   ...props
-}: PressableProps & { children: ReactNode; style?: ViewStyle }) {
+}: PressableProps & { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const scale = useRef(new Animated.Value(1)).current;
 
   const animate = (toValue: number) =>

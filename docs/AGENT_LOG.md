@@ -69,11 +69,11 @@ API, замком в выборе и списками Pro (paywall и /upgrade �
 Коммиты: см. git log после 0cd8639.
 Осталось: владельцу — оплатить Apple Developer Program и пройти гайд docs/native-release.md (до оплаты — проверка в Expo Go, раздел 1.5); заполнить данные Оператора в legal/content.ts. Сделано 2026-10-19: expo install --fix (8 пакетов SDK 57), expo-doctor (остался только сетевой сбой проверки схемы), iOS-бандл и веб-экспорт собраны, картинки карт в веб-сборке на месте, тесты users/auth 23/23, STATUS.md обновлён.
 
-### 2026-10-26 · Claude Code (Windows) · in-progress
+### 2026-10-26 · Claude Code (Windows) · done
 
 Задача: обновить Expo SDK 57 → 58 — Expo Go на iPhone владельца уже на SDK 58, проект на 57
 не открывается.
 Области: `apps/app` (package.json, app.json, возможные breaking changes), `pnpm-lock.yaml`.
-Итог: —
-Коммиты: —
-Осталось: —
+Итог: Expo SDK 58 (RN 0.88, React 19.3); правки типов RN 0.88 (style: StyleProp<ViewStyle> в Card/PressableScale/FadeIn/GradientBox/Screen, ref через ComponentRef); @expo/dom-webview 58. Проверено: tsc 0 ошибок, eslint, expo-doctor (только сетевая проверка схемы), iOS-бандл, веб-экспорт грузится без ошибок консоли.
+Коммиты: см. git log после записи о старте.
+Осталось: владелец проверяет на iPhone через Expo Go; деплой веба на SDK 58 при следующем деплое VPS.

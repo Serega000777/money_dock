@@ -31,7 +31,7 @@ cd /root/money_dock && git pull && docker compose --env-file .env.production -f 
 Без платного аккаунта нельзя ни TestFlight, ни App Store Connect, но приложение можно
 запустить на своём iPhone через **Expo Go**, подключив его к локальному API на Windows:
 
-1. На iPhone из App Store поставить **Expo Go**. Он должен поддерживать Expo SDK 57;
+1. На iPhone из App Store поставить **Expo Go**. Проект на Expo SDK 58 — Expo Go должен быть той же версии;
    если Expo Go уже на более новом SDK, этот способ не сработает — ждём TestFlight.
 2. На Windows (iPhone в той же Wi-Fi сети), из корня репозитория, в двух терминалах:
 

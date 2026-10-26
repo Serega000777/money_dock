@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Circle, Defs, LinearGradient, RadialGradient, Rect, Stop } from "react-native-svg";
 
 /**
@@ -129,7 +129,7 @@ export function GradientBox({
   /** Diameter of the `highlight` glow — scale it down for small surfaces (a stat tile)
    * so it reads as a corner sheen, not a wash covering the whole card. */
   highlightSize?: number;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   children?: ReactNode;
 }) {
   return (

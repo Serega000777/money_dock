@@ -1,5 +1,5 @@
 import { motion, radii, spacing, typography } from "@money-dock/design-tokens";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentRef } from "react";
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { useTheme } from "../theme/useTheme";
@@ -42,7 +42,7 @@ export function BarChart({
   const [selected, setSelected] = useState<string | null>(null);
   const grow = useRef(new Animated.Value(0)).current;
   const max = Math.max(1, ...bars.map((bar) => bar.value));
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const scrollable = bars.length > SCROLL_THRESHOLD;
 
   useEffect(() => {

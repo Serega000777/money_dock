@@ -120,9 +120,9 @@ Telegram Mini App (@amola_finance_bot); тот же клиент собирае�
   плашек «Скоро». В Telegram/вебе всё как прежде.
 - «Удалить аккаунт» в Кабинете (все платформы, `DELETE /users/me`); на iOS поле ИИ
   поднимается над клавиатурой; картинки карт — бандл-ассеты; privacy manifest в `app.json`;
-  пакеты Expo выровнены с SDK 57; iOS JS-бандл и веб-экспорт собираются.
+  Expo SDK 58 (RN 0.88); iOS JS-бандл и веб-экспорт собираются.
 - Гайд владельца: [`native-release.md`](native-release.md). Блокер — платный Apple
-  Developer Program (у владельца пока бесплатный Apple ID; до оплаты — проверка в Expo Go).
+  Developer Program (у владельца пока бесплатный Apple ID; до оплаты — проверка в Expo Go на SDK 58).
 
 ### Telegram-бот и админка
 

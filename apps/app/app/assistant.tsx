@@ -3,7 +3,7 @@ import { radii, spacing, typography } from "@money-dock/design-tokens";
 import type { AssistantAction } from "@money-dock/shared-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentRef } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -42,7 +42,7 @@ export default function AssistantScreen() {
   const queryClient = useQueryClient();
   const recorder = useAudioRecorder();
   const listRef = useRef<FlatList>(null);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [action, setAction] = useState<AssistantAction | null>(null);
